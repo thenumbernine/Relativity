@@ -60,7 +60,7 @@ struct Grid {
 		return i;
 	}
 
-	type &operator()(const veci &index) { return v[veci::dot(veci::clamp(index, veci(0), size-1), step)]; }
-	const type &operator()(const veci &index) const { return v[veci::dot(veci::clamp(index, veci(0), size-1), step)]; }
+	type &operator()(const veci &index) { return v[veci::dot(index, step)]; }
+	const type &operator()(const veci &index) const { return v[veci::dot(index, step)]; }
 };
 

@@ -36,5 +36,11 @@ struct Cell {
 	//beta_i
 	//beta_t = beta^k beta_k
 	vec beta_l;
+
+	//gamma^ij = inverse of gamma_ij
+	symmat gamma_uu;
+
+	//conn^i_jk
+	::vec<dim, symmat> conn_ull;
 };
 

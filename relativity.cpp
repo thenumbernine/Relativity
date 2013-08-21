@@ -60,11 +60,15 @@ struct Simulation {
 
 	/*
 	partial derivative operator
-	for now let's use 3-point everywhere: d/dx^i f(x) ~= (f(x + dx^i) - f(x - dx^i)) / (2 * |dx^i|)
+	for now let's use 2-point everywhere: d/dx^i f(x) ~= (f(x + dx^i) - f(x - dx^i)) / (2 * |dx^i|)
+		index = index in grid of cell to pull the specified field
+		k = dimension to differentiate across
 	*/
 	template<typename T>
-	T partial(T Cell::*field, const veci &index, int partialIndex) {
-		return (readCells(index + dxi(dim)).*field - readCells(index - dxi(dim)).*field) / (2. * dx(partialIndex));
+	T partialDerivative(T Cell::*field, const veci &index, int k) {
+		veci nextIndex = veci::clamp(index + dxi(dim), veci(0), size-1);
+		veci prevIndex = veci::clamp(index - dxi(dim), veci(0), size-1);
+		return (readCells(nextIndex).*field - readCells(prevIndex).*field) / (real(nextIndex(k) - prevIndex(k)) * dx(k));
 	}
 
 	void update(real dt) {
@@ -73,48 +77,45 @@ struct Simulation {
 		
 		//first compute and store aux values that will be subsequently used for partial differentiation
 		//during this process read and write to the same cell
+	
+		//beta_l, gamma_uu
 		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
-			Cell &readCell = readCells(iter.index);
+			Cell &cell = readCells(iter.index);
 		
 			//beta_u(k) := beta^k
-			const vec &beta_u = readCell.beta_u;
+			const vec &beta_u = cell.beta_u;
 			
 			//gamma_ll(i,j) := gamma_ij
-			const symmat &gamma_ll = readCell.gamma_ll;
+			const symmat &gamma_ll = cell.gamma_ll;
 
 			//beta_l(i) := g_ij beta^j
 			//exclude sum of beta^t = 0
 			//not storing beta_t here, since beta_t = beta^k beta_k
-			vec &beta_l = readCell.beta_l;
+			vec &beta_l = cell.beta_l;
 			for (int i = 0; i < dim; ++i) {
 				beta_l(i) = 0;
 				for (int j = 0; j < dim; ++j) {
 					beta_l(i) += gamma_ll(i,j) * beta_u(j);
 				}
 			}
-		}
-
-
-		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
-			const Cell &readCell = readCells(iter.index);
-			Cell &writeCell = writeCells(iter.index);
-			
-			const real &alpha = readCell.alpha;
-			
-			//K_ll(i,j) := K_ij
-			const symmat &K_ll = readCell.K_ll;
-
-			//gamma_ll(i,j) := gamma_ij
-			const symmat &gamma_ll = readCell.gamma_ll;
-
+		
 			//gamma_uu(i,j) := gamma^ij = inverse of gamma_ij
 			// I could write the tensor formula for matrix inverses out (see "Gravitation", exercise 5.5e)
-			symmat gamma_uu = symmat::invert(gamma_ll);
+			symmat &gamma_uu = cell.gamma_uu;
+			gamma_uu = symmat::invert(gamma_ll);
+		}
+
+		//conn_ull depends on gamma_uu
+		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
+			Cell &cell = readCells(iter.index);
+	
+			const symmat &gamma_ll = cell.gamma_ll;
+			const symmat &gamma_uu = cell.gamma_uu;
 
 			//partial_gamma_lll[k](i,j) := partial_k gamma_ij
 			symmat partial_gamma_lll[dim];
 			for (int k = 0; k < dim; ++k) {
-				partial_gamma_lll[k] = partial(&Cell::gamma_ll, iter.index, k);
+				partial_gamma_lll[k] = partialDerivative(&Cell::gamma_ll, iter.index, k);
 			}
 
 			//3D hypersurface connection coefficients
@@ -129,36 +130,49 @@ struct Simulation {
 				}
 			}
 
-			//conn_ull[i](j,k) := conn^i_jk = gamma^il conn_ljk
-			symmat conn_ull[dim];
+			//conn_ull(i)(j,k) := conn^i_jk = gamma^il conn_ljk
+			::vec<dim, symmat> &conn_ull = cell.conn_ull;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
 					for (int k = 0; k <= j; ++k) {
-						conn_ull[i](j,k) = 0;
+						conn_ull(i)(j,k) = 0;
 						for (int l = 0; l < dim; ++l) {
-							conn_ull[i](j,k) += gamma_uu(i,l) * conn_lll[l](j,k);
+							conn_ull(i)(j,k) += gamma_uu(i,l) * conn_lll[l](j,k);
 						}
 					}
 				}
 			}
+		}
+
+		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
+			const Cell &readCell = readCells(iter.index);
+			Cell &writeCell = writeCells(iter.index);
 			
+			const real &alpha = readCell.alpha;
+			
+			//K_ll(i,j) := K_ij
+			const symmat &K_ll = readCell.K_ll;
+		
 			//beta_l(k) := beta_k
 			const vec &beta_l = readCell.beta_l;
+
+			//conn_ull(i)(j,k) = conn^i_jk
+			const ::vec<dim, symmat> &conn_ull = readCell.conn_ull;
 
 			//partial_beta_ll[j](i) := partial_j beta_i
 			vec partial_beta_ll[dim];
 			for (int j = 0; j < dim; ++j) {
-				partial_beta_ll[j] = partial(&Cell::beta_l, iter.index, j);
+				partial_beta_ll[j] = partialDerivative(&Cell::beta_l, iter.index, j);
 			}
 			
-
+			
 			//diff_beta_ll(j,i) := diff_j beta_i = partial_j beta_i - conn^k_ij beta_k
 			matrix diff_beta_ll;
 			for (int j = 0; j < dim; ++j) {
 				for (int i = 0; i < dim; ++i) {
 					diff_beta_ll(j,i) = partial_beta_ll[j](i);
 					for (int k = 0; k < dim; ++k) {
-						diff_beta_ll(j,i) -= conn_ull[k](i,j) * beta_l(k);
+						diff_beta_ll(j,i) -= conn_ull(k)(i,j) * beta_l(k);
 					}
 				}
 			}
