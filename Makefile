@@ -5,7 +5,8 @@ DEPS :=\
 	grid.h \
 	matrix.h \
 	symmat.h \
-	vec.h
+	vector.h \
+	oneform.h
 
 relativity: relativity.cpp $(DEPS)
 	g++ relativity.cpp -o relativity

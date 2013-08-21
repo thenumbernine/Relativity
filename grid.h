@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vec.h"
+#include "vector.h"
 
 //rank is templated, but dim is not as it varies per-rank
 //so this is dynamically-sized
@@ -9,7 +9,7 @@ struct Grid {
 	enum { rank = rank_ };
 	typedef type_ type;
 
-	typedef ::vec<rank,int> veci;
+	typedef ::vector<rank,int> veci;
 
 	type *v;
 	veci size;

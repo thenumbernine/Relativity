@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>	//min/max
+
 /*
 the 'parent' curious pattern whatever for generic_vector and generic_matrix
 	size_ is the size of the dense vector

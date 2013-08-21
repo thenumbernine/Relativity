@@ -1,6 +1,7 @@
 #pragma once
 
-#include "vec.h"
+#include "vector.h"
+#include "oneform.h"
 #include "symmat.h"
 
 template<int dim_, typename real_>
@@ -8,7 +9,8 @@ struct Cell {
 	typedef real_ real;
 	enum { dim = dim_ };
 
-	typedef ::vec<dim,real> vec;
+	typedef ::vector<dim,real> vector;
+	typedef ::oneform<dim,real> oneform;
 	typedef ::symmat<dim,real> symmat;
 
 	//	state variables
@@ -19,7 +21,7 @@ struct Cell {
 	//shift
 	//beta^i
 	//beta^t = 0
-	vec beta_u;
+	vector beta_u;
 
 	//spatial metric
 	//gamma_ij
@@ -35,12 +37,12 @@ struct Cell {
 
 	//beta_i
 	//beta_t = beta^k beta_k
-	vec beta_l;
+	oneform beta_l;
 
 	//gamma^ij = inverse of gamma_ij
 	symmat gamma_uu;
 
 	//conn^i_jk
-	::vec<dim, symmat> conn_ull;
+	::vector<dim, symmat> conn_ull;
 };
 
