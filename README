@@ -1,1 +1,46 @@
 GR simulation
+
+Starting again from scratch now that I've gone through the ADM chapter of "Gravitation" and Numerical Relativity 
+
+Conventions & Notations:
+
+	indexes: (taken from "Numerical Relativity" p.26)
+
+a-h, o-z:	4D -- most often txyz. not sure if t should be stored first (for math index notation consistency) or last (ugly casting between 3D and 4D rank-1 tensors) just yet.
+i-n:		3D -- most often xyz.
+
+	operators:
+
+partial_u 	= partial derivative wrt coordinate u
+diff_u 		= covariant derivative wrt coordinate u
+D_u 		= projection derivative / covariant of spatial metric wrt coordinate u
+			   = proj diff_v
+proj 		= projection operator ("Numerical Relativity" eqn 2.31)
+			   such that proj T^a_b = gamma^a_c gamma_b^d T^c_d
+
+	variables:
+
+alpha		= lapse (distance between timeslices a coordinate is transported over dt)
+beta^a		= shift (distance within the 3D hypersurface a coordiate is transported over dt) 
+				= (0, beta^i) 	(i.e. beta^t = 0), therefore beta^a beta_a = beta^k beta_k
+g_ab 		= ADM representation of 4D metric tensor 
+				= gamma_ab - n_a n_b
+				= ( -alpha^2 + beta^k beta_k	,	beta_j)		<- where beta_j = gamma_ij beta^k
+				  (			beta_i				,	gamma_ij)		\ which is equivalent to beta_j = gamma_aj beta^a since beta^t = 0 after all so we just neglect the timelike component of beta and gamma
+g^ab		= contravariant/inverse ADM representation of 4D metric tensor
+				= gamma^ab - n^a n^b
+				= ( -1/alpha^2		,			beta^j/alpha^2			   )
+				  (	beta^i/alpha^2	,	gamma^ij - beta^i beta^j / alpha^2 )
+n_a			= covariant form of normal vector (i.e. normal one-form) to 3D hypersurface in 4D space
+				= (-alpha, 0)
+n^a			= contravariant form of normal vector to 3D hypersurface in 4D space
+				= (1/alpha, -beta^i/alpha)
+gamma^ab	= 4D projection operator / contravariant/inverse metric tensor of 3D spatial hypersurface
+				= g^ab + n^a n^b
+				= (	0	,		0 	 )
+				  ( 0	,	gamma_ij )
+gamma_ab 	= 4D projection operator / metric tensor of 3D spatial hypersurface
+				= g_ab + n_a n_b
+				= ( beta^k beta_k	, 	beta_j   )
+				  ( 	beta_i		,	gamma_ij )
+
