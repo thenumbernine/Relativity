@@ -6,9 +6,7 @@ DEPS :=\
 	generic_vector.h \
 	vector.h \
 	generic_symmat.h \
-	symmat.h \
 	generic_antisymmat.h \
-	antisymmat.h \
 	tensor.h
 
 all: relativity

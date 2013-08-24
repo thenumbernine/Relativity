@@ -1,7 +1,6 @@
 #include <assert.h>
 
 #include "vector.h"
-#include "symmat.h"
 #include "tensor.h"
 #include "invert.h"
 #include "cell.h"

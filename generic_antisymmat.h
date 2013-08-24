@@ -33,8 +33,8 @@ struct antisymmat_accessor {
 };
 
 /*
-antisymmat(i,j) == -antisymmat(j,i)
-therefore antisymmat(i,i) == 0
+generic_antisymmat(i,j) == -generic_antisymmat(j,i)
+therefore generic_antisymmat(i,i) == 0
 */
 template<int dim_, typename type_, typename scalar_type_, typename child>
 struct generic_antisymmat : public generic_dense_matrix<dim_, type_, scalar_type_, child, dim_ * (dim_ - 1) / 2> {

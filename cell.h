@@ -1,7 +1,6 @@
 #pragma once
 
 #include "vector.h"
-#include "symmat.h"
 #include "tensor.h"
 
 template<int dim_, typename real_>

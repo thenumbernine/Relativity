@@ -9,8 +9,8 @@ so far so good except
 */
 
 #include "generic_vector.h"
-#include "symmat.h"			//used by symmetric
-#include "antisymmat.h"		//used by antisymmetric
+#include "generic_symmat.h"			//used by symmetric
+#include "generic_antisymmat.h"		//used by antisymmetric
 
 /*
 vector is used by generic_rank1 

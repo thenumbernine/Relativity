@@ -3,7 +3,7 @@
 #include "generic_dense_matrix.h"
 
 /*
-symmat(i,j) == symmat(j,i)
+generic_symmat(i,j) == generic_symmat(j,i)
 */
 template<int dim_, typename type_, typename scalar_type_, typename child>
 struct generic_symmat : public generic_dense_matrix<dim_, type_, scalar_type_, child, dim_ * (dim_ + 1) / 2> {
