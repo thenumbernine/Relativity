@@ -4,7 +4,6 @@
 
 /*
 adds int-based indexing and vector-vector ops to the array ops
-used for vectors and oneforms
 */
 template<int size_, typename type_, typename scalar_type_, typename child>
 struct generic_vector : public generic_array<size_, type_, scalar_type_, child> {

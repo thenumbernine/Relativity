@@ -1,7 +1,6 @@
 #include <assert.h>
 
 #include "vector.h"
-#include "oneform.h"
 #include "symmat.h"
 #include "matrix.h"
 #include "tensor.h"

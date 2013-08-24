@@ -7,7 +7,6 @@ DEPS :=\
 	symmat.h \
 	antisymmat.h \
 	vector.h \
-	oneform.h \
 	tensor.h
 
 relativity: relativity.cpp $(DEPS)
