@@ -267,6 +267,7 @@ struct tensor {
 	tensor operator*(const type &b) const { return tensor(body * b); }
 	tensor operator/(const type &b) const { return tensor(body / b); }
 
+	//this is currently only used for an assignment that goes on in invert:: between a symmetric-upper and symmetric-lower rank-2 tensor
 	//tempted to make this a generic ctor,
 	// but that would probably screw up the rest of our ctors
 	template<typename type2, typename... args2>
