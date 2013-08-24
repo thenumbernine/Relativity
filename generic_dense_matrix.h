@@ -18,17 +18,14 @@ struct generic_dense_matrix : public generic_array<size_, type_, child> {
 
 	/*
 	initialize to identity or zero?
-	identity
+	zero
+	- this coincides with other vector ctors
+	- identity would be good for scalar types, but not so much for matrix types
 	*/
-	generic_dense_matrix() 
-	: parent() { //<- this inits it with zero
-		for (int i = 0; i < dim; ++i) {
-			(*this)(i,i) = type(1);
-		}
-	}
+	generic_dense_matrix() : parent() {}
 
 	//index access
-	type &operator()(int i, int j) { return parent::v[child::index(i,j)];}
-	const type &operator()(int i, int j) const { return parent::v[child::index(i,j)];}
+	type &operator()(int i, int j) { return parent::v[child::index(i,j)]; }
+	const type &operator()(int i, int j) const { return parent::v[child::index(i,j)]; }
 };
 

@@ -16,13 +16,14 @@ struct symmat_invert {
 };
 
 /*
-symmat(i,j) == symmat(j,k)
+symmat(i,j) == symmat(j,i)
 */
 template<int dim_, typename type_>
 struct symmat : public generic_dense_matrix<dim_, type_, symmat<dim_, type_>, dim_ * (dim_ + 1) / 2> {
 	typedef generic_dense_matrix<dim_, type_, symmat<dim_, type_>, dim_ * (dim_ + 1) / 2> parent;
 	
 	enum { dim = parent::dim };
+	enum { size = parent::size };
 	typedef typename parent::type type;
 
 	symmat() : parent() {}

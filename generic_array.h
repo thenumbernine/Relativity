@@ -57,7 +57,18 @@ struct generic_array {
 
 	bool operator!=(const child &b) const { return ! this->operator==(b); }
 
-	//math operations
+	//unary math operator
+
+	child operator-() const {
+		const generic_array &a = *this;
+		child b;
+		for (int i = 0; i < size; ++i) {
+			b.v[i] = -a.v[i];
+		}
+		return b;
+	}
+
+	//pairwise math operators
 
 	child operator+(const child &b) const {
 		const generic_array &a = *this;
@@ -76,6 +87,13 @@ struct generic_array {
 		}
 		return c;
 	}
+
+	//I'm omitting * and / since matrix defines them separately
+	//what if I overloaded them?
+
+	//scalar math operators
+
+	//I'm omitting scalar + and -, but not for any good reason
 
 	child operator*(const type &b) const {
 		const generic_array &a = *this;
