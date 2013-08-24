@@ -267,22 +267,18 @@ struct tensor {
 	tensor operator*(const type &b) const { return tensor(body * b); }
 	tensor operator/(const type &b) const { return tensor(body / b); }
 
-	//this is currently only used for an assignment that goes on in invert:: between a symmetric-upper and symmetric-lower rank-2 tensor
-	//tempted to make this a generic ctor,
-	// but that would probably screw up the rest of our ctors
-	template<typename type2, typename... args2>
-	tensor &operator=(const ::tensor<type2, args2...> &t) {
-		for (tensor::iterator i = begin(); i != end(); ++i) {
-			*i = t(i.index);
-		}
-	}
-
 	deref_type size() const {
 		deref_type s;
 		tensor_stats::template assign_size<rank, 0>(s);
 		return s;
 	};
 
+	//casting operations
+	operator body_type&() { return body; }
+	operator const body_type&() const { return body; }
+
+	//maybe I should put this in body
+	//and then use a sort of nested iterator so it doesn't cover redundant elements in symmetric indexes 
 	struct iterator {
 		tensor *parent;
 		deref_type index;
@@ -318,8 +314,5 @@ struct tensor {
 		i.index(rank-1) = size()(rank-1);
 		return i;
 	}
-
-	operator body_type&() { return body; }
-	operator const body_type&() const { return body; }
 };
 
