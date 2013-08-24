@@ -1,6 +1,6 @@
 GR simulation
 
-Starting again from scratch now that I've gone through the ADM chapter of "Gravitation" and Numerical Relativity 
+Starting again from scratch now that I've gone through the ADM chapter of "Gravitation" and the 3+1 decomposition chapter of "Numerical Relativity"
 
 Conventions & Notations:
 
@@ -43,4 +43,14 @@ gamma_ab 	= 4D projection operator / metric tensor of 3D spatial hypersurface
 				= g_ab + n_a n_b
 				= ( beta^k beta_k	, 	beta_j   )
 				  ( 	beta_i		,	gamma_ij )
+
+conn^ijk	= 3D hypersurface Christoffel symbols of the first kind
+				 = 1/2 (partial_k gamma_ij + partial_j gamma_ik - partial_i gamma_jk)
+
+conn^i_jk	= 3D hypersurface Christoffel symbols of the second kind (connection coefficients)
+				 = gamma^il conn_ljk
+				 = 1/2 gamma^il (partial_k gamma_lj + partial_j gamma_lk - partial_l gamma_jk)
+
+R_ij		= 3D Ricci curvature tensor
+				= 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
 
