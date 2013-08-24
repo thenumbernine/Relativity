@@ -11,20 +11,22 @@ for any sort of rank-2 tensor object
 //which means (since rank is an enum rather than a template parameter)
 // that I might have to specialize it per-index
 // (or make use of static conditions)
-template<int dim, typename real, typename tensor_type>
+template<typename input_type>
 struct determinantClass;
 
 template<int dim, typename real>
-struct determinantClass<dim, real, tensor<real, symmetric<lower<dim>, lower<dim>>>> {
-	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> tensor_type;
-	real operator()(const tensor_type &a) const { 
+struct determinantClass<tensor<real, symmetric<lower<dim>, lower<dim>>>> {
+	typedef real output_type;
+	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> input_type;
+	output_type operator()(const input_type &a) const { 
 		return a(0,0) * a(1,1) - a(1,0) * a(0,1);
 	}
 };
 
-template<int dim, typename real>
-real determinant(const tensor<real, symmetric<lower<dim>, lower<dim>>> &a) {
-	return determinantClass<dim, real, tensor<real, symmetric<lower<dim>, lower<dim>>>>(a);
+template<typename input_type>
+typename determinantClass<input_type>::output_type
+determinant(const input_type &a) {
+	return determinantClass<input_type>()(a);
 }
 
 //currently only used for (gamma^ij) = (gamma_ij)^-1
