@@ -2,7 +2,6 @@
 
 #include "vector.h"
 #include "symmat.h"
-#include "matrix.h"
 #include "tensor.h"
 #include "invert.h"
 #include "cell.h"
