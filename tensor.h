@@ -273,7 +273,20 @@ struct tensor {
 		return s;
 	};
 
-	//casting operations
+	/*
+	casting-to-body operations
+	
+	these are currently used when someone dereferences a portion of the tensor like so:
+	tensor<real, lower<dim>, lower<dim>> diff;
+	diff(i) = (cell[index+dxi(i)].w(j) - cell[index-dxi(i)].w(j)) / (2 * dx(i))
+	
+	this is kind of abusive of the whole class.
+	other options to retain this ability include wrapping returned tensor portions in tensor-like(-subclass?) accessors.
+	
+	the benefit of doing this is to allow assignments on tensors that have arbitrary rank.
+	if I were to remove this then I would need some sort of alternative to do just that.
+	this is where better iterators could come into play.
+	*/
 	operator body_type&() { return body; }
 	operator const body_type&() const { return body; }
 

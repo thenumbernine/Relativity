@@ -54,3 +54,50 @@ conn^i_jk	= 3D hypersurface Christoffel symbols of the second kind (connection c
 R_ij		= 3D Ricci curvature tensor
 				= 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
 
+
+
+
+
+
+
+scratch paper:
+
+
+
+is the covariant derivative of a symmetric tensor also symmetric?
+
+sum upper-ranks as follows:
+	diff_k x^i = partial_k x^i + conn^i_jk x^j
+
+sum lower-ranks as follows:
+	diff_k x_i = partial_k x_i - conn^j_ik x_j
+
+is symmetry maintained?:
+	t^ij == t^ji <=> diff_k t^ij == diff_k t^ji ?
+	diff_k t^ij = partial_k t^ij + t^lj conn^i_lk + t^il conn^j_lk
+	diff_k t^ji = partial_k t^ji + t^li conn^j_lk + t^jl conn^i_lk
+				= partial_k t^ij + t^lj conn^i_lk + t^il conn^j_lk
+yes if both are upper 
+	t_ij == t_ji <=> diff_k t_ij == diff_k t_ji ?
+	diff_k t_ij = partial_k t_ij - t_lj conn^l_ik - t_il conn^l_jk
+	diff_k t_ji = partial_k t_ji - t_li conn^l_jk - t_jl conn^l_ik
+				= partial_k t_ij - t_lj conn^l_ik - t_il conn^l_jk
+yes if both are lower
+	t^i_j == t^j_i <=> diff_k t^i_j == diff_k t^j_i ?
+	diff_k t^i_j = partial_k t^i_j + t^l_j conn^i_lk - t^i_l conn^l_jk
+	diff_k t^j_i = partial_k t^j_i + t^l_i conn^j_lk - t^j_l conn^l_ik
+				 = partial_k t^i_j - t^l_j conn^l_ik + t^i_l conn^j_lk
+here we get a sign issue.   if conn^l_ik = -conn^i_lk then we're good.
+
+g^a_b = delta^a_b = constant, so (g^a_b),c = 0
+	(g^ad g_db),c = 0
+	g^ad_,c g_db + g^ad g_db,c = 0
+	g^ad_,c g_db = -g^ad g_db,c		<= for g dg, switch the lowers and uppers to switch the signs
+
+conn^l_ik = 1/2 g^lm (g_mi,k + g_mk,i - g_ik,m)
+conn^i_lk = 1/2 g^im (g_ml,k + g_mk,l - g_lk,i)
+		  = 1/2 (g^im g_ml,k + g^im g_mk,l - g^im g_lk,i)
+		  = -1/2 (g_lm g^mi,k + g^im g_lk,i - g^im g_mk,l)
+
+... I'm not buying it, nor do I see it recorded anywhere
+

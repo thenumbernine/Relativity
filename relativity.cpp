@@ -2,9 +2,12 @@
 
 #include "vector.h"
 #include "tensor.h"
-#include "invert.h"
+
 #include "cell.h"
 #include "grid.h"
+
+#include "invert.h"
+#include "derivative.h"
 
 template<int dim_, typename real_>
 struct Simulation {
@@ -69,71 +72,6 @@ struct Simulation {
 		}
 	}
 
-	/*
-	partial derivative index operator
-	(partial derivative alone one coordinate)
-	*/
-	template<typename T>
-	T partialDerivativeCoordinate(T Cell::*field, const veci &index, int k) {
-		veci nextIndex = veci::clamp(index + dxi(k), veci(0), size-1);
-		veci prevIndex = veci::clamp(index - dxi(k), veci(0), size-1);
-		real dxk = real(nextIndex(k) - prevIndex(k)) * dx(k);
-		T dfield = readCells(nextIndex).*field - readCells(prevIndex).*field;
-		return dfield / dxk;
-	}
-
-
-	/*
-	partial derivative operator
-	for now let's use 2-point everywhere: d/dx^i f(x) ~= (f(x + dx^i) - f(x - dx^i)) / (2 * |dx^i|)
-		index = index in grid of cell to pull the specified field
-		k = dimension to differentiate across
-	*/
-	template<typename... args>
-	::tensor<real, lower<dim>, args...> partialDerivative(::tensor<real, args...> Cell::*field, const veci &index) {
-		::tensor<real, lower<dim>, args...> result;
-#if 1	//all-at-once
-		veci nextIndex = veci::clamp(index+1, veci(0), size-1);
-		veci prevIndex = veci::clamp(index-1, veci(0), size-1);
-		for (int k = 0; k < dim; ++k) {
-			result(k) = (readCells(nextIndex).*field - readCells(prevIndex).*field) / (real(nextIndex(k) - prevIndex(k)) * dx(k));
-		}
-#else	//per-dimension
-		for (int k = 0; k < dim; ++k) {
-			result(k) = partialDerivativeCoordinate(field, index, k); 
-		}
-#endif
-		return result;
-	}
-
-	/*
-	covariant derivative
-	depends on conn_ull and partialDerivative
-		up = the up/down of each index (as 1 for up or 0 for down)
-		the up/down information could be stored per-type.
-		just need a means to enumerator across it ...
-	until then, need specializations for rank-1 and rank-2
-	
-	sum upper-ranks as follows:
-		diff_k x^i = partial_k x^i + conn^i_jk x^j
-	
-	sum lower-ranks as follows:
-		diff_k x_i = partial_k x_i - conn^j_ik x_j
-	*/
-	template<typename... args>
-	::tensor<real, lower<dim>, args...> covariantDerivative(::tensor<real, args...> Cell::*field, const veci &index) {
-		::tensor<real, lower<dim>, args...> result = partialDerivative(field, index);
-		const Cell &cell = readCells(index);
-		for (int k = 0; k < dim; ++k) {
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					result(k)(i) += cell.conn_ull(i)(j,k) * (cell.*field)(j);
-				}
-			}
-		}
-		return result;
-	}
-
 	void update(real dt) {
 		typedef typename CellGrid::iterator CellGridIter;
 		CellGridIter iter;
@@ -165,7 +103,7 @@ struct Simulation {
 			//gamma_uu(i,j) := gamma^ij = inverse of gamma_ij
 			// I could write the tensor formula for matrix inverses out (see "Gravitation", exercise 5.5e)
 			tensor_su &gamma_uu = cell.gamma_uu;
-			gamma_uu = invert()(gamma_ll);
+			gamma_uu = invert(gamma_ll);
 		}
 
 		//conn_ull depends on gamma_uu
@@ -177,7 +115,7 @@ struct Simulation {
 
 			//partial_gamma_lll(k)(i,j) := partial_k gamma_ij
 			tensor_lsl &partial_gamma_lll = cell.partial_gamma_lll;
-			partial_gamma_lll = partialDerivative(&Cell::gamma_ll, iter.index);
+			partial_gamma_lll = partialDerivative(readCells, &Cell::gamma_ll, dx, iter.index);
 
 			//3D hypersurface connection coefficients
 			//only need spatial coefficients (since gamma^at = 0, so conn^t_ab = 0.  see "Numerical Relativity", p.48)
@@ -214,7 +152,7 @@ struct Simulation {
 			//partial_partial_gamma_llll(k,l)(i,j) = partial_k partial_l gamma_ij
 			tensor_slsl partial_partial_gamma_llll;
 			for (int k = 0; k < dim; ++k) {
-				tensor_lsl partial_gamma_lll_wrt_xk = partialDerivativeCoordinate(&Cell::partial_gamma_lll, iter.index, k);
+				tensor_lsl partial_gamma_lll_wrt_xk = partialDerivativeCoordinate(readCells, &Cell::partial_gamma_lll, dx, iter.index, k);
 				for (int l = 0; l <= k; ++l) {
 					for (int i = 0; i < dim; ++i) {
 						for (int j = 0; j <= i; ++j) {
@@ -254,10 +192,10 @@ struct Simulation {
 			const tensor_usl &conn_ull = readCell.conn_ull;
 
 			//partial_beta_ll(j)(i) := partial_j beta_i
-			tensor_ll partial_beta_ll = partialDerivative(&Cell::beta_l, iter.index);
+			tensor_ll partial_beta_ll = partialDerivative(readCells, &Cell::beta_l, dx, iter.index);
 			
 			//diff_beta_ll(j,i) := diff_j beta_i = partial_j beta_i - conn^k_ij beta_k
-			tensor_ll diff_beta_ll = covariantDerivative(&Cell::beta_l, iter.index);
+			tensor_ll diff_beta_ll = covariantDerivative(readCells, &Cell::beta_l, dx, iter.index);
 			
 			//D_i beta_j = diff_i beta_j 
 			//-- but only for lower indexes.
