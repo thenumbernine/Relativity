@@ -3,11 +3,12 @@
 #include "generic_dense_matrix.h"
 
 template<int dim_, typename type_>
-struct matrix : public generic_dense_matrix<dim_, type_, matrix<dim_, type_>, dim_ * dim_ > {
-	typedef generic_dense_matrix<dim_, type_, matrix<dim_, type_>, dim_ * dim_> parent;
+struct matrix : public generic_dense_matrix<dim_, type_, type_, matrix<dim_, type_>, dim_ * dim_ > {
+	typedef generic_dense_matrix<dim_, type_, type_, matrix<dim_, type_>, dim_ * dim_> parent;
 	
 	enum { dim = parent::dim };
 	typedef typename parent::type type;
+	typedef typename parent::scalar_type scalar_type;
 
 	matrix() : parent() {} 
 

@@ -11,7 +11,7 @@ DEPS :=\
 	tensor.h
 
 relativity: relativity.cpp $(DEPS)
-	g++ relativity.cpp -o relativity
+	g++ -std=c++0x relativity.cpp -o relativity
 
 clean:
 	-rm relativity

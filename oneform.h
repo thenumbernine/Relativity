@@ -6,11 +6,12 @@
 one-form class
 */
 template<int dim_, typename type_>
-struct oneform : public generic_vector<dim_, type_, oneform<dim_, type_> > {
-	typedef generic_vector<dim_, type_, oneform<dim_, type_> > parent;
+struct oneform : public generic_vector<dim_, type_, type_, oneform<dim_, type_> > {
+	typedef generic_vector<dim_, type_, type_, oneform<dim_, type_> > parent;
 
 	enum { dim = parent::size };	//size is the size of the static vector, which coincides with the dim in the oneform class (not so in matrix classes)
 	typedef typename parent::type type;
+	typedef typename parent::scalar_type scalar_type;
 
 	//inherited constructors
 	oneform() : parent() {}
@@ -18,6 +19,7 @@ struct oneform : public generic_vector<dim_, type_, oneform<dim_, type_> > {
 	oneform(const type &x) : parent(x) {}
 	oneform(const type &x, const type &y) : parent(x,y) {}
 	oneform(const type &x, const type &y, const type &z) : parent(x,y,z) {}
+	oneform(const type &x, const type &y, const type &z, const type &w) : parent(x,y,z,w) {}
 
 	//cast operation
 	//needs to know the child's template parameters

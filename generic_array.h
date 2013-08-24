@@ -6,12 +6,14 @@
 the 'parent' curious pattern whatever for generic_vector and generic_matrix
 	size_ is the size of the dense vector
 	type_ is the type of each element
+	scalar_type_ is the type of the innermost nested scalars (in the event that elements are generic_array's themselves)
 	child is the curious reoccurring chlid class that uses this
 */
-template<int size_, typename type_, typename child>
+template<int size_, typename type_, typename scalar_type_, typename child>
 struct generic_array {
 	enum { size = size_ };
 	typedef type_ type;
+	typedef scalar_type_ scalar_type;
 
 	type v[size];
 
@@ -95,7 +97,7 @@ struct generic_array {
 
 	//I'm omitting scalar + and -, but not for any good reason
 
-	child operator*(const type &b) const {
+	child operator*(const scalar_type &b) const {
 		const generic_array &a = *this;
 		child c;
 		for (int i = 0; i < size; ++i) {
@@ -105,7 +107,7 @@ struct generic_array {
 	}
 
 
-	child operator/(const type &b) const {
+	child operator/(const scalar_type &b) const {
 		const generic_array &a = *this;
 		child c;
 		for (int i = 0; i < size; ++i) {

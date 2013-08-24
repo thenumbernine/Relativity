@@ -36,17 +36,18 @@ struct antisymmat_accessor {
 antisymmat(i,j) == -antisymmat(j,i)
 therefore antisymmat(i,i) == 0
 */
-template<int dim_, typename type_>
-struct antisymmat : public generic_dense_matrix<dim_, type_, antisymmat<dim_, type_>, dim_ * (dim_ - 1) / 2> {
-	typedef generic_dense_matrix<dim_, type_, antisymmat<dim_, type_>, dim_ * (dim_ - 1) / 2> parent;
+template<int dim_, typename type_, typename scalar_type_, typename child>
+struct generic_antisymmat : public generic_dense_matrix<dim_, type_, scalar_type_, child, dim_ * (dim_ - 1) / 2> {
+	typedef generic_dense_matrix<dim_, type_, scalar_type_, child, dim_ * (dim_ - 1) / 2> parent;
 	
 	enum { dim = parent::dim };
 	enum { size = parent::size };
 	typedef typename parent::type type;
-	typedef antisymmat_accessor<type_, antisymmat<dim_, type_> > accessor;
+	typedef typename parent::scalar_type scalar_type;
+	typedef antisymmat_accessor<type_, child> accessor;
 
-	antisymmat() : parent() {}
-	antisymmat(const antisymmat &a) : parent(a) {}
+	generic_antisymmat() : parent() {}
+	generic_antisymmat(const child &a) : parent(a) {}
 	
 	//index access
 	accessor operator()(int i, int j) { 
@@ -73,6 +74,18 @@ struct antisymmat : public generic_dense_matrix<dim_, type_, antisymmat<dim_, ty
 		//j == j: return j * (j+1)/2 + i
 		return j * (j + 1) / 2 + i;
 	}
+};
 
+template<int dim_, typename type_>
+struct antisymmat : public generic_antisymmat<dim_, type_, type_, antisymmat<dim_, type_>> {
+	typedef generic_antisymmat<dim_, type_, type_, antisymmat<dim_, type_>> parent;
+	
+	enum { dim = parent::dim };
+	enum { size = parent::size };
+	typedef typename parent::type type;
+	typedef typename parent::scalar_type scalar_type;
+
+	antisymmat() : parent() {}
+	antisymmat(const antisymmat &a) : parent(a) {}
 };
 

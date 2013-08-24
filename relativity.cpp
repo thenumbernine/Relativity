@@ -4,6 +4,8 @@
 #include "oneform.h"
 #include "symmat.h"
 #include "matrix.h"
+#include "tensor.h"
+#include "invert.h"
 #include "cell.h"
 #include "grid.h"
 
@@ -12,17 +14,27 @@ struct Simulation {
 	enum { dim = dim_ };
 	typedef real_ real;
 
-	//statically-sized mathematical types 
-	typedef ::vector<dim,int> veci;		//used for indexes
-	typedef ::vector<dim,real> vector;		//3D contravariant / rank-(1,0) tensors
-	typedef ::oneform<dim,real> oneform;	//3D covariant / rank-(0,1) tensors
-	typedef ::vector<dim+1,real> tvec;		//4D hypersurface + timelike component vector
-	typedef ::matrix<dim,real> matrix;		//3D matrix / rank-2 tensor of some sort
-	typedef ::symmat<dim,real> symmat;		//3D symmetric matrix / rank-2 tensor of some sort
-	typedef ::oneform<dim,oneform> twoform;	//3x3D covariant / rank-(0,2) tensors
+		//cell types
 
 	typedef ::Cell<dim,real> Cell;
 	typedef ::Grid<dim,Cell> CellGrid;
+
+		//statically-sized mathematical types
+		//(pull from cell where you can)
+	
+	//used for indexes
+	typedef ::vector<dim,int> veci;	
+	
+	typedef typename Cell::tensor_u tensor_u;
+	typedef typename Cell::tensor_l tensor_l;
+	typedef typename Cell::tensor_su tensor_su;
+	typedef typename Cell::tensor_sl tensor_sl;
+	typedef typename Cell::tensor_usl tensor_usl;
+    typedef typename Cell::tensor_lsl tensor_lsl;
+	typedef ::tensor<real,lower<dim>,lower<dim>> tensor_ll;
+	typedef ::tensor<real,symmetric<lower<dim>,lower<dim>>,symmetric<lower<dim>,lower<dim>>> tensor_slsl;
+	typedef ::vector<dim,real> vector;
+
 	CellGrid readCells, writeCells;
 
 	//kronecher delta for integer vector / indexes, such that dxi(i)(j) == i == j
@@ -68,7 +80,9 @@ struct Simulation {
 	T partialDerivativeCoordinate(T Cell::*field, const veci &index, int k) {
 		veci nextIndex = veci::clamp(index + dxi(k), veci(0), size-1);
 		veci prevIndex = veci::clamp(index - dxi(k), veci(0), size-1);
-		return (readCells(nextIndex).*field - readCells(prevIndex).*field) / (real(nextIndex(k) - prevIndex(k)) * dx(k));
+		real dxk = real(nextIndex(k) - prevIndex(k)) * dx(k);
+		T dfield = readCells(nextIndex).*field - readCells(prevIndex).*field;
+		return dfield / dxk;
 	}
 
 
@@ -78,9 +92,9 @@ struct Simulation {
 		index = index in grid of cell to pull the specified field
 		k = dimension to differentiate across
 	*/
-	template<typename T>
-	::oneform<dim,T> partialDerivative(T Cell::*field, const veci &index) {
-		::oneform<dim,T> result;
+	template<typename... args>
+	::tensor<real, lower<dim>, args...> partialDerivative(::tensor<real, args...> Cell::*field, const veci &index) {
+		::tensor<real, lower<dim>, args...> result;
 #if 1	//all-at-once
 		veci nextIndex = veci::clamp(index+1, veci(0), size-1);
 		veci prevIndex = veci::clamp(index-1, veci(0), size-1);
@@ -103,33 +117,20 @@ struct Simulation {
 		just need a means to enumerator across it ...
 	until then, need specializations for rank-1 and rank-2
 	
-	here's the rank-(1,0):
+	sum upper-ranks as follows:
 		diff_k x^i = partial_k x^i + conn^i_jk x^j
+	
+	sum lower-ranks as follows:
+		diff_k x_i = partial_k x_i - conn^j_ik x_j
 	*/
-	::oneform<dim,vector> covariantDerivative(vector Cell::*field, const veci &index) {
-		::oneform<dim,vector> result = partialDerivative(field, index);
+	template<typename... args>
+	::tensor<real, lower<dim>, args...> covariantDerivative(::tensor<real, args...> Cell::*field, const veci &index) {
+		::tensor<real, lower<dim>, args...> result = partialDerivative(field, index);
 		const Cell &cell = readCells(index);
 		for (int k = 0; k < dim; ++k) {
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
 					result(k)(i) += cell.conn_ull(i)(j,k) * (cell.*field)(j);
-				}
-			}
-		}
-		return result;
-	}
-
-	/*
-	here's the rank-(0,1):
-		diff_k x_i = partial_k x_i - conn^j_ik x_j
-	*/
-	::oneform<dim,oneform> covariantDerivative(oneform Cell::*field, const veci &index) {
-		::oneform<dim,oneform> result = partialDerivative(field, index);
-		const Cell &cell = readCells(index);
-		for (int k = 0; k < dim; ++k) {
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					result(k)(i) -= cell.conn_ull(j)(i,k) * (cell.*field)(j);
 				}
 			}
 		}
@@ -148,15 +149,15 @@ struct Simulation {
 			Cell &cell = readCells(iter.index);
 		
 			//beta_u(k) := beta^k
-			const vector &beta_u = cell.beta_u;
+			const tensor_u &beta_u = cell.beta_u;
 			
 			//gamma_ll(i,j) := gamma_ij
-			const symmat &gamma_ll = cell.gamma_ll;
+			const tensor_sl &gamma_ll = cell.gamma_ll;
 
 			//beta_l(i) := g_ij beta^j
 			//exclude sum of beta^t = 0
 			//not storing beta_t here, since beta_t = beta^k beta_k
-			oneform &beta_l = cell.beta_l;
+			tensor_l &beta_l = cell.beta_l;
 			for (int i = 0; i < dim; ++i) {
 				beta_l(i) = 0;
 				for (int j = 0; j < dim; ++j) {
@@ -166,25 +167,25 @@ struct Simulation {
 		
 			//gamma_uu(i,j) := gamma^ij = inverse of gamma_ij
 			// I could write the tensor formula for matrix inverses out (see "Gravitation", exercise 5.5e)
-			symmat &gamma_uu = cell.gamma_uu;
-			gamma_uu = symmat::invert(gamma_ll);
+			tensor_su &gamma_uu = cell.gamma_uu;
+			gamma_uu = invert()(gamma_ll);
 		}
 
 		//conn_ull depends on gamma_uu
 		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
 			Cell &cell = readCells(iter.index);
 	
-			const symmat &gamma_ll = cell.gamma_ll;
-			const symmat &gamma_uu = cell.gamma_uu;
+			const tensor_sl &gamma_ll = cell.gamma_ll;
+			const tensor_su &gamma_uu = cell.gamma_uu;
 
 			//partial_gamma_lll(k)(i,j) := partial_k gamma_ij
-			::oneform<dim, symmat> &partial_gamma_lll = cell.partial_gamma_lll;
+			tensor_lsl &partial_gamma_lll = cell.partial_gamma_lll;
 			partial_gamma_lll = partialDerivative(&Cell::gamma_ll, iter.index);
 
 			//3D hypersurface connection coefficients
 			//only need spatial coefficients (since gamma^at = 0, so conn^t_ab = 0.  see "Numerical Relativity", p.48)
 			//conn_lll(i)(j,k) := conn_ijk = 1/2 (partial_k gamma_ij + partial_j gamma_ik - partial_i gamma_jk)
-			::oneform<dim, symmat> &conn_lll = cell.conn_lll;
+			tensor_lsl &conn_lll = cell.conn_lll;
 			for (int k = 0; k < dim; ++k) {
 				for (int i = 0; i < dim; ++i) {
 					for (int j = 0; j <= i; ++j) {
@@ -194,7 +195,7 @@ struct Simulation {
 			}
 
 			//conn_ull(i)(j,k) := conn^i_jk = gamma^il conn_ljk
-			::vector<dim, symmat> &conn_ull = cell.conn_ull;
+			tensor_usl &conn_ull = cell.conn_ull;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
 					for (int k = 0; k <= j; ++k) {
@@ -211,19 +212,19 @@ struct Simulation {
 		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
 			Cell &cell = readCells(iter.index);
 
-			::oneform<dim, symmat> &conn_lll = cell.conn_lll;
+			tensor_lsl &conn_lll = cell.conn_lll;
 			
 			//partial_partial_gamma_llll(k,l)(i,j) = partial_k partial_l gamma_ij
-			::symmat<dim, symmat> partial_partial_gamma_llll;
+			tensor_slsl partial_partial_gamma_llll;
 			for (int k = 0; k < dim; ++k) {
-				::oneform<dim, symmat> partial_gamma_lll_wrt_xk = partialDerivativeCoordinate(&Cell::partial_gamma_lll, iter.index, k);
+				tensor_lsl partial_gamma_lll_wrt_xk = partialDerivativeCoordinate(&Cell::partial_gamma_lll, iter.index, k);
 				for (int l = 0; l <= k; ++l) {
 					for (int i = 0; i < dim; ++i) {
 						for (int j = 0; j <= i; ++j) {
 							if (k == l) {
 								//special case for 2nd deriv along same coordinate
 							} else {
-								partial_partial_gamma_llll(k,l)(i,j) = partial_partial_gamma_llll(l,k)(i,j) = partial_gamma_lll_wrt_xk(l)(i,j);
+								partial_partial_gamma_llll(k,l,i,j) = partial_gamma_lll_wrt_xk(l,i,j);
 							}
 						}
 					}
@@ -231,10 +232,10 @@ struct Simulation {
 			}
 
 			//ricci_ll(i,j) := ricci_ij = 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
-			symmat &ricci_ll = cell.ricci_ll;
+			tensor_sl &ricci_ll = cell.ricci_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
-					ricci_ll(i,j) = 0; 
+					ricci_ll(i,j) = 0.;
 					ricci_ll(i,j) *= .5;
 				}
 			}
@@ -247,25 +248,25 @@ struct Simulation {
 			const real &alpha = readCell.alpha;
 			
 			//K_ll(i,j) := K_ij
-			const symmat &K_ll = readCell.K_ll;
+			const tensor_sl &K_ll = readCell.K_ll;
 		
 			//beta_l(k) := beta_k
-			const oneform &beta_l = readCell.beta_l;
+			const tensor_l &beta_l = readCell.beta_l;
 
 			//conn_ull(i)(j,k) = conn^i_jk
-			const ::vector<dim, symmat> &conn_ull = readCell.conn_ull;
+			const tensor_usl &conn_ull = readCell.conn_ull;
 
 			//partial_beta_ll(j)(i) := partial_j beta_i
-			twoform partial_beta_ll = partialDerivative(&Cell::beta_l, iter.index);
+			tensor_ll partial_beta_ll = partialDerivative(&Cell::beta_l, iter.index);
 			
 			//diff_beta_ll(j,i) := diff_j beta_i = partial_j beta_i - conn^k_ij beta_k
-			twoform diff_beta_ll = covariantDerivative(&Cell::beta_l, iter.index);
+			tensor_ll diff_beta_ll = covariantDerivative(&Cell::beta_l, iter.index);
 			
 			//D_i beta_j = diff_i beta_j 
 			//-- but only for lower indexes.
 			//doesn't work if either is upper (you get extra terms for the timelike component we're dropping)
 			//(see "Numerical Relativity", exercise 2.30)
-			twoform &D_beta_ll = diff_beta_ll;
+			tensor_ll &D_beta_ll = diff_beta_ll;
 			
 			Cell partial_t;
 		

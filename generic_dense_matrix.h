@@ -8,13 +8,14 @@ child is used for
 	vector dereference index calculation
 	operator return type
 */
-template<int dim_, typename type_, typename child, int size_>
-struct generic_dense_matrix : public generic_array<size_, type_, child> {
-	typedef generic_array<size_, type_, child> parent;
+template<int dim_, typename type_, typename scalar_type_, typename child, int size_>
+struct generic_dense_matrix : public generic_array<size_, type_, scalar_type_, child> {
+	typedef generic_array<size_, type_, scalar_type_, child> parent;
 	
 	enum { dim = dim_ };
 	enum { size = parent::size };
 	typedef typename parent::type type;
+	typedef typename parent::scalar_type scalar_type;
 
 	/*
 	initialize to identity or zero?
@@ -27,5 +28,7 @@ struct generic_dense_matrix : public generic_array<size_, type_, child> {
 	//index access
 	type &operator()(int i, int j) { return parent::v[child::index(i,j)]; }
 	const type &operator()(int i, int j) const { return parent::v[child::index(i,j)]; }
+	type &operator()(const ::vector<2,int> &deref) { return parent::v[child::index(deref(0),deref(1))]; }
+	const type &operator()(const ::vector<2,int> &deref) const { return parent::v[child::index(deref(0),deref(1))]; }
 };
 
