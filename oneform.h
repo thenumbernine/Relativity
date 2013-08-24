@@ -33,5 +33,5 @@ struct oneform : public generic_vector<dim_, type_, oneform<dim_, type_> > {
 		}
 		return result;
 	}
-	
 };
+

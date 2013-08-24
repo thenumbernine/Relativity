@@ -39,10 +39,19 @@ struct Cell {
 	//beta_t = beta^k beta_k
 	oneform beta_l;
 
+	//partial_k gamma_ij
+	::oneform<dim, symmat> partial_gamma_lll;
+
 	//gamma^ij = inverse of gamma_ij
 	symmat gamma_uu;
+	
+	//conn_ijk
+	::oneform<dim, symmat> conn_lll;
 
 	//conn^i_jk
 	::vector<dim, symmat> conn_ull;
+
+	//R_ij
+	symmat ricci_ll;
 };
 
