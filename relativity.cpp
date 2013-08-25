@@ -19,6 +19,7 @@ struct ADMFormalism {
 
 	typedef ::Cell<dim,real> Cell;
 	typedef ::Grid<dim,Cell> Grid;
+	typedef typename Grid::iterator GridIter;
 
 		//statically-sized mathematical types
 		//(pull from cell where you can)
@@ -38,10 +39,8 @@ struct ADMFormalism {
 	typedef ::tensor<real,symmetric<lower<dim>,lower<dim>>,symmetric<lower<dim>,lower<dim>>> tensor_slsl;
 	typedef ::vector<dim,real> vector;
 
-	Grid readCells, writeCells;
-
-	//kronecher delta for integer vector / indexes, such that dxi(i)(j) == i == j
-	::vector<dim,deref_type> dxi;
+	Grid cellHistory0, cellHistory1;
+	Grid *readCells, *writeCells;
 
 	//resolution of our grids, stored here as well as in each grid for convenience
 	deref_type size;
@@ -64,34 +63,30 @@ struct ADMFormalism {
 		max(max_),
 		range(max_ - min_),
 		dx((max_ - min_) / vector(size_)),
-		readCells(size_),
-		writeCells(size_)
-	{
-		//basis vectors as integers for indexes
-		for (int i = 0; i < dim; ++i) {
-			for (int j = 0; j < dim; ++j) {
-				dxi(i)(j) == i == j;
-			}
-		}
-	}
+		//need non-void constructor call, but want an array ...
+		cellHistory0(size_),
+		cellHistory1(size_),
+		readCells(&cellHistory0),
+		writeCells(&cellHistory1)
+	{}
 
+	//iteration
 	void update(real dt) {
-		typedef typename Grid::iterator GridIter;
 		GridIter iter;
 		
 		//first compute and store aux values that will be subsequently used for partial differentiation
 		//during this process read and write to the same cell
 	
 		//beta_l, gamma_uu, D_alpha_l
-		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
-			Cell &cell = readCells(iter.index);
+		for (iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			Cell &cell = *iter;
 			
 			const tensor_u &beta_u = cell.beta_u;
 			const tensor_sl &gamma_ll = cell.gamma_ll;
 			
 			//D_alpha_l(i) = diff_i alpha = partial_i alpha
 			tensor_l &D_alpha_l = cell.D_alpha_l;
-			D_alpha_l = partialDerivative(readCells, &Cell::alpha, dx, iter.index);
+			D_alpha_l = partialDerivative(*readCells, &Cell::alpha, dx, iter.index);
 
 			//beta_l(i) := g_ij beta^j
 			//exclude sum of beta^t = 0
@@ -111,15 +106,15 @@ struct ADMFormalism {
 		}
 
 		//conn_ull depends on gamma_uu
-		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
-			Cell &cell = readCells(iter.index);
+		for (iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			Cell &cell = *iter;
 	
 			const tensor_sl &gamma_ll = cell.gamma_ll;
 			const tensor_su &gamma_uu = cell.gamma_uu;
 
 			//partial_gamma_lll(k)(i,j) := partial_k gamma_ij
 			tensor_lsl &partial_gamma_lll = cell.partial_gamma_lll;
-			partial_gamma_lll = partialDerivative(readCells, &Cell::gamma_ll, dx, iter.index);
+			partial_gamma_lll = partialDerivative(*readCells, &Cell::gamma_ll, dx, iter.index);
 
 			//3D hypersurface connection coefficients
 			//only need spatial coefficients (since gamma^at = 0, so conn^t_ab = 0.  see "Numerical Relativity", p.48)
@@ -148,8 +143,8 @@ struct ADMFormalism {
 		}
 
 		//R_ll depends on conn_ull and partial_gamma_lll
-		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
-			Cell &cell = readCells(iter.index);
+		for (iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			Cell &cell = *iter;
 
 			const tensor_su &gamma_uu = cell.gamma_uu;
 			const tensor_usl &conn_ull = cell.conn_ull;
@@ -158,7 +153,7 @@ struct ADMFormalism {
 			//partial_partial_gamma_llll(k,l)(i,j) = partial_k partial_l gamma_ij
 			tensor_slsl partial_partial_gamma_llll;
 			for (int k = 0; k < dim; ++k) {
-				tensor_lsl partial_gamma_lll_wrt_xk = partialDerivativeCoordinate(readCells, &Cell::partial_gamma_lll, dx, iter.index, k);
+				tensor_lsl partial_gamma_lll_wrt_xk = partialDerivativeCoordinate(*readCells, &Cell::partial_gamma_lll, dx, iter.index, k);
 				for (int l = 0; l <= k; ++l) {
 					for (int i = 0; i < dim; ++i) {
 						for (int j = 0; j <= i; ++j) {
@@ -167,12 +162,12 @@ struct ADMFormalism {
 								const deref_type &index = iter.index;
 								deref_type nextIndex(index);
 								deref_type prevIndex(index);
-								nextIndex(k) = std::max(0, std::min(readCells.size(k)-1, index(k) + 1));
-								prevIndex(k) = std::max(0, std::min(readCells.size(k)-1, index(k) - 1));
+								nextIndex(k) = std::max(0, std::min(readCells->size(k)-1, index(k) + 1));
+								prevIndex(k) = std::max(0, std::min(readCells->size(k)-1, index(k) - 1));
 								partial_partial_gamma_llll(k,l,i,j) = 
-									(readCells(nextIndex).partial_gamma_lll(l,i,j) 
+									((*readCells)(nextIndex).partial_gamma_lll(l,i,j) 
 									- cell.partial_gamma_lll(l,i,j) * 2. 
-									+ readCells(prevIndex).partial_gamma_lll(l,i,j))
+									+ (*readCells)(prevIndex).partial_gamma_lll(l,i,j))
 										/ (dx(k) * dx(k));
 							} else {
 								partial_partial_gamma_llll(k,l,i,j) = partial_gamma_lll_wrt_xk(l,i,j);
@@ -206,9 +201,9 @@ struct ADMFormalism {
 			}
 		}
 
-		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
-			const Cell &readCell = readCells(iter.index);
-			Cell &writeCell = writeCells(iter.index);
+		for (iter = writeCells->begin(); iter != writeCells->end(); ++iter) {
+			const Cell &readCell = (*readCells)(iter.index);
+			Cell &writeCell = *iter;
 			
 			const real &alpha = readCell.alpha;
 			const tensor_u &beta_u = readCell.beta_u;
@@ -222,13 +217,13 @@ struct ADMFormalism {
 			const tensor_su &gamma_uu = readCell.gamma_uu;
 
 			//D_D_alpha_ll(j,i) = diff_j diff_i alpha
-			tensor_ll D_D_alpha_ll = covariantDerivative(readCells, &Cell::D_alpha_l, dx, iter.index);
+			tensor_ll D_D_alpha_ll = covariantDerivative(*readCells, &Cell::D_alpha_l, dx, iter.index);
 
 			//partial_beta_ll(j)(i) := partial_j beta_i
-			tensor_ll partial_beta_ll = partialDerivative(readCells, &Cell::beta_l, dx, iter.index);
+			tensor_ll partial_beta_ll = partialDerivative(*readCells, &Cell::beta_l, dx, iter.index);
 			
 			//diff_beta_ll(j,i) := diff_j beta_i = partial_j beta_i - conn^k_ij beta_k
-			tensor_ll diff_beta_ll = covariantDerivative(readCells, &Cell::beta_l, dx, iter.index);
+			tensor_ll diff_beta_ll = covariantDerivative(*readCells, &Cell::beta_l, dx, iter.index);
 			
 			//D_i beta_j = diff_i beta_j 
 			//-- but only for lower indexes.
@@ -263,10 +258,10 @@ struct ADMFormalism {
 			}
 
 			//partial_K_lll(k,i,j) := partial_k K_ij
-			tensor_lsl partial_K_lll = partialDerivative(readCells, &Cell::K_ll, dx, iter.index);
+			tensor_lsl partial_K_lll = partialDerivative(*readCells, &Cell::K_ll, dx, iter.index);
 
 			//partial_beta_lu(j,i) := partial_j beta^i
-			tensor_lu partial_beta_lu = partialDerivative(readCells, &Cell::beta_u, dx, iter.index);
+			tensor_lu partial_beta_lu = partialDerivative(*readCells, &Cell::beta_u, dx, iter.index);
 
 			//S := S^i_i := gamma^ij S_ij
 			real S = 0.;
@@ -296,6 +291,10 @@ struct ADMFormalism {
 				}
 			}
 		}
+
+		//and swap
+		//do something more clever if we ever get any more than 2 histories
+		std::swap(readCells, writeCells);
 	}
 };
 
@@ -306,9 +305,47 @@ int main() {
 	typedef ::ADMFormalism<dim,real> ADMFormalism;
 	typedef ADMFormalism::deref_type deref_type;
 
-	real dt = .01;
-	real dist = 2e+3;	//2km, schwarzschild radius of our sun
-	ADMFormalism sim(vector(-dist, -dist), vector(dist, dist), deref_type(10, 10));
-	sim.update(dt);
+	//universal constants
+	const real speedOfLightInMPerS = 299792458.;
+	const real gravitationalConstantInM3PerKgS2 = 6.67384e-11;
+	
+	//conversions to meters
+	const real metersPerS = speedOfLightInMPerS;
+	const real metersPerKg = gravitationalConstantInM3PerKgS2 / (metersPerS * metersPerS);
+
+	const real sunMassInKg = 1.989e+30;
+	const real sunRadiusInM = 6.955e+8;
+	const real sunVolumeInM3 = 4. / 3. * M_PI * sunRadiusInM * sunRadiusInM * sunRadiusInM;
+	const real sunDensityInM_2 = sunMassInKg * metersPerKg / sunVolumeInM3;
+
+	real dist = 2. * sunRadiusInM;
+	vector min(-dist);
+	vector max(dist);
+	deref_type res(10);
+	
+	ADMFormalism sim(min, max, res);
+
+	//provide initial conditions
+
+
+	vector center = (max + min) * .5;
+	for (ADMFormalism::GridIter iter = sim.readCells->begin(); iter != sim.readCells->end(); ++iter) {
+		ADMFormalism::Cell &cell = *iter;
+		real radiusInM = min.length(min + ((vector)iter.index + .5) * sim.dx - center);
+		real sunMassInM = sunMassInKg * metersPerKg;
+		cell.alpha = sqrt(1 - 2 * sunMassInM / radiusInM);
+		for (int i = 0; i < dim; ++i) {
+			cell.gamma_ll(i,i) =  1 / (1 - 2 * sunMassInM / radiusInM);
+		}
+		if (radiusInM < sunRadiusInM) {
+			cell.rho = sim.dx.volume() * sunDensityInM_2;
+		}
+	}
+
+	//update
+	//const real dt = .01;
+	//sim.update(dt);
+
+
 }
 

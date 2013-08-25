@@ -1,5 +1,6 @@
 #pragma once
 
+#include <math.h>	//sqrt
 #include "generic_array.h"
 
 /*
@@ -63,6 +64,12 @@ struct generic_vector : public generic_array<size_, type_, scalar_type_, child> 
 			d += a.v[i] * b.v[i];
 		}
 		return d;
+	}
+
+	static double length(const child &a) {
+		type lengthSquared = dot(a,a);
+		//or provide your own sqrt and return type?
+		return sqrt((double)lengthSquared);
 	}
 
 	//vector/vector operations

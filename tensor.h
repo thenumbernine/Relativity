@@ -12,12 +12,9 @@ and any subsequently nested numeric structures.
 /*
 support class for metaprogram specializations of tensor
 
-rank 		= total rank of the structure
-				= the depth of the body_type
+rank 		= total rank of the structure. not necessarily the depth since some indexes (symmetric) can have >1 rank.
 inner_type 	= the next-inner-most tensor_stats type
 body_type 	= the body_type (the generic_vector subclass) associated with this nesting level
-deref_type 	= the dereference type that would be needed to dereference this body_type 
-				= int vector with dimension equal to rank
 */
 template<typename scalar_type, typename... args>
 struct tensor_stats;
@@ -32,8 +29,6 @@ struct tensor_stats<scalar_type_, index_, args...> {
 
 	typedef typename index::template body<typename inner_type::body_type, scalar_type> body_type;
 	
-	typedef vector<rank,int> deref_type;	//rank-n tensors (n>1) use vecs for dereferencing
-
 		//inductive cases
 	
 	//get an element in a tensor
@@ -74,8 +69,6 @@ struct tensor_stats<scalar_type_, index_> {
 	typedef tensor_stats<scalar_type> inner_type;
 	
 	typedef typename index::template body<scalar_type, scalar_type> body_type;
-
-	typedef ::vector<rank,int> deref_type;	//rank-1 tensors use ints for dereferencing
 
 		//second-to-base (could be base) case
 	
@@ -131,10 +124,18 @@ struct tensor_stats<scalar_type_> {
 };
 
 /*
-3-element vector:					tensor<double,upper<3> >
-4-element one-form:					tensor<double,lower<3> >
-matrix (contravariant matrix):		tensor<double, upper<3>, upper<3> >
-metric tensor (symmetric covariant matrix):	tensor<double, symmetric<lower,3> >
+type			= tensor element type
+tensor_stats	= helper class for calculating some template values
+body_type 		= the body_type (the generic_vector subclass) of the tensor 
+deref_type 		= the dereference type that would be needed to dereference this body_type 
+					= int vector with dimension equal to rank
+
+rank 		= total rank of the structure
+examples:
+	3-element vector:					tensor<double,upper<3>>
+	4-element one-form:					tensor<double,lower<4>>
+	matrix (contravariant matrix):		tensor<double,upper<3>,upper<3>>
+	metric tensor (symmetric covariant matrix):	tensor<double,symmetric<lower<3>,lower<3>>>
 */
 template<typename type_, typename... args>
 struct tensor {
@@ -146,9 +147,10 @@ struct tensor {
 	// but that would mean making base-case specializations for each index class 
 	typedef ::tensor_stats<type_, args...> tensor_stats;
 	typedef typename tensor_stats::body_type body_type;
-	typedef typename tensor_stats::deref_type deref_type;
 	
 	enum { rank = tensor_stats::rank };
+	
+	typedef ::vector<rank,int> deref_type;
 
 	tensor() {}
 	tensor(const body_type &body_) : body(body_) {}
@@ -247,4 +249,32 @@ struct tensor {
 		return i;
 	}
 };
+
+template<typename type, typename... args>
+std::ostream &operator<<(std::ostream &o, tensor<type, args...> &t) {
+	typedef ::tensor<type, args...> tensor;
+	typedef typename tensor::iterator iterator;
+	enum { rank = tensor::rank };
+	const char *empty = "";
+	const char *sep = ", ";
+	vector<rank, const char *> seps(empty);
+	for (iterator i = t.begin(); i != t.end(); ++i) {
+		for (int j = 0; j < rank; ++j) {
+			if (i.index(j) == 0) {
+				if (j < rank-1) o << seps(j+1);
+				o << "(";
+				if (j < rank-1) seps(j+1) = sep;
+			}
+		}
+		o << seps(0);
+		o << *i;
+		seps(0) = sep;
+		for (int j = 0; j < rank; ++j) {
+			if (i.index(0) == t.size(0)-1) {
+				o << ")";
+			}
+		}
+	}
+	return o;
+}
 

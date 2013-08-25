@@ -29,6 +29,10 @@ TODO
 	this is made compatible with read and write operations by returning a generated accessor object which does the sign-flipping when appropriate.
 	i think all that may need to be done here is to give the accessor class itself a dereference operator to forward on through templates
 		- which means specializations of itself when it returns reals and when it doesn't, but there may be more.
+- separate read- and write-iterators.  read-iterators iterating over all read indexes. write iterators iterating over all written variables.
+	the two are not one-to-one.  symmetric matrixes have n*n read indexes but only n*(n+1)/2 variables capable of writing. antisymmetric have n*(n-1)/2.
+	doing this involves using the current dimension-per-rank-based method for read iterator bounds, but write iterators would have delegate to each index
+	the responsibility for incrementing their own offset, size, and amount (rank) of indexes in the iteration.
 
 Conventions & Notations:
 

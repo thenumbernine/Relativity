@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ostream>
 #include "generic_vector.h"
 
 /*
@@ -31,4 +32,15 @@ struct vector : public generic_vector<dim_, type_, type_, vector<dim_, type_> > 
 	}
 };
 
+template<int dim, typename type>
+std::ostream &operator<<(std::ostream &o, const vector<dim,type> &t) {
+	const char *sep = "";
+	o << "(";
+	for (int i = 0; i < t.dim; ++i) {
+		o << sep << t(i);
+		sep = ", ";
+	}
+	o << ")";
+	return o;
+}
 
