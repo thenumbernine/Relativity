@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <math.h>
 
 #include "vector.h"
 #include "tensor.h"
@@ -17,7 +18,7 @@ struct Simulation {
 		//cell types
 
 	typedef ::Cell<dim,real> Cell;
-	typedef ::Grid<dim,Cell> CellGrid;
+	typedef ::Grid<dim,Cell> Grid;
 
 		//statically-sized mathematical types
 		//(pull from cell where you can)
@@ -27,15 +28,17 @@ struct Simulation {
 	
 	typedef typename Cell::tensor_u tensor_u;
 	typedef typename Cell::tensor_l tensor_l;
+	typedef typename Cell::tensor_ll tensor_ll;
 	typedef typename Cell::tensor_su tensor_su;
 	typedef typename Cell::tensor_sl tensor_sl;
 	typedef typename Cell::tensor_usl tensor_usl;
     typedef typename Cell::tensor_lsl tensor_lsl;
-	typedef ::tensor<real,lower<dim>,lower<dim>> tensor_ll;
+	typedef ::tensor<real,upper<dim>,lower<dim>> tensor_ul;
+	typedef ::tensor<real,lower<dim>,upper<dim>> tensor_lu;
 	typedef ::tensor<real,symmetric<lower<dim>,lower<dim>>,symmetric<lower<dim>,lower<dim>>> tensor_slsl;
 	typedef ::vector<dim,real> vector;
 
-	CellGrid readCells, writeCells;
+	Grid readCells, writeCells;
 
 	//kronecher delta for integer vector / indexes, such that dxi(i)(j) == i == j
 	::vector<dim,veci> dxi;
@@ -73,21 +76,22 @@ struct Simulation {
 	}
 
 	void update(real dt) {
-		typedef typename CellGrid::iterator CellGridIter;
-		CellGridIter iter;
+		typedef typename Grid::iterator GridIter;
+		GridIter iter;
 		
 		//first compute and store aux values that will be subsequently used for partial differentiation
 		//during this process read and write to the same cell
 	
-		//beta_l, gamma_uu
+		//beta_l, gamma_uu, D_alpha_l
 		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
 			Cell &cell = readCells(iter.index);
-		
-			//beta_u(k) := beta^k
-			const tensor_u &beta_u = cell.beta_u;
 			
-			//gamma_ll(i,j) := gamma_ij
+			const tensor_u &beta_u = cell.beta_u;
 			const tensor_sl &gamma_ll = cell.gamma_ll;
+			
+			//D_alpha_l(i) = diff_i alpha = partial_i alpha
+			tensor_l &D_alpha_l = cell.D_alpha_l;
+			D_alpha_l = partialDerivative(readCells, &Cell::alpha, dx, iter.index);
 
 			//beta_l(i) := g_ij beta^j
 			//exclude sum of beta^t = 0
@@ -143,11 +147,13 @@ struct Simulation {
 			}
 		}
 
-		//ricci_ll depends on conn_ull and partial_gamma_lll
+		//R_ll depends on conn_ull and partial_gamma_lll
 		for (iter = writeCells.begin(); iter != writeCells.end(); ++iter) {
 			Cell &cell = readCells(iter.index);
 
-			tensor_lsl &conn_lll = cell.conn_lll;
+			const tensor_su &gamma_uu = cell.gamma_uu;
+			const tensor_usl &conn_ull = cell.conn_ull;
+			const tensor_lsl &conn_lll = cell.conn_lll;
 			
 			//partial_partial_gamma_llll(k,l)(i,j) = partial_k partial_l gamma_ij
 			tensor_slsl partial_partial_gamma_llll;
@@ -158,6 +164,16 @@ struct Simulation {
 						for (int j = 0; j <= i; ++j) {
 							if (k == l) {
 								//special case for 2nd deriv along same coordinate
+								const veci &index = iter.index;
+								veci nextIndex(index);
+								veci prevIndex(index);
+								nextIndex(k) = std::max(0, std::min(readCells.size(k)-1, index(k) + 1));
+								prevIndex(k) = std::max(0, std::min(readCells.size(k)-1, index(k) - 1));
+								partial_partial_gamma_llll(k,l,i,j) = 
+									(readCells(nextIndex).partial_gamma_lll(l,i,j) 
+									- cell.partial_gamma_lll(l,i,j) * 2. 
+									+ readCells(prevIndex).partial_gamma_lll(l,i,j))
+										/ (dx(k) * dx(k));
 							} else {
 								partial_partial_gamma_llll(k,l,i,j) = partial_gamma_lll_wrt_xk(l,i,j);
 							}
@@ -166,12 +182,26 @@ struct Simulation {
 				}
 			}
 
-			//ricci_ll(i,j) := ricci_ij = 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
-			tensor_sl &ricci_ll = cell.ricci_ll;
+			//"Numerical Relativity" p.48
+			//R_ll(i,j) := ricci_ij = 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
+			tensor_sl &R_ll = cell.R_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
-					ricci_ll(i,j) = 0.;
-					ricci_ll(i,j) *= .5;
+					R_ll(i,j) = 0.;
+					for (int k = 0; k < dim; ++k) {
+						for (int l = 0; l < dim; ++l) {
+							R_ll(i,j) += .5 * gamma_uu(k,l) * (
+								partial_partial_gamma_llll(i,l,k,j)
+								+ partial_partial_gamma_llll(k,j,i,l)
+								- partial_partial_gamma_llll(i,j,k,l)
+								- partial_partial_gamma_llll(k,l,i,j));
+							for (int m = 0; m < dim; ++m) {
+								R_ll(i,j) += gamma_uu(k,l) * (
+									conn_ull(m,i,l) * conn_lll(m,k,j)
+									- conn_ull(m,i,j) * conn_lll(m,k,l));
+							}
+						}
+					}
 				}
 			}
 		}
@@ -181,15 +211,18 @@ struct Simulation {
 			Cell &writeCell = writeCells(iter.index);
 			
 			const real &alpha = readCell.alpha;
-			
-			//K_ll(i,j) := K_ij
+			const tensor_u &beta_u = readCell.beta_u;
+			const tensor_sl &gamma_ll = readCell.gamma_ll;
 			const tensor_sl &K_ll = readCell.K_ll;
-		
-			//beta_l(k) := beta_k
+			const real &rho = readCell.rho;
+			const tensor_ll &S_ll = readCell.S_ll;
 			const tensor_l &beta_l = readCell.beta_l;
-
-			//conn_ull(i)(j,k) = conn^i_jk
 			const tensor_usl &conn_ull = readCell.conn_ull;
+			const tensor_sl &R_ll = readCell.R_ll;
+			const tensor_su &gamma_uu = readCell.gamma_uu;
+
+			//D_D_alpha_ll(j,i) = diff_j diff_i alpha
+			tensor_ll D_D_alpha_ll = covariantDerivative(readCells, &Cell::D_alpha_l, dx, iter.index);
 
 			//partial_beta_ll(j)(i) := partial_j beta_i
 			tensor_ll partial_beta_ll = partialDerivative(readCells, &Cell::beta_l, dx, iter.index);
@@ -206,14 +239,62 @@ struct Simulation {
 			Cell partial_t;
 		
 			//partial_t gamma_ij = -2 alpha K_ij + D_i beta_j + D_j beta_i
-			for (int j = 0; j < dim; ++j) {
-				for (int i = 0; i <= j; ++i) {
-					partial_t.gamma_ll(i,j) = -2 * alpha * K_ll(i,j) + D_beta_ll(i)(j) + D_beta_ll(j)(i);
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					partial_t.gamma_ll(i,j) = -2. * alpha * K_ll(i,j) + D_beta_ll(i,j) + D_beta_ll(j,i);
+				}
+			}
+
+			//K^i_j := gamma^ik K_kj
+			tensor_ul K_ul;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					K_ul(i,j) = 0;
+					for (int k = 0; k < dim; ++k) {
+						K_ul(i,j) += gamma_uu(i,k) * K_ll(k,j);
+					}
+				}
+			}
+
+			//K := K^i_i
+			real K = 0.;
+			for (int i = 0; i < dim; ++i) {
+				K += K_ul(i,i);
+			}
+
+			//partial_K_lll(k,i,j) := partial_k K_ij
+			tensor_lsl partial_K_lll = partialDerivative(readCells, &Cell::K_ll, dx, iter.index);
+
+			//partial_beta_lu(j,i) := partial_j beta^i
+			tensor_lu partial_beta_lu = partialDerivative(readCells, &Cell::beta_u, dx, iter.index);
+
+			//S := S^i_i := gamma^ij S_ij
+			real S = 0.;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					S += S_ll(i,j) * gamma_uu(i,j);
 				}
 			}
 			
 			//partial_t K_ij = alpha (R_ij - 2 K_ik K^k_j + K K_ij) - D_i D_j alpha - 8 pi alpha (S_ij - 1/2 gamma_ij (S - rho)) + beta^k partial_k K_ij + K_ik partial_j beta^k + K_kj partial_i beta^k
-
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					partial_t.K_ll(i,j) = 0.;
+					partial_t.K_ll(i,j) += alpha * R_ll(i,j);
+					for (int k = 0; k < dim; ++k) {
+						partial_t.K_ll(i,j) -= alpha * 2. * K_ll(i,k) * K_ul(k,j);
+					}
+					partial_t.K_ll(i,j) += alpha * K * K_ll(i,j) 
+						- D_D_alpha_ll(i,j)
+						- 8. * M_PI * alpha * (
+							S_ll(i,j) - .5 * gamma_ll(i,j) * (S - rho));
+					for (int k = 0; k < dim; ++k) {
+						partial_t.K_ll(i,j) += beta_u(k) * partial_K_lll(k,i,j)
+							+ K_ll(k,i) * partial_beta_lu(j,k)
+							+ K_ll(k,j) * partial_beta_lu(i,k);
+					}
+				}
+			}
 		}
 	}
 };

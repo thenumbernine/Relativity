@@ -1,6 +1,34 @@
 GR simulation
 
+Sources:
+- "Gravitation", Misner, Thorne, Wheeler. (c) 1973
+- "Numerical Relativity: Solving Einstein's Equations on the Computer", Baumgarte, Shapiro. (c) 2010
+- "Introduction to 3+1 Numerical Relativity", Alcubierre. (c) 2008
+
 Starting again from scratch now that I've gone through the ADM chapter of "Gravitation" and the 3+1 decomposition chapter of "Numerical Relativity"
+
+TODO
+
+	algorithm:
+- initial data
+- lapse and shift functions 
+- I'm doing FTCS for my own entertainment.  I can extend this to some other better explicit method like RK45, but
+	I should switch over to a simple finite-volume method for starters.
+
+	implementation:
+- general-case covariant derivative would be nice.
+	this depends on the ability to tell whether a certain index is upper or lower, 
+	which is difficult now that I made templates successively nested structures (so that symmetric tensors could take advantage of size optimizations).
+- general-case second partial derivative? to construct the result as a symmetric-lower.
+- symmetric & antisymmetric indexes must be next to one another.  this is courtesy of the nested implementation of the templates.  
+	tensor<lower,lower> is - from the view of the data structure - a one-form of one-forms, and tensor<upper,upper> is a vector of vectors.
+	I'm not even sure how the templates could be changed to accomodate anything more flexible: maybe put the information last in the template arguments
+		like so tensor<L,U,U,L,U, symmetric<0,1>, antisymmetric<2,3,4>>.  that might be a nightmare to implement, 
+		and i haven't come across any situations where the current system hasn't failed me.
+- antisymmetric tensors have to be the outer-most indexes.  this is because only one half of an antisymmetric pair of elements is stored.
+	this is made compatible with read and write operations by returning a generated accessor object which does the sign-flipping when appropriate.
+	i think all that may need to be done here is to give the accessor class itself a dereference operator to forward on through templates
+		- which means specializations of itself when it returns reals and when it doesn't, but there may be more.
 
 Conventions & Notations:
 
@@ -21,28 +49,43 @@ proj 		= projection operator ("Numerical Relativity" eqn 2.31)
 	variables:
 
 alpha		= lapse (distance between timeslices a coordinate is transported over dt)
+
 beta^a		= shift (distance within the 3D hypersurface a coordiate is transported over dt) 
 				= (0, beta^i) 	(i.e. beta^t = 0), therefore beta^a beta_a = beta^k beta_k
+
 g_ab 		= ADM representation of 4D metric tensor 
 				= gamma_ab - n_a n_b
 				= ( -alpha^2 + beta^k beta_k	,	beta_j)		<- where beta_j = gamma_ij beta^k
 				  (			beta_i				,	gamma_ij)		\ which is equivalent to beta_j = gamma_aj beta^a since beta^t = 0 after all so we just neglect the timelike component of beta and gamma
+
 g^ab		= contravariant/inverse ADM representation of 4D metric tensor
 				= gamma^ab - n^a n^b
 				= ( -1/alpha^2		,			beta^j/alpha^2			   )
 				  (	beta^i/alpha^2	,	gamma^ij - beta^i beta^j / alpha^2 )
+
 n_a			= covariant form of normal vector (i.e. normal one-form) to 3D hypersurface in 4D space
 				= (-alpha, 0)
+
 n^a			= contravariant form of normal vector to 3D hypersurface in 4D space
 				= (1/alpha, -beta^i/alpha)
+					Note that <n,n> = n_a n^a = -alpha/alpha - 0*beta^i/alpha = -1
+
+a^a			= acceleration vector of 3D hypersurface normal
+				= diff_n n = n^b diff_b n^a
+					A related, useful identity is 0 = diff_a -1 = diff_a (n^b n_b) = n^b diff_a n_b + n_b diff_a n^b <=> n^b diff_a n_b = 0
+
 gamma^ab	= 4D projection operator / contravariant/inverse metric tensor of 3D spatial hypersurface
 				= g^ab + n^a n^b
 				= (	0	,		0 	 )
 				  ( 0	,	gamma_ij )
+
 gamma_ab 	= 4D projection operator / metric tensor of 3D spatial hypersurface
 				= g_ab + n_a n_b
 				= ( beta^k beta_k	, 	beta_j   )
 				  ( 	beta_i		,	gamma_ij )
+
+K_ab		= 3D->4D extrinsic curvature
+				= -gamma_a^c gamma_b^d diff_c n_d
 
 conn^ijk	= 3D hypersurface Christoffel symbols of the first kind
 				 = 1/2 (partial_k gamma_ij + partial_j gamma_ik - partial_i gamma_jk)
@@ -52,9 +95,19 @@ conn^i_jk	= 3D hypersurface Christoffel symbols of the second kind (connection c
 				 = 1/2 gamma^il (partial_k gamma_lj + partial_j gamma_lk - partial_l gamma_jk)
 
 R_ij		= 3D Ricci curvature tensor
+				= conn^k_ij,k - conn^k_ik,j + conn^k_lk conn^l_ij - conn^k_lj conn^l_ik
 				= 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
 
+T_ab		= stress-energy tensor
 
+S_ab		= spatial stress energy
+				= proj T_ab = gamma_a^c gamma_b^d T_cd
+
+S_a			= momentum density
+				= -gamma_a^b n^c T_bc
+
+rho			= energy density
+				= n^a n^b T_ab = n_a n_b T^ab
 
 
 
@@ -100,4 +153,52 @@ conn^i_lk = 1/2 g^im (g_ml,k + g_mk,l - g_lk,i)
 		  = -1/2 (g_lm g^mi,k + g^im g_lk,i - g^im g_mk,l)
 
 ... I'm not buying it, nor do I see it recorded anywhere
+
+
+
+when raising the extrinsic curvature tensor, do the time components of the metric matter?
+(or can it be calculated solely by the spatial metric / projection operator?)
+
+both "Numerical Relativity" and Alcubierre make mention that the extrinsic curvature only matters for the spatial components
+"Gravitation" and Alcubierre define K_ab = -proj diff_a n_b, and Baumgarte & Shapiro as K_ab = -proj diff_(a n_b) (where T_(a,b) = 1/2 (T_ab + T_ba) ).
+Alcubierre mentions how only the spatial components of diff_a n_b are symmetric, but that due to projection we don't have to worry about the others. (p.69)
+Baumgarte & Shapiro mention how the tensor itself is only defined wrt spatial components (p.34)
+They go on to explain that the the trace is given by K = g^ab K_ab = gamma^ab K_ab, which would hold true if the time components of K_a0 were zero (as those of gamma^a0 are)
+
+ultimately ...
+K_ab = -proj diff_a n_b
+	 = -gamma_a^c gamma_b^d diff_c n_d
+	 = -(g_a^c + n_a n^c) (g_b^d + n_b n^d) (diff_c n_d)
+	 = -diff_a n_b - n_a n^c diff_c n_b - n_b n^d diff_a n_d - n_a n_b n^c n^d diff_c n_d
+	 = -diff_a n_b - n_a a_b - n_b * 0 - n_a n_b n^c * 0
+	 = -diff_a n_b - n_a a_b - n_b * 0 - n_a n_b n^d a_d (alternatively)
+	 = -diff_a n_b - n_a a_b - n_b * 0 - n_a n_b * 0
+	 = -diff_a n_b - n_a a_b
+
+so K_ab = (diff_0 n_0, diff_0 n_j)   (n_0 a_0, n_0 a_j)
+		  (diff_i n_0, diff_i n_j) - (n_i a_0, n_i a_j)
+
+...but n_a = (-alpha, 0), so n_i = 0
+
+K_ab = (-diff_0 alpha, 0)   (-alpha a_0, -alpha a_j)
+	   (-diff_i alpha, 0) - (	0	   , 	0	   )
+
+K_ab = (-alpha a_0 - diff_0 alpha, 	-alpha a_j)
+	   (		-diff_i alpha	 ,		0	  )
+
+...and from there it looks to me that the spatial components of K_ij are always zero.
+What am I doing wrong?
+
+Another note: if you use the metric to raise the spatial tensor, i.e. gamma_a^c = gamma_ab g^bc then you get a non-symmetric tensor
+
+
+
+momentum density term:
+
+S_ab = gamma_a^c gamma_b^d T_cd
+S^a_a = g^ab S_ab 
+	  = g^ab gamma_a^c gamma_b^d T_cd
+	  = gamma^cb gamma_b^d T_cd
+	  = gamma^cd T_cd
+	  = gamma^ij T_ij (since the other gamma^ab components are zero)
 
