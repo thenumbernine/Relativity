@@ -44,8 +44,8 @@ struct partialDerivativeClass<
 	output_type operator()(Grid &cells, cell_field_type field, const vector<dim,real> &dx, const vector<dim,int> &index) {
 		output_type result;
 #if 0	//sub-tensor access: all-at-once
-		veci nextIndex = veci::clamp(index+1, veci(0), size-1);
-		veci prevIndex = veci::clamp(index-1, veci(0), size-1);
+		vector<dim,int> nextIndex = vector<dim,int>::clamp(index+1, vector<dim,int>(0), size-1);
+		vector<dim,int> prevIndex = vector<dim,int>::clamp(index-1, vector<dim,int>(0), size-1);
 		const input_type &nextT = cells(nextIndex).*field;
 		const input_type &prevT = cells(prevIndex).*field;
 		for (int k = 0; k < dim; ++k) {
@@ -58,8 +58,8 @@ struct partialDerivativeClass<
 #else	//per-index.
 		//I got rid of sub-tensor accessor.
 		//not sure if it is the right thing to expose, and covariant diffs have to march through indexes anyways.
-		veci nextIndex = veci::clamp(index+1, veci(0), size-1);
-		veci prevIndex = veci::clamp(index-1, veci(0), size-1);
+		vector<dim,int> nextIndex = vector<dim,int>::clamp(index+1, vector<dim,int>(0), size-1);
+		vector<dim,int> prevIndex = vector<dim,int>::clamp(index-1, vector<dim,int>(0), size-1);
 		//these should be const-ref, but that'd mean making a separate const-access tensor =P
 		input_type &nextT = cells(nextIndex).*field;
 		input_type &prevT = cells(prevIndex).*field;

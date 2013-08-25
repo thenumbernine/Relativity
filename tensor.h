@@ -1,5 +1,7 @@
 #pragma once
 
+#include "tensor_index.h"	//not because tensor.h needs it, but because anyone using tensor.h needs it
+
 /*
 new experimental template-driven tensor class
 made to unify all of vector, one-form, symmetric, antisymmetric, and just regular kind matrixes

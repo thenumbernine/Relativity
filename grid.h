@@ -9,16 +9,16 @@ struct Grid {
 	enum { rank = rank_ };
 	typedef type_ type;
 
-	typedef ::vector<rank,int> veci;
+	typedef ::vector<rank,int> deref_type;
 
 	type *v;
-	veci size;
+	deref_type size;
 	
 	//cached for quick access by dot with index vector
 	//step[0] = 1, step[1] = size[0], step[j] = product(i=1,j-1) size[i]
-	veci step;
+	deref_type step;
 
-	Grid(const veci &size_) : size(size_) {
+	Grid(const deref_type &size_) : size(size_) {
 		v = new type[size.volume()];
 		step(0) = 1;
 		for (int i = 1; i < rank; ++i) {
@@ -28,7 +28,7 @@ struct Grid {
 
 	struct iterator {
 		Grid *parent;
-		veci index;
+		deref_type index;
 		
 		iterator() : parent(NULL) {}
 		iterator(Grid *parent_) : parent(parent_) {}
@@ -60,7 +60,7 @@ struct Grid {
 		return i;
 	}
 
-	type &operator()(const veci &index) { return v[veci::dot(index, step)]; }
-	const type &operator()(const veci &index) const { return v[veci::dot(index, step)]; }
+	type &operator()(const deref_type &index) { return v[deref_type::dot(index, step)]; }
+	const type &operator()(const deref_type &index) const { return v[deref_type::dot(index, step)]; }
 };
 

@@ -11,7 +11,7 @@
 #include "derivative.h"
 
 template<int dim_, typename real_>
-struct Simulation {
+struct ADMFormalism {
 	enum { dim = dim_ };
 	typedef real_ real;
 
@@ -24,7 +24,7 @@ struct Simulation {
 		//(pull from cell where you can)
 	
 	//used for indexes
-	typedef ::vector<dim,int> veci;	
+	typedef ::vector<dim,int> deref_type;	
 	
 	typedef typename Cell::tensor_u tensor_u;
 	typedef typename Cell::tensor_l tensor_l;
@@ -41,10 +41,10 @@ struct Simulation {
 	Grid readCells, writeCells;
 
 	//kronecher delta for integer vector / indexes, such that dxi(i)(j) == i == j
-	::vector<dim,veci> dxi;
+	::vector<dim,deref_type> dxi;
 
 	//resolution of our grids, stored here as well as in each grid for convenience
-	veci size;
+	deref_type size;
 
 	//x(0) == min
 	vector min;
@@ -58,7 +58,7 @@ struct Simulation {
 	//dx = range / size
 	vector dx;
 
-	Simulation(const vector &min_, const vector &max_, const veci &size_)
+	ADMFormalism(const vector &min_, const vector &max_, const deref_type &size_)
 	:	size(size_),
 		min(min_),
 		max(max_),
@@ -164,9 +164,9 @@ struct Simulation {
 						for (int j = 0; j <= i; ++j) {
 							if (k == l) {
 								//special case for 2nd deriv along same coordinate
-								const veci &index = iter.index;
-								veci nextIndex(index);
-								veci prevIndex(index);
+								const deref_type &index = iter.index;
+								deref_type nextIndex(index);
+								deref_type prevIndex(index);
 								nextIndex(k) = std::max(0, std::min(readCells.size(k)-1, index(k) + 1));
 								prevIndex(k) = std::max(0, std::min(readCells.size(k)-1, index(k) - 1));
 								partial_partial_gamma_llll(k,l,i,j) = 
@@ -303,12 +303,12 @@ int main() {
 	typedef double real;
 	enum { dim = 2 };
 	typedef ::vector<dim,real> vector;
-	typedef ::vector<dim,int> veci;
-	typedef ::Simulation<dim,real> Simulation;
+	typedef ::ADMFormalism<dim,real> ADMFormalism;
+	typedef ADMFormalism::deref_type deref_type;
 
 	real dt = .01;
 	real dist = 2e+3;	//2km, schwarzschild radius of our sun
-	Simulation sim(vector(-dist, -dist), vector(dist, dist), veci(10, 10));
+	ADMFormalism sim(vector(-dist, -dist), vector(dist, dist), deref_type(10, 10));
 	sim.update(dt);
 }
 

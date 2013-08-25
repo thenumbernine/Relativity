@@ -1,13 +1,17 @@
 DEPS :=\
 	cell.h \
-	grid.h \
+	derivative.h \
+	generic_antisymmat.h \
 	generic_array.h \
 	generic_dense_matrix.h \
-	generic_vector.h \
-	vector.h \
+	generic_rank1.h \
 	generic_symmat.h \
-	generic_antisymmat.h \
-	tensor.h
+	generic_vector.h \
+	grid.h \
+	invert.h \
+	tensor.h \
+	tensor_index.h \
+	vector.h
 
 all: relativity
 
@@ -18,4 +22,5 @@ clean:
 	-rm relativity
 
 .PHONY: clean all
+
 
