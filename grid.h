@@ -38,10 +38,10 @@ struct Grid {
 		bool operator!=(const iterator &b) const { return index != b.index; }
 		
 		iterator &operator++() {
-			for (int i = 0; i < rank-1; ++i) {	//allow the last index to overflow for sake of comparing it to end
+			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
 				++index(i);
 				if (index(i) < parent->size(i)) break;
-				index(i) = 0;
+				if (i < rank-1) index(i) = 0;
 			}
 			return *this;
 		}
@@ -51,7 +51,6 @@ struct Grid {
 
 	iterator begin() {
 		iterator i(this);
-		--i.index(0);
 		return i;
 	}
 	iterator end() {
@@ -60,7 +59,15 @@ struct Grid {
 		return i;
 	}
 
-	type &operator()(const deref_type &index) { return v[deref_type::dot(index, step)]; }
-	const type &operator()(const deref_type &index) const { return v[deref_type::dot(index, step)]; }
+	type &operator()(const deref_type &deref) { 
+		int flat_deref = deref_type::dot(deref, step);
+		assert(flat_deref >= 0 && flat_deref < size.volume());
+		return v[flat_deref];
+	}
+	const type &operator()(const deref_type &deref) const { 
+		int flat_deref = deref_type::dot(deref, step);
+		assert(flat_deref >= 0 && flat_deref < size.volume());
+		return v[flat_deref];
+	}
 };
 

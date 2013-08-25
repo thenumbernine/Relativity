@@ -1,3 +1,5 @@
+TARGETDIR := /data/local/bin/
+
 DEPS :=\
 	cell.h \
 	derivative.h \
@@ -22,16 +24,16 @@ test: test.cpp $(DEPS)
 	g++ -g -std=c++0x test.cpp -o test
 
 install: relativity
-	cp relativity /data/local/bin/
+	cp relativity $(TARGETDIR) 
 
 install_test: test
-	cp test /data/local/bin/
+	cp test $(TARGETDIR) 
 
 run: install 
-	/data/local/bin/relativity
+	$(TARGETDIR)relativity
 
 run_test: install_test
-	/data/local/bin/test
+	$(TARGETDIR)test
 
 clean:
 	-rm relativity

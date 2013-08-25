@@ -225,12 +225,12 @@ struct tensor {
 		bool operator!=(const iterator &b) const { return index != b.index; }
 		
 		//NOTICE this doesn't take symmetric indexes into account
-		// we could shave off a few assignments with that
+		//TODO make a separate write iterator
 		iterator &operator++() {
-			for (int i = 0; i < rank-1; ++i) {	//allow the last index to overflow for sake of comparing it to end
+			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
 				++index(i);
 				if (index(i) < parent->size()(i)) break;
-				index(i) = 0;
+				if (i < rank-1) index(i) = 0;
 			}
 			return *this;
 		}
@@ -240,7 +240,6 @@ struct tensor {
 
 	iterator begin() {
 		iterator i(this);
-		--(i.index(0));
 		return i;
 	}
 	iterator end() {

@@ -10,6 +10,10 @@
 #include "invert.h"
 #include "derivative.h"
 
+#include <iostream>
+
+using namespace std;
+
 template<typename real_, int dim_>
 struct ADMFormalism {
 	typedef real_ real;
@@ -322,20 +326,25 @@ int main() {
 	vector min(-dist);
 	vector max(dist);
 	deref_type res(10);
-	
+
+	cout << "constructing sim..." << endl;
 	ADMFormalism sim(min, max, res);
 
 	//provide initial conditions
 
-
+	cout << "providing initial conditions..." << endl;
 	vector center = (max + min) * .5;
 	for (ADMFormalism::GridIter iter = sim.readCells->begin(); iter != sim.readCells->end(); ++iter) {
 		ADMFormalism::Cell &cell = *iter;
 		real radiusInM = min.length(min + ((vector)iter.index + .5) * sim.dx - center);
 		real sunMassInM = sunMassInKg * metersPerKg;
-		cell.alpha = sqrt(1 - 2 * sunMassInM / radiusInM);
+		real sunMassOver2Radius = sunMassInM / (2. * sunRadiusInM);
+		real oneMinusSunMassOver2Radius = 1. - sunMassOver2Radius;
+		real onePlusSunMassOver2Radius = 1. + sunMassOver2Radius;
+		real onePlusSunMassOver2RadiusSq = onePlusSunMassOver2Radius * onePlusSunMassOver2Radius;
+		cell.alpha = oneMinusSunMassOver2Radius / onePlusSunMassOver2Radius; 
 		for (int i = 0; i < dim; ++i) {
-			cell.gamma_ll(i,i) =  1 / (1 - 2 * sunMassInM / radiusInM);
+			cell.gamma_ll(i,i) = onePlusSunMassOver2RadiusSq * onePlusSunMassOver2RadiusSq;
 		}
 		if (radiusInM < sunRadiusInM) {
 			cell.rho = sim.dx.volume() * sunDensityInM_2;
@@ -343,9 +352,10 @@ int main() {
 	}
 
 	//update
+	//cout << "iterating..." << endl;
 	//const real dt = .01;
 	//sim.update(dt);
 
-
+	cout << "done!" << endl;
 }
 
