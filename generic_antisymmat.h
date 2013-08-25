@@ -36,14 +36,14 @@ struct antisymmat_accessor {
 generic_antisymmat(i,j) == -generic_antisymmat(j,i)
 therefore generic_antisymmat(i,i) == 0
 */
-template<int dim_, typename type_, typename scalar_type_, typename child>
-struct generic_antisymmat : public generic_dense_matrix<dim_, type_, scalar_type_, child, dim_ * (dim_ - 1) / 2> {
-	typedef generic_dense_matrix<dim_, type_, scalar_type_, child, dim_ * (dim_ - 1) / 2> parent;
+template<typename type_, int dim_, typename scalar_type_, typename child>
+struct generic_antisymmat : public generic_dense_matrix<type_, dim_, scalar_type_, child, dim_ * (dim_ - 1) / 2> {
+	typedef generic_dense_matrix<type_, dim_, scalar_type_, child, dim_ * (dim_ - 1) / 2> parent;
 	
-	enum { dim = parent::dim };
-	enum { size = parent::size };
 	typedef typename parent::type type;
+	enum { dim = parent::dim };
 	typedef typename parent::scalar_type scalar_type;
+	enum { size = parent::size };
 	typedef antisymmat_accessor<type_, child> accessor;
 
 	generic_antisymmat() : parent() {}

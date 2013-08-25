@@ -4,12 +4,12 @@
 
 //rank is templated, but dim is not as it varies per-rank
 //so this is dynamically-sized
-template<int rank_, typename type_>
+template<typename type_, int rank_>
 struct Grid {
-	enum { rank = rank_ };
 	typedef type_ type;
+	enum { rank = rank_ };
 
-	typedef ::vector<rank,int> deref_type;
+	typedef vector<int,rank> deref_type;
 
 	type *v;
 	deref_type size;

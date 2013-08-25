@@ -33,8 +33,8 @@ struct tensor_stats<scalar_type_, index_, args...> {
 	
 	//get an element in a tensor
 	template<int total_rank, int offset>
-	static scalar_type &get(body_type &body, const ::vector<total_rank,int> &deref) {
-		::vector<index::rank,int> subderef;
+	static scalar_type &get(body_type &body, const vector<int,total_rank> &deref) {
+		vector<int,index::rank> subderef;
 		for (int i = 0; i < index::rank; ++i) {
 			subderef(i) = deref(i + offset);
 		}
@@ -42,8 +42,8 @@ struct tensor_stats<scalar_type_, index_, args...> {
 	}
 
 	template<int total_rank, int offset>
-	static const scalar_type &get_const(const body_type &body, const ::vector<total_rank,int> &deref) {
-		::vector<index::rank,int> subderef;
+	static const scalar_type &get_const(const body_type &body, const vector<int,total_rank> &deref) {
+		vector<int,index::rank> subderef;
 		for (int i = 0; i < index::rank; ++i) {
 			subderef(i) = deref(i + offset);
 		}
@@ -52,7 +52,7 @@ struct tensor_stats<scalar_type_, index_, args...> {
 
 	//get the size of the tensor
 	template<int total_rank, int offset>
-	static void assign_size(::vector<total_rank,int> &s) {
+	static void assign_size(vector<int,total_rank> &s) {
 		for (int i = offset; i < offset + index::rank; ++i) {
 			s.v[i] = index::dim;
 		}
@@ -74,8 +74,8 @@ struct tensor_stats<scalar_type_, index_> {
 	
 	//get an element in a tensor
 	template<int total_rank, int offset>
-	static scalar_type &get(body_type &body, const ::vector<total_rank,int> &deref) {
-		::vector<index::rank,int> subderef;
+	static scalar_type &get(body_type &body, const vector<int,total_rank> &deref) {
+		vector<int,index::rank> subderef;
 		for (int i = 0; i < index::rank; ++i) {
 			subderef(i) = deref(i + offset);
 		}
@@ -83,8 +83,8 @@ struct tensor_stats<scalar_type_, index_> {
 	}
 
 	template<int total_rank, int offset>
-	static const scalar_type &get_const(const body_type &body, const ::vector<total_rank,int> &deref) {
-		::vector<index::rank,int> subderef;
+	static const scalar_type &get_const(const body_type &body, const vector<int,total_rank> &deref) {
+		vector<int,index::rank> subderef;
 		for (int i = 0; i < index::rank; ++i) {
 			subderef(i) = deref(i + offset);
 		}
@@ -93,7 +93,7 @@ struct tensor_stats<scalar_type_, index_> {
 
 	//get the size of the tensor
 	template<int total_rank, int offset>
-	static void assign_size(::vector<total_rank,int> &s) {
+	static void assign_size(vector<int,total_rank> &s) {
 		for (int i = offset; i < offset + index::rank; ++i) {
 			s.v[i] = index::dim;
 		}
@@ -114,13 +114,13 @@ struct tensor_stats<scalar_type_> {
 		//get an element in a tensor
 	
 	template<int total_rank, int offset>
-	static scalar_type &get(body_type &body, const ::vector<total_rank,int> &deref) {}
+	static scalar_type &get(body_type &body, const vector<int,total_rank> &deref) {}
 	
 	template<int total_rank, int offset>
-	static const scalar_type &get_const(const body_type &body, const ::vector<total_rank,int> &deref) {}
+	static const scalar_type &get_const(const body_type &body, const vector<int,total_rank> &deref) {}
 	
 	template<int total_rank, int offset>
-	static void assign_size(::vector<total_rank,int> &s) {}
+	static void assign_size(vector<int,total_rank> &s) {}
 };
 
 /*
@@ -150,7 +150,7 @@ struct tensor {
 	
 	enum { rank = tensor_stats::rank };
 	
-	typedef ::vector<rank,int> deref_type;
+	typedef vector<int,rank> deref_type;
 
 	tensor() {}
 	tensor(const body_type &body_) : body(body_) {}
@@ -172,12 +172,12 @@ struct tensor {
 	typename tensor_stats::inner_type::body_type &operator()(int i) { return body(i); }
 	const typename tensor_stats::inner_type::body_type &operator()(int i) const { return body(i); }
 	//...and I haven't implemented these yet ...
-	type &operator()(int i, int j) { return tensor_stats::template get<2,0>(body, ::vector<2,int>(i, j)); }
-	const type &operator()(int i, int j) const { return tensor_stats::template get_const<2,0>(body, ::vector<2,int>(i, j)); }
-	type &operator()(int i, int j, int k) { return tensor_stats::template get<3,0>(body, ::vector<3,int>(i, j, k)); }
-	const type &operator()(int i, int j, int k) const { return tensor_stats::template get_const<3,0>(body, ::vector<3,int>(i, j, k)); }
-	type &operator()(int i, int j, int k, int l) { return tensor_stats::template get<4,0>(body, ::vector<4,int>(i, j, k, l)); }
-	const type &operator()(int i, int j, int k, int l) const { return tensor_stats::template get_const<4,0>(body, ::vector<4,int>(i, j, k, l)); }
+	type &operator()(int i, int j) { return tensor_stats::template get<2,0>(body, vector<int,2>(i, j)); }
+	const type &operator()(int i, int j) const { return tensor_stats::template get_const<2,0>(body, vector<int,2>(i, j)); }
+	type &operator()(int i, int j, int k) { return tensor_stats::template get<3,0>(body, vector<int,3>(i, j, k)); }
+	const type &operator()(int i, int j, int k) const { return tensor_stats::template get_const<3,0>(body, vector<int,3>(i, j, k)); }
+	type &operator()(int i, int j, int k, int l) { return tensor_stats::template get<4,0>(body, vector<int,4>(i, j, k, l)); }
+	const type &operator()(int i, int j, int k, int l) const { return tensor_stats::template get_const<4,0>(body, vector<int,4>(i, j, k, l)); }
 	
 	type &operator()(const deref_type &deref) { return tensor_stats::template get<rank,0>(body, deref); }
 	const type &operator()(const deref_type &deref) const { return tensor_stats::template get_const<rank,0>(body, deref); }
@@ -257,7 +257,7 @@ std::ostream &operator<<(std::ostream &o, tensor<type, args...> &t) {
 	enum { rank = tensor::rank };
 	const char *empty = "";
 	const char *sep = ", ";
-	vector<rank, const char *> seps(empty);
+	vector<const char *,rank> seps(empty);
 	for (iterator i = t.begin(); i != t.end(); ++i) {
 		for (int j = 0; j < rank; ++j) {
 			if (i.index(j) == 0) {

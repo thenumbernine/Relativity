@@ -6,12 +6,12 @@
 /*
 adds int-based indexing and vector-vector ops to the array ops
 */
-template<int size_, typename type_, typename scalar_type_, typename child>
-struct generic_vector : public generic_array<size_, type_, scalar_type_, child> {
-	typedef generic_array<size_, type_, scalar_type_, child> parent;
+template<typename type_, int size_, typename scalar_type_, typename child>
+struct generic_vector : public generic_array<type_, size_, scalar_type_, child> {
+	typedef generic_array<type_, size_, scalar_type_, child> parent;
 
-	enum { size = parent::size };
 	typedef typename parent::type type;
+	enum { size = parent::size };
 	typedef typename parent::scalar_type scalar_type;
 
 	//inherited constructors

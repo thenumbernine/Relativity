@@ -5,14 +5,14 @@
 /*
 generic_symmat(i,j) == generic_symmat(j,i)
 */
-template<int dim_, typename type_, typename scalar_type_, typename child>
-struct generic_symmat : public generic_dense_matrix<dim_, type_, scalar_type_, child, dim_ * (dim_ + 1) / 2> {
-	typedef generic_dense_matrix<dim_, type_, scalar_type_, child, dim_ * (dim_ + 1) / 2> parent;
+template<typename type_, int dim_, typename scalar_type_, typename child>
+struct generic_symmat : public generic_dense_matrix<type_, dim_, scalar_type_, child, dim_ * (dim_ + 1) / 2> {
+	typedef generic_dense_matrix<type_, dim_, scalar_type_, child, dim_ * (dim_ + 1) / 2> parent;
 	
-	enum { dim = parent::dim };
-	enum { size = parent::size };
 	typedef typename parent::type type;
+	enum { dim = parent::dim };
 	typedef typename parent::scalar_type scalar_type;
+	enum { size = parent::size };
 
 	generic_symmat() : parent() {}
 	generic_symmat(const child &a) : parent(a) {}

@@ -38,8 +38,8 @@ struct symmetric {
 	enum { rank = index1::rank + index2::rank };
 	
 	template<typename inner_type, typename scalar_type>
-	struct body : public generic_symmat<index1::dim, inner_type, scalar_type, body<inner_type, scalar_type>> {
-		typedef generic_symmat<index1::dim, inner_type, scalar_type, body<inner_type, scalar_type>> parent;
+	struct body : public generic_symmat<inner_type, index1::dim, scalar_type, body<inner_type, scalar_type>> {
+		typedef generic_symmat<inner_type, index1::dim, scalar_type, body<inner_type, scalar_type>> parent;
 		body() : parent() {}
 		body(const body &b) : parent(b) {}
 		body(const inner_type &t) : parent(t) {}
@@ -53,8 +53,8 @@ struct antisymmetric {
 	enum { rank = index1::rank + index2::rank };
 
 	template<typename inner_type, typename scalar_type>
-	struct body : public generic_antisymmat<index1::dim, inner_type, scalar_type, body<inner_type, scalar_type>> {
-		typedef generic_antisymmat<index1::dim, inner_type, scalar_type, body<inner_type, scalar_type>> parent;
+	struct body : public generic_antisymmat<inner_type, index1::dim, scalar_type, body<inner_type, scalar_type>> {
+		typedef generic_antisymmat<inner_type, index1::dim, scalar_type, body<inner_type, scalar_type>> parent;
 		body() : parent() {}
 		body(const body &b) : parent(b) {}
 		body(const inner_type &t) : parent(t) {}

@@ -10,22 +10,22 @@
 #include "invert.h"
 #include "derivative.h"
 
-template<int dim_, typename real_>
+template<typename real_, int dim_>
 struct ADMFormalism {
-	enum { dim = dim_ };
 	typedef real_ real;
+	enum { dim = dim_ };
 
 		//cell types
 
-	typedef ::Cell<dim,real> Cell;
-	typedef ::Grid<dim,Cell> Grid;
+	typedef ::Cell<real,dim> Cell;
+	typedef ::Grid<Cell,dim> Grid;
 	typedef typename Grid::iterator GridIter;
 
 		//statically-sized mathematical types
 		//(pull from cell where you can)
 	
 	//used for indexes
-	typedef ::vector<dim,int> deref_type;	
+	typedef ::vector<int,dim> deref_type;	
 	
 	typedef typename Cell::tensor_u tensor_u;
 	typedef typename Cell::tensor_l tensor_l;
@@ -37,7 +37,7 @@ struct ADMFormalism {
 	typedef ::tensor<real,upper<dim>,lower<dim>> tensor_ul;
 	typedef ::tensor<real,lower<dim>,upper<dim>> tensor_lu;
 	typedef ::tensor<real,symmetric<lower<dim>,lower<dim>>,symmetric<lower<dim>,lower<dim>>> tensor_slsl;
-	typedef ::vector<dim,real> vector;
+	typedef ::vector<real,dim> vector;
 
 	Grid cellHistory0, cellHistory1;
 	Grid *readCells, *writeCells;
@@ -301,8 +301,8 @@ struct ADMFormalism {
 int main() {
 	typedef double real;
 	enum { dim = 2 };
-	typedef ::vector<dim,real> vector;
-	typedef ::ADMFormalism<dim,real> ADMFormalism;
+	typedef ::vector<real,dim> vector;
+	typedef ::ADMFormalism<real,dim> ADMFormalism;
 	typedef ADMFormalism::deref_type deref_type;
 
 	//universal constants

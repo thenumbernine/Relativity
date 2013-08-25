@@ -4,15 +4,15 @@
 
 /*
 the 'parent' curious pattern whatever for generic_vector and generic_matrix
-	size_ is the size of the dense vector
 	type_ is the type of each element
+	size_ is the size of the dense vector
 	scalar_type_ is the type of the innermost nested scalars (in the event that elements are generic_array's themselves)
 	child is the curious reoccurring chlid class that uses this
 */
-template<int size_, typename type_, typename scalar_type_, typename child>
+template<typename type_, int size_, typename scalar_type_, typename child>
 struct generic_array {
-	enum { size = size_ };
 	typedef type_ type;
+	enum { size = size_ };
 	typedef scalar_type_ scalar_type;
 
 	type v[size];

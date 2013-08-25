@@ -6,12 +6,12 @@
 /*
 vector class for fixed-size templated dimension (i.e. size) and type
 */
-template<int dim_, typename type_>
-struct vector : public generic_vector<dim_, type_, type_, vector<dim_, type_> > {
-	typedef generic_vector<dim_, type_, type_, vector<dim_, type_> > parent;
+template<typename type_, int dim_>
+struct vector : public generic_vector<type_, dim_, type_, vector<type_, dim_> > {
+	typedef generic_vector<type_, dim_, type_, vector<type_, dim_> > parent;
 	
-	enum { dim = parent::size };	//size is the size of the static vector, which coincides with the dim in the vector class (not so in matrix classes)
 	typedef typename parent::type type;
+	enum { dim = parent::size };	//size is the size of the static vector, which coincides with the dim in the vector class (not so in matrix classes)
 	typedef typename parent::scalar_type scalar_type;
 
 	//inherited constructors
@@ -23,8 +23,8 @@ struct vector : public generic_vector<dim_, type_, type_, vector<dim_, type_> > 
 	vector(const type &x, const type &y, const type &z, const type &w) : parent(x,y,z,w) {}
 
 	template<typename type2>
-	operator vector<dim,type2>() const {
-		vector<dim,type2> result;
+	operator vector<type2,dim>() const {
+		vector<type2,dim> result;
 		for (int i = 0; i < dim; ++i) {
 			result.v[i] = (type2)parent::v[i];
 		}
@@ -32,8 +32,8 @@ struct vector : public generic_vector<dim_, type_, type_, vector<dim_, type_> > 
 	}
 };
 
-template<int dim, typename type>
-std::ostream &operator<<(std::ostream &o, const vector<dim,type> &t) {
+template<typename type, int dim>
+std::ostream &operator<<(std::ostream &o, const vector<type,dim> &t) {
 	const char *sep = "";
 	o << "(";
 	for (int i = 0; i < t.dim; ++i) {

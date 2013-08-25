@@ -11,14 +11,14 @@ struct generic_rank1 {
 	//now i need a specialization of this for when 'type' is a primitive
 	// in such cases, accessing nested members results in compiler errors
 	template<typename inner_type, typename scalar_type>
-	struct body : public generic_vector<dim, inner_type, scalar_type, body<inner_type, scalar_type>> {
-		typedef generic_vector<dim, inner_type, scalar_type, body<inner_type, scalar_type>> parent;
+	struct body : public generic_vector<inner_type, dim, scalar_type, body<inner_type, scalar_type>> {
+		typedef generic_vector<inner_type, dim, scalar_type, body<inner_type, scalar_type>> parent;
 		body() : parent() {}
 		body(const body &b) : parent(b) {}
 		body(const inner_type &t) : parent(t) {}
 
-		inner_type &operator()(const vector<1,int> &deref) { return parent::v[deref(0)]; }
-		const inner_type &operator()(const vector<1,int> &deref) const { return parent::v[deref(0)]; }
+		inner_type &operator()(const vector<int,1> &deref) { return parent::v[deref(0)]; }
+		const inner_type &operator()(const vector<int,1> &deref) const { return parent::v[deref(0)]; }
 	};
 };
 

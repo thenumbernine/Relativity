@@ -3,7 +3,7 @@
 #include "vector.h"
 #include "tensor.h"
 
-template<int dim_, typename real_>
+template<typename real_, int dim_>
 struct Cell {
 	typedef real_ real;
 	enum { dim = dim_ };

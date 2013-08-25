@@ -10,8 +10,8 @@ partial derivative index operator
 (partial derivative alone one coordinate)
 */
 template<int dim, typename real, typename T>
-T partialDerivativeCoordinate(Grid<dim, Cell<dim,real>> &cells, T Cell<dim,real>::*field, const vector<dim,real> &dx, const vector<dim,int> &index, int k) {
-	typedef vector<dim,int> deref_type;
+T partialDerivativeCoordinate(Grid<Cell<real,dim>,dim> &cells, T Cell<real,dim>::*field, const vector<real,dim> &dx, const vector<int,dim> &index, int k) {
+	typedef vector<int,dim> deref_type;
 	deref_type nextIndex = index;
 	deref_type prevIndex = index;
 	nextIndex(k) = std::max(0, std::min(cells.size(k)-1, index(k) + 1));
@@ -38,14 +38,14 @@ struct partialDerivativeClass<
 >{
 	typedef tensor<real, args...> input_type;
 	typedef tensor<real, lower<dim>, args...> output_type;
-	typedef ::Cell<dim,real> Cell;
-	typedef ::Grid<dim,Cell> Grid;
+	typedef ::Cell<real,dim> Cell;
+	typedef ::Grid<Cell,dim> Grid;
 	typedef input_type Cell::*cell_field_type;
-	output_type operator()(Grid &cells, cell_field_type field, const vector<dim,real> &dx, const vector<dim,int> &index) {
+	output_type operator()(Grid &cells, cell_field_type field, const vector<real,dim> &dx, const vector<int,dim> &index) {
 		output_type result;
 #if 0	//sub-tensor access: all-at-once
-		vector<dim,int> nextIndex = vector<dim,int>::clamp(index+1, vector<dim,int>(0), size-1);
-		vector<dim,int> prevIndex = vector<dim,int>::clamp(index-1, vector<dim,int>(0), size-1);
+		vector<int,dim> nextIndex = vector<int,dim>::clamp(index+1, vector<int,dim>(0), size-1);
+		vector<int,dim> prevIndex = vector<int,dim>::clamp(index-1, vector<int,dim>(0), size-1);
 		const input_type &nextT = cells(nextIndex).*field;
 		const input_type &prevT = cells(prevIndex).*field;
 		for (int k = 0; k < dim; ++k) {
@@ -58,8 +58,8 @@ struct partialDerivativeClass<
 #else	//per-index.
 		//I got rid of sub-tensor accessor.
 		//not sure if it is the right thing to expose, and covariant diffs have to march through indexes anyways.
-		vector<dim,int> nextIndex = vector<dim,int>::clamp(index+1, vector<dim,int>(0), size-1);
-		vector<dim,int> prevIndex = vector<dim,int>::clamp(index-1, vector<dim,int>(0), size-1);
+		vector<int,dim> nextIndex = vector<int,dim>::clamp(index+1, vector<int,dim>(0), size-1);
+		vector<int,dim> prevIndex = vector<int,dim>::clamp(index-1, vector<int,dim>(0), size-1);
 		//these should be const-ref, but that'd mean making a separate const-access tensor =P
 		input_type &nextT = cells(nextIndex).*field;
 		input_type &prevT = cells(prevIndex).*field;
@@ -89,10 +89,10 @@ struct partialDerivativeClass<
 >{
 	typedef real input_type;
 	typedef tensor<real, lower<dim>> output_type;
-	typedef ::Cell<dim,real> Cell;
-	typedef ::Grid<dim,Cell> Grid;
+	typedef ::Cell<real,dim> Cell;
+	typedef ::Grid<Cell,dim> Grid;
 	typedef input_type Cell::*cell_field_type;
-	output_type operator()(Grid &cells, cell_field_type field, const vector<dim,real> &dx, const vector<dim,int> &index) {
+	output_type operator()(Grid &cells, cell_field_type field, const vector<real,dim> &dx, const vector<int,dim> &index) {
 		output_type result;
 		for (int k = 0; k < dim; ++k) {
 			result(k) = partialDerivativeCoordinate(cells, field, dx, index, k);
@@ -104,10 +104,10 @@ struct partialDerivativeClass<
 template<int dim, typename real, typename input_type>
 typename partialDerivativeClass<dim,real,input_type>::output_type
 partialDerivative(
-	Grid<dim,Cell<dim,real>> &cells, 
-	input_type Cell<dim,real>::* field, 
-	const vector<dim,real> &dx, 
-	const vector<dim,int> &index) 
+	Grid<Cell<real,dim>,dim> &cells, 
+	input_type Cell<real,dim>::* field, 
+	const vector<real,dim> &dx, 
+	const vector<int,dim> &index) 
 {
 	return partialDerivativeClass<dim,real,input_type>()(cells, field, dx, index);
 }
@@ -133,10 +133,10 @@ struct covariantDerivativeClass<
 >{
 	typedef real input_type;
 	typedef tensor<real, lower<dim>> output_type;
-	typedef ::Cell<dim,real> Cell;
-	typedef ::Grid<dim,Cell> Grid;
+	typedef ::Cell<real,dim> Cell;
+	typedef ::Grid<Cell,dim> Grid;
 	typedef input_type Cell::*cell_field_type;
-	output_type operator()(Grid &cells, cell_field_type field, const vector<dim,real> &dx, const vector<dim,int> &index) {
+	output_type operator()(Grid &cells, cell_field_type field, const vector<real,dim> &dx, const vector<int,dim> &index) {
 		return partialDerivative(cells, field, dx, index);
 	}
 };
@@ -150,10 +150,10 @@ struct covariantDerivativeClass<
 >{
 	typedef tensor<real, upper<dim>> input_type;
 	typedef tensor<real, lower<dim>, upper<dim>> output_type;
-	typedef ::Cell<dim,real> Cell;
-	typedef ::Grid<dim,Cell> Grid;
+	typedef ::Cell<real,dim> Cell;
+	typedef ::Grid<Cell,dim> Grid;
 	typedef input_type Cell::*cell_field_type;
-	output_type operator()(Grid &cells, cell_field_type field, const vector<dim,real> &dx, const vector<dim,int> &index) {
+	output_type operator()(Grid &cells, cell_field_type field, const vector<real,dim> &dx, const vector<int,dim> &index) {
 		output_type result = partialDerivative(cells, field, dx, index);
 		for (int k = 0; k < dim; ++k) {
 			for (int i = 0; i < dim; ++i) {
@@ -174,10 +174,10 @@ struct covariantDerivativeClass<
 >{
 	typedef tensor<real, lower<dim>> input_type;
 	typedef tensor<real, lower<dim>, lower<dim>> output_type;
-	typedef ::Cell<dim,real> Cell;
-	typedef ::Grid<dim,Cell> Grid;
+	typedef ::Cell<real,dim> Cell;
+	typedef ::Grid<Cell,dim> Grid;
 	typedef input_type Cell::*cell_field_type;
-	output_type operator()(Grid &cells, cell_field_type field, const vector<dim,real> &dx, const vector<dim,int> &index) {
+	output_type operator()(Grid &cells, cell_field_type field, const vector<real,dim> &dx, const vector<int,dim> &index) {
 		output_type result = partialDerivative(cells, field, dx, index);
 		Cell &cell = cells(index);
 		for (int k = 0; k < dim; ++k) {
@@ -192,7 +192,7 @@ struct covariantDerivativeClass<
 };
 
 template<int dim, typename real, typename input_type>
-typename covariantDerivativeClass<dim,real,input_type>::output_type covariantDerivative(Grid<dim, Cell<dim,real>> &cells, input_type Cell<dim,real>::*field, const vector<dim,real> &dx, const vector<dim,int> &index) {
+typename covariantDerivativeClass<dim,real,input_type>::output_type covariantDerivative(Grid<Cell<real,dim>,dim> &cells, input_type Cell<real,dim>::*field, const vector<real,dim> &dx, const vector<int,dim> &index) {
 	return covariantDerivativeClass<dim,real,input_type>()(cells, field, dx, index);
 }
 
