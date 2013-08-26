@@ -141,6 +141,13 @@ void black_hole() {
 
 		real &alpha = cell.alpha;
 		alpha = sqrt(betaNorm - 1. - 2. * H);
+
+		tensor_sl &K_ll = cell.K_ll;
+		for (int i = 0; i < dim; ++i) {
+			for (int j = 0; j <= i; ++j) {
+				K_ll(i,j) = 2. * H * a / r * (eta(i,j) - (2. + H) * l_l(i) * l_l(j));
+			}
+		}
 		
 		real sunMassOver2Radius = sunMassInM / (2. * sunRadiusInM);
 		real oneMinusSunMassOver2Radius = 1. - sunMassOver2Radius;

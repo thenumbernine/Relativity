@@ -33,6 +33,8 @@ TODO
 	the two are not one-to-one.  symmetric matrixes have n*n read indexes but only n*(n+1)/2 variables capable of writing. antisymmetric have n*(n-1)/2.
 	doing this involves using the current dimension-per-rank-based method for read iterator bounds, but write iterators would have delegate to each index
 	the responsibility for incrementing their own offset, size, and amount (rank) of indexes in the iteration.
+- index notation expressions via expression templates.  no more for-loops.  simply "beta_l(i) = gamma_ll(i,j) * beta_u(j);"
+	this depends on the separate write iterators.  I've already got this in my Lua tensor and symbolic math libraries.  In Lua.
 
 Conventions & Notations:
 
@@ -212,8 +214,7 @@ S^a_a = g^ab S_ab
 
 Kerr-Schild coordinates in terms of lapse and shift
 (I'm sure someone else has done this already -- and done a better job)
-I'm getting this from Alcubierre p.56, 
-but if you set the charge and angular momentum to 0 then it matches what is in "Numerical Relativity" p.51
+I'm getting this from Alcubierre p.56 and "Numerical Relativity" p.52
 
 Boyer-Lindquist coordinates:
 ds^2 = -(1 - 2 M r / rho^2) - 4 M a r sin(theta)^2 / rho^2 dt dphi + rho^2 / delta dr^2 + rho^2 dtheta^2 + sin(theta)^2 / rho^2 ((r^2 + a^2)^2 - a^2 delta sin(theta)^2) dphi^2 
@@ -227,6 +228,7 @@ Kerr-Schild coordinates:
 ds^2 = (eta_uv + 2 H l_u l_v) dx^u dx^v
 H = (r M - Q^2 / 2) / (r^2 + a^2 z^2/r^2)
 l_u = (1, (r x + a y) / (r^2 + a^2), (r y - a x) / (r^2 + a^2), z/r)
+eta_uv l^u l^v = g_ab l^a l^b = 0	<- null for both metrics
 a = J / M = angular momentum density
 M = mass
 J = angular momentum
@@ -246,8 +248,11 @@ g_ij = gamma_ij
 
 gamma_ij = eta_ij + (2 - eta_ij) H l_i l_j
 beta_i = H l_i 
-	<=> beta^i = H l^i = H gamma^ij l_j
+	<=> beta^i gamma_ij = H l_j
+	<=> beta^i = H l_j gamma^ji
 alpha^2 - beta^k beta_k = -g_tt = -1 - 2 H
 	<=> alpha^2 = beta^k beta_k - 1 - 2 H
 	<=> alpha = sqrt(beta^k beta_k - 1 - 2 H)
 
+and to boot ("Numerical Relativity" p.51):
+K_ij = 2 H alpha / r (eta_ij - (2 + H) l_i l_j)
