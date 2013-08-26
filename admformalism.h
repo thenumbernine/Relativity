@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <math.h>
 
+#include <iostream>
+
 #include "vector.h"
 #include "tensor.h"
 
@@ -59,8 +61,13 @@ struct ADMFormalism {
 	//dx = range / size
 	vector dx;
 
+	//what a relative notion...
+	//intended for use with output matching up iteration slices 
+	real time;
+
 	ADMFormalism(const vector &min_, const vector &max_, const deref_type &size_)
-	:	size(size_),
+	:	time(0),
+		size(size_),
 		min(min_),
 		max(max_),
 		range(max_ - min_),
@@ -72,8 +79,14 @@ struct ADMFormalism {
 		writeCells(&cellHistory1)
 	{}
 
+	vector coordForIndex(const deref_type &index) const {
+		return min + ((vector)index + .5) * dx;
+	}
+
 	//iteration
 	void update(real dt) {
+		time += dt;
+
 		GridIter iter;
 		
 		//first compute and store aux values that will be subsequently used for partial differentiation
@@ -298,6 +311,88 @@ struct ADMFormalism {
 		//do something more clever if we ever get any more than 2 histories
 		std::swap(readCells, writeCells);
 	}
-};
 
+	void outputHeaders(std::ostream &o) {
+		static const char *coordNames[] = {"x", "y", "z"};
+
+		o << "t\t";
+	
+		for (int i = 0; i < dim; ++i) {
+			o << coordNames[i] << "\t";
+		}
+
+		o << "alpha\t";
+		
+		for (int i = 0; i < dim; ++i) {
+			o << "beta^" << coordNames[i] << "\t";
+		}
+
+		for (int i = 0; i < dim; ++i) {
+			for (int j = 0; j <= i; ++j) {
+				o << "gamma_" << coordNames[i] << coordNames[j] << "\t";
+			}
+		}
+
+		for (int i = 0; i < dim; ++i) {
+			for (int j = 0; j <= i; ++j) {
+				o << "K_" << coordNames[i] << coordNames[j] << "\t";
+			}
+		}
+
+		o << std::endl;
+	}
+
+	void outputLine(std::ostream &o) {
+	
+		//typedef typename Grid::const_iterator ConstGridIter;
+		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			const Cell &cell = *iter;
+		
+			//time
+			o << time << "\t";
+
+			//space
+			//this can't be right.  don't coordinates move with the shift functions / lie dragging?
+			//should I initialize these and iterate them as well?
+			vector x = coordForIndex(iter.index);
+			for (int i = 0; i < dim; ++i) {
+				o << x(i) << "\t";
+			}
+
+			//alpha
+			o << cell.alpha << "\t";
+			
+			//beta^i
+			for (int i = 0; i < dim; ++i) {
+				o << cell.beta_u(i) << "\t";
+			}
+
+			//gamma_ij
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					o << cell.gamma_ll(i,j) << "\t";
+				}
+			}
+		
+			//K_ij
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					o << cell.K_ll(i,j) << "\t";
+				}
+			}
+		
+			//K
+
+			//R_ij
+
+			//R
+
+			//rho
+
+			//S_ij
+		
+			o << std::endl;
+		}
+	}
+};
 

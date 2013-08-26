@@ -1,5 +1,6 @@
 #include "admformalism.h"
 
+#include <fstream>
 #include <iostream>
 
 using namespace std;
@@ -42,7 +43,8 @@ void sun () {
 	vector center = (max + min) * .5;
 	for (ADMFormalism::GridIter iter = sim.readCells->begin(); iter != sim.readCells->end(); ++iter) {
 		ADMFormalism::Cell &cell = *iter;
-		real r = min.length(min + ((vector)iter.index + .5) * sim.dx - center);
+		vector v = sim.coordForIndex(iter.index) - center;
+		real r = vector::length(v);
 		real sunMassOver2Radius = sunMassInM / (2. * r);
 		real oneMinusSunMassOver2Radius = 1. - sunMassOver2Radius;
 		real onePlusSunMassOver2Radius = 1. + sunMassOver2Radius;
@@ -99,7 +101,7 @@ void black_hole() {
 	vector center = (max + min) * .5;
 	for (ADMFormalism::GridIter iter = sim.readCells->begin(); iter != sim.readCells->end(); ++iter) {
 		ADMFormalism::Cell &cell = *iter;
-		vector v = min + ((vector)iter.index + .5) * sim.dx - center;
+		vector v = sim.coordForIndex(iter.index) - center;
 		real r = vector::length(v); 
 		real x = v(0);
 		real y = v(1);
@@ -158,6 +160,10 @@ void black_hole() {
 			cell.gamma_ll(i,i) = onePlusSunMassOver2RadiusSq * onePlusSunMassOver2RadiusSq;
 		}
 	}
+
+	ofstream f("black_hole.txt");
+	sim.outputHeaders(f);
+	sim.outputLine(f);
 
 	//update
 	//cout << "iterating..." << endl;

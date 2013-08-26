@@ -68,6 +68,40 @@ struct Grid {
 		i.index(rank-1) = size(rank-1);
 		return i;
 	}
+	
+	struct const_iterator {
+		const Grid *parent;
+		deref_type index;
+		
+		const_iterator() : parent(NULL) {}
+		const_iterator(const Grid *parent_) : parent(parent_) {}
+		const_iterator(const const_iterator &iter) : parent(iter.parent), index(iter.index) {}
+		
+		bool operator==(const const_iterator &b) const { return index == b.index; }
+		bool operator!=(const const_iterator &b) const { return index != b.index; }
+		
+		const_iterator &operator++() {
+			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
+				++index(i);
+				if (index(i) < parent->size(i)) break;
+				if (i < rank-1) index(i) = 0;
+			}
+			return *this;
+		}
+
+		typename Grid::type &operator*() const { return (*parent)(index); }
+	};
+
+	const_iterator begin() const {
+		const_iterator i(this);
+		return i;
+	}
+	const_iterator end() const {
+		const_iterator i(this);
+		i.index(rank-1) = size(rank-1);
+		return i;
+	}
+
 
 };
 
