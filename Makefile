@@ -1,6 +1,7 @@
 TARGETDIR := /data/local/bin/
 
 DEPS :=\
+	admformalism.h \
 	cell.h \
 	derivative.h \
 	generic_antisymmat.h \
@@ -40,5 +41,4 @@ clean:
 	-rm test
 
 .PHONY: all install install_test run run_test clean
-
 

@@ -3,12 +3,11 @@
 #include "vector.h"
 
 //rank is templated, but dim is not as it varies per-rank
-//so this is dynamically-sized
+//so this is dynamically-sized tensor
 template<typename type_, int rank_>
 struct Grid {
 	typedef type_ type;
 	enum { rank = rank_ };
-
 	typedef vector<int,rank> deref_type;
 
 	type *v;
@@ -24,6 +23,17 @@ struct Grid {
 		for (int i = 1; i < rank; ++i) {
 			step(i) = step(i-1) * size(i-1);
 		}
+	}
+
+	type &operator()(const deref_type &deref) { 
+		int flat_deref = deref_type::dot(deref, step);
+		assert(flat_deref >= 0 && flat_deref < size.volume());
+		return v[flat_deref];
+	}
+	const type &operator()(const deref_type &deref) const { 
+		int flat_deref = deref_type::dot(deref, step);
+		assert(flat_deref >= 0 && flat_deref < size.volume());
+		return v[flat_deref];
 	}
 
 	struct iterator {
@@ -46,7 +56,7 @@ struct Grid {
 			return *this;
 		}
 
-		Grid::type &operator*() const { return (*parent)(index); }
+		typename Grid::type &operator*() const { return (*parent)(index); }
 	};
 
 	iterator begin() {
@@ -59,15 +69,5 @@ struct Grid {
 		return i;
 	}
 
-	type &operator()(const deref_type &deref) { 
-		int flat_deref = deref_type::dot(deref, step);
-		assert(flat_deref >= 0 && flat_deref < size.volume());
-		return v[flat_deref];
-	}
-	const type &operator()(const deref_type &deref) const { 
-		int flat_deref = deref_type::dot(deref, step);
-		assert(flat_deref >= 0 && flat_deref < size.volume());
-		return v[flat_deref];
-	}
 };
 

@@ -44,20 +44,22 @@ int test_tensors() {
 		}
 	}
 
-#if 0	//not working yet
 	typedef tensor<real, 
 		antisymmetric<lower<2>, lower<2>>,
 		antisymmetric<lower<2>, lower<2>>
 	> riemann_tensor;
+	typedef riemann_tensor::tensor_stats riemann_tensor_stats;
+	typedef riemann_tensor_stats::inner_type riemann_tensor_stats_inner_type;
+	typedef riemann_tensor_stats_inner_type::body_type riemann_tensor_stats_inner_body_type;
 	riemann_tensor r;
 	cout << "size " << r.size() << endl;
 	cout << "rank " << r.rank << endl;
 	int e = 0;
 	for (int i = 0; i < 2; ++i) {
-		for (int j = 0; j < 2; ++j) {
+		for (int j = 0; j < i; ++j) {
 			for (int k = 0; k < 2; ++k) {
-				for (int l = 0; l < 2; ++l) {
-					r.body(i,j)(k,l) = ++e;
+				for (int l = 0; l < k; ++l) {
+					((riemann_tensor_stats_inner_body_type&)(r.body(i,j)))(k,l) = ++e;
 				}
 			}
 		}
@@ -66,12 +68,11 @@ int test_tensors() {
 		for (int j = 0; j < 2; ++j) {
 			for (int k = 0; k < 2; ++k) {
 				for (int l = 0; l < 2; ++l) {
-					cout << "r_" << i << j << k << l << " = " << r.body(i,j)(k,l) << endl;
+					cout << "r_" << i << j << k << l << " = " << ((riemann_tensor_stats_inner_body_type&)(r.body(i,j)))(k,l) << endl;
 				}
 			}
 		}
 	}
-#endif
 }
 
 int main() {

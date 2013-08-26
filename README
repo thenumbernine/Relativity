@@ -59,8 +59,8 @@ beta^a		= shift (distance within the 3D hypersurface a coordiate is transported 
 
 g_ab 		= ADM representation of 4D metric tensor 
 				= gamma_ab - n_a n_b
-				= ( -alpha^2 + beta^k beta_k	,	beta_j)		<- where beta_j = gamma_ij beta^k
-				  (			beta_i				,	gamma_ij)		\ which is equivalent to beta_j = gamma_aj beta^a since beta^t = 0 after all so we just neglect the timelike component of beta and gamma
+				= ( -alpha^2 + beta^k beta_k	,	beta_j)		<- where beta_j = gamma_ji beta^i
+				  (			beta_i				,	gamma_ij)		\ which is equivalent to beta_j = gamma_ja beta^a since beta^t = 0 after all so we just neglect the timelike component of beta and gamma
 
 g^ab		= contravariant/inverse ADM representation of 4D metric tensor
 				= gamma^ab - n^a n^b
@@ -205,4 +205,49 @@ S^a_a = g^ab S_ab
 	  = gamma^cb gamma_b^d T_cd
 	  = gamma^cd T_cd
 	  = gamma^ij T_ij (since the other gamma^ab components are zero)
+
+
+
+
+
+Kerr-Schild coordinates in terms of lapse and shift
+(I'm sure someone else has done this already -- and done a better job)
+I'm getting this from Alcubierre p.56, 
+but if you set the charge and angular momentum to 0 then it matches what is in "Numerical Relativity" p.51
+
+Boyer-Lindquist coordinates:
+ds^2 = -(1 - 2 M r / rho^2) - 4 M a r sin(theta)^2 / rho^2 dt dphi + rho^2 / delta dr^2 + rho^2 dtheta^2 + sin(theta)^2 / rho^2 ((r^2 + a^2)^2 - a^2 delta sin(theta)^2) dphi^2 
+delta = r^2 - 2 M r + a^2
+rho^2 = r^2 + a^2 cos(theta)^2
+a = J / M
+J = angular momentum
+M = mass
+
+Kerr-Schild coordinates:
+ds^2 = (eta_uv + 2 H l_u l_v) dx^u dx^v
+H = (r M - Q^2 / 2) / (r^2 + a^2 z^2/r^2)
+l_u = (1, (r x + a y) / (r^2 + a^2), (r y - a x) / (r^2 + a^2), z/r)
+a = J / M = angular momentum density
+M = mass
+J = angular momentum
+Q = total electric charge
+
+separating out into like components matching our ADM metric:
+
+g_tt = 1 + 2 H
+g_ti = g_it = H l_i
+g_ij = eta_ij + (2 - eta_ij) H l_i l_j
+
+g_tt = -alpha^2 + beta^k beta_k
+g_ti = g_it = beta_i = gamma_ij beta^j
+g_ij = gamma_ij
+
+...so...
+
+gamma_ij = eta_ij + (2 - eta_ij) H l_i l_j
+beta_i = H l_i 
+	<=> beta^i = H l^i = H gamma^ij l_j
+alpha^2 - beta^k beta_k = -g_tt = -1 - 2 H
+	<=> alpha^2 = beta^k beta_k - 1 - 2 H
+	<=> alpha = sqrt(beta^k beta_k - 1 - 2 H)
 
