@@ -8,7 +8,7 @@ using namespace std;
 namespace Test {
 
 typedef double real;
-enum { dim = 1 };
+enum { dim = 2 };
 enum { res = 100 };
 enum { iters = 100 };
 typedef ::vector<real,dim> vector;
@@ -35,6 +35,38 @@ const real sunRadiusInM = 6.955e+8;
 const real sunVolumeInM3 = 4. / 3. * M_PI * sunRadiusInM * sunRadiusInM * sunRadiusInM;
 const real sunDensityInM_2 = sunMassInKg * metersPerKg / sunVolumeInM3;
 
+template<int dim>
+struct RunClass;
+
+template<>
+struct RunClass<1> {
+	//1D case splot's all time slices together
+	void operator()(ADMFormalism *sim, ostream &f, int numIters) {
+		sim->outputLine(f);
+
+		cout << "iterating..." << endl;
+		const real dt = .01;
+		for (int i = 0; i < numIters; ++i) {
+			sim->update(dt);
+			sim->outputLine(f);
+		}
+	}
+};
+
+template<>
+struct RunClass<2> {
+	//2D case splots the last one
+	void operator()(ADMFormalism *sim, ostream &f, int numIters) {
+		cout << "iterating..." << endl;
+		const real dt = .01;
+		for (int i = 0; i < numIters; ++i) {
+			sim->update(dt);
+		}
+		
+		sim->outputLine(f);
+	}
+};
+
 struct Base {
 	real maxDist;
 	vector min, max, center;
@@ -59,22 +91,13 @@ struct Base {
 		cout << "constructing sim..." << endl;
 		sim = new ADMFormalism(min, max, res);
 	}
-	
+
+	//update
 	virtual void run() {
 		ofstream f(filename().c_str());
-		
 		sim->outputHeaders(f);
-		f << endl;
-		sim->outputLine(f);
 
-		//update
-		cout << "iterating..." << endl;
-		const real dt = .01;
-		for (int i = 0; i < numIters; ++i) {
-			sim->update(dt);
-			f << endl;
-			sim->outputLine(f);
-		}
+		Test::RunClass<dim>()(sim, f, numIters);
 		
 		cout << "done!" << endl;
 	}

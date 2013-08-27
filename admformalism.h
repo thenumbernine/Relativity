@@ -355,6 +355,8 @@ struct ADMFormalism {
 		//typedef typename Grid::const_iterator ConstGridIter;
 		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
 			const Cell &cell = *iter;
+
+			if (iter.index(0) == 0) o << "\n";
 		
 			//time
 			o << time << "\t";
