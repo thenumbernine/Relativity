@@ -124,24 +124,24 @@ struct BlackHole : public Base {
 		for (ADMFormalism::GridIter iter = sim->readCells->begin(); iter != sim->readCells->end(); ++iter) {
 			ADMFormalism::Cell &cell = *iter;
 			vector v = sim->coordForIndex(iter.index) - center;
-			real r = vector::length(v); 
+			real r = vector::length(v);
 			real x = v(0);
-			real y = v(1);
-			real z = v(2);
+			real y = dim > 1 ? v(1) : 0;
+			real z = dim > 2 ? v(2) : 0;
 			real H = (r * M - Q * Q / 2.) / (r * r + a * a * z * z / (r * r));
 			
 			tensor_l l_l;
 			l_l(0) = (r * x + a * y) / (r * r + a * a);
-			l_l(1) = (r * y - a * x) / (r * r + a * a);
-			l_l(2) = z / r;
-			
+			if (dim > 1) l_l(1) = (r * y - a * x) / (r * r + a * a);
+			if (dim > 2) l_l(2) = z / r;
+
 			tensor_sl &gamma_ll = cell.gamma_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					gamma_ll(i,j) = eta(i,j) + (2. - eta(i,j)) * H * l_l(i) * l_l(j);
 				}
 			}
-			
+
 			tensor_su &gamma_uu = cell.gamma_uu;
 			gamma_uu = invert(gamma_ll);
 
@@ -164,22 +164,13 @@ struct BlackHole : public Base {
 			}
 
 			real &alpha = cell.alpha;
-			alpha = sqrt(betaNorm - 1. - 2. * H);
+			alpha = sqrt(1. - 2. * H - betaNorm);
 
 			tensor_sl &K_ll = cell.K_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					K_ll(i,j) = 2. * H * a / r * (eta(i,j) - (2. + H) * l_l(i) * l_l(j));
 				}
-			}
-			
-			real sunMassOver2Radius = sunMassInM / (2. * sunRadiusInM);
-			real oneMinusSunMassOver2Radius = 1. - sunMassOver2Radius;
-			real onePlusSunMassOver2Radius = 1. + sunMassOver2Radius;
-			real onePlusSunMassOver2RadiusSq = onePlusSunMassOver2Radius * onePlusSunMassOver2Radius;
-			cell.alpha = oneMinusSunMassOver2Radius / onePlusSunMassOver2Radius; 
-			for (int i = 0; i < dim; ++i) {
-				cell.gamma_ll(i,i) = onePlusSunMassOver2RadiusSq * onePlusSunMassOver2RadiusSq;
 			}
 		}
 	}

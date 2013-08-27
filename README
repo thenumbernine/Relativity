@@ -236,7 +236,7 @@ Q = total electric charge
 
 separating out into like components matching our ADM metric:
 
-g_tt = 1 + 2 H
+g_tt = -1 + 2 H
 g_ti = g_it = H l_i
 g_ij = eta_ij + (2 - eta_ij) H l_i l_j
 
@@ -250,9 +250,9 @@ gamma_ij = eta_ij + (2 - eta_ij) H l_i l_j
 beta_i = H l_i 
 	<=> beta^i gamma_ij = H l_j
 	<=> beta^i = H l_j gamma^ji
-alpha^2 - beta^k beta_k = -g_tt = -1 - 2 H
-	<=> alpha^2 = beta^k beta_k - 1 - 2 H
-	<=> alpha = sqrt(beta^k beta_k - 1 - 2 H)
+-alpha^2 + beta^k beta_k = g_tt = -1 + 2 H
+	<=> alpha^2 = 1 - 2 H - beta^k beta_k
+	<=> alpha = sqrt(1 - 2 H - beta^k beta_k)
 
 and to boot ("Numerical Relativity" p.51):
 K_ij = 2 H alpha / r (eta_ij - (2 + H) l_i l_j)

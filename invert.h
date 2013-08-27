@@ -11,22 +11,22 @@ for any sort of rank-2 tensor object
 //which means (since rank is an enum rather than a template parameter)
 // that I might have to specialize it per-index
 // (or make use of static conditions)
-template<typename input_type>
-struct determinantClass;
+template<typename InputType>
+struct DeterminantClass;
 
-template<typename real, int dim>
-struct determinantClass<tensor<real, symmetric<lower<dim>, lower<dim>>>> {
-	typedef real output_type;
-	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> input_type;
-	output_type operator()(const input_type &a) const { 
+template<typename real>
+struct DeterminantClass<tensor<real, symmetric<lower<2>, lower<2>>>> {
+	typedef real OutputType;
+	typedef tensor<real, symmetric<lower<2>, lower<2>>> InputType;
+	OutputType operator()(const InputType &a) const { 
 		return a(0,0) * a(1,1) - a(1,0) * a(0,1);
 	}
 };
 
-template<typename input_type>
-typename determinantClass<input_type>::output_type
-determinant(const input_type &a) {
-	return determinantClass<input_type>()(a);
+template<typename InputType>
+typename DeterminantClass<InputType>::OutputType
+determinant(const InputType &a) {
+	return DeterminantClass<InputType>()(a);
 }
 
 //currently only used for (gamma^ij) = (gamma_ij)^-1
@@ -36,15 +36,26 @@ determinant(const input_type &a) {
 //another perk of this is that symmetric needs less operations.
 // though that could be incorporated into a single function if the tensor iterator returned both the index and the dereference, 
 // and we subsequently used the Levi Civita definition in compile-time to calculate the inverse
-template<typename input_type>
-struct invertClass;
+template<typename InputType>
+struct InvertClass;
 
-template<typename real, int dim>
-struct invertClass<tensor<real, symmetric<lower<dim>,lower<dim>>>> {
-	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> input_type;
-	typedef tensor<real, symmetric<upper<dim>, upper<dim>>> output_type;
-	output_type operator()(const input_type &a) const {
-		output_type result;
+template<typename real>
+struct InvertClass<tensor<real, symmetric<lower<1>,lower<1>>>> {
+	typedef tensor<real, symmetric<lower<1>, lower<1>>> InputType;
+	typedef tensor<real, symmetric<upper<1>, upper<1>>> OutputType;
+	OutputType operator()(const InputType &a) const {
+		OutputType result;
+		result(0,0) = 1. / a(0,0);
+		return result;
+	}
+};
+
+template<typename real>
+struct InvertClass<tensor<real, symmetric<lower<2>,lower<2>>>> {
+	typedef tensor<real, symmetric<lower<2>, lower<2>>> InputType;
+	typedef tensor<real, symmetric<upper<2>, upper<2>>> OutputType;
+	OutputType operator()(const InputType &a) const {
+		OutputType result;
 		real det = determinant(a);
 		result(0,0) = a(1,1) / det;
 		result(1,0) = -a(1,0) / det;
@@ -54,8 +65,8 @@ struct invertClass<tensor<real, symmetric<lower<dim>,lower<dim>>>> {
 	}
 };
 
-template<typename input_type>
-typename invertClass<input_type>::output_type invert(const input_type &a) {
-	return invertClass<input_type>()(a);
+template<typename InputType>
+typename InvertClass<InputType>::OutputType invert(const InputType &a) {
+	return InvertClass<InputType>()(a);
 }
 

@@ -269,7 +269,7 @@ std::ostream &operator<<(std::ostream &o, tensor<type, args...> &t) {
 		o << *i;
 		seps(0) = sep;
 		for (int j = 0; j < rank; ++j) {
-			if (i.index(0) == t.size(0)-1) {
+			if (i.index(0) == t.size()(0)-1) {
 				o << ")";
 			}
 		}
