@@ -100,9 +100,25 @@ conn^i_jk	= 3D hypersurface Christoffel symbols of the second kind (connection c
 				 = gamma^il conn_ljk
 				 = 1/2 gamma^il (partial_k gamma_lj + partial_j gamma_lk - partial_l gamma_jk)
 
-R_ij		= 3D Ricci curvature tensor
+R4^a_bcd	= 4D Riemann curvature tensor
+				= partial_c conn^a_bd - partial_d conn^a_bc + conn^a_uc conn^u_bd - conn^a_ud conn^u_bc
+
+R^i_jkl		= 3D hypersurface Riemann curvature tensor
+				= partial_k conn^i_jl - partial_l conn^i_jk + conn^i_uk conn^u_jl - conn^i_ul conn^u_jk
+
+R4_ab		= 4D Ricci curvature tensor
+				= R^u_aub
+
+R_ij		= 3D hypersurface Ricci curvature tensor
+				= R^k_ikj
 				= conn^k_ij,k - conn^k_ik,j + conn^k_lk conn^l_ij - conn^k_lj conn^l_ik
 				= 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
+
+R4			= 4D Gaussian curvature
+				= g^ab R_ab
+
+R			= 3D hypersurface Gaussian curvature
+				= gamma^ij R_ij
 
 T_ab		= stress-energy tensor
 
@@ -256,3 +272,47 @@ beta_i = H l_i
 
 and to boot ("Numerical Relativity" p.51):
 K_ij = 2 H alpha / r (eta_ij - (2 + H) l_i l_j)
+
+
+
+
+
+
+
+Constraints:
+
+(Most this is taken from Ch.2 of "Numerical Relativity".
+I've got all the intermediate steps in a notebook, maybe someday I'll copy it all into here.  It's pretty long.)
+
+Einstein's equation: 
+G_ab = R4_ab - 1/2 R4 g_ab = 8 pi T_ab
+
+Gauss' equation:
+R_abcd + K_ac _Kbd - K_ad K_cb = proj R4_abcd
+R_abcd + K_ac _Kbd - K_ad K_cb = gamma^p_a gamma^q_b gamma^r_c gamma^s_d R4_pqrs
+
+Codazzi-Maniardi:
+D_b K_ac - D_a K_bc = gamma^p_a gamma^q_b gamma^r_c n^s R4_pqrs
+
+Einstein's equation contracted twice with n:
+2 n^a n^b G_ab = gamma^ac gamma^bd R4_abcd
+
+Gauss' equation contracted twice with n:
+R4 + 2 n^a n^b R4_ab = R + K^2 - K_ab K^ab
+
+Stress-Energy contracted twice with n:
+rho = T_ab n^a n^b
+
+... substitute ...
+
+R + K^2 - K_ab K^ab = 2 n^a n^b G_ab
+R + K^2 - K_ab K^ab = 16 pi rho
+
+Hamiltonian:
+H = n^a n^b (G_ab - 8 pi T_ab)
+H = n^a n^b G_ab - 8 pi rho
+H = 1/2 (R + K^2 - K_ba K^ab) - 8 pi rho
+H = 1/2 (R + K^2 - K_ji K^ij) - 8 pi rho	<- if K is purely spatial
+H = 1/2 (R + K^2 - K^j_i K^i_j) - 8 pi rho
+
+Momentum:

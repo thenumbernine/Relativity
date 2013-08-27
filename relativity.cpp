@@ -8,7 +8,7 @@ using namespace std;
 namespace Test {
 
 typedef double real;
-enum { dim = 2 };
+enum { dim = 1 };
 enum { res = 100 };
 enum { iters = 100 };
 typedef ::vector<real,dim> vector;

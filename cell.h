@@ -20,13 +20,20 @@ struct Cell {
 	typedef ::tensor<real,upper<dim>> tensor_u;
 	typedef ::tensor<real,lower<dim>> tensor_l;
 	typedef ::tensor<real,lower<dim>,lower<dim>> tensor_ll;
+	typedef ::tensor<real,upper<dim>,lower<dim>> tensor_ul;
 	typedef ::tensor<real,symmetric<upper<dim>,upper<dim>>> tensor_su;
 	typedef ::tensor<real,symmetric<lower<dim>,lower<dim>>> tensor_sl;
 	typedef ::tensor<real,upper<dim>,symmetric<lower<dim>,lower<dim>>> tensor_usl;
 	typedef ::tensor<real,lower<dim>,symmetric<lower<dim>,lower<dim>>> tensor_lsl;
 
 
-	//	state variables
+	//our tensors initialze to zero, so why not our reals too?
+	Cell()
+	: alpha(0), rho(0), H(0), K(0)
+	{}
+
+
+	//	geometridynmaic variables
 
 
 	//lapse
@@ -47,6 +54,10 @@ struct Cell {
 	//K_it = K_tj = 0
 	tensor_sl K_ll;
 
+
+	//	stress-energy variables
+
+
 	//energy density
 	//rho = n_a n_b T^ab
 	real rho;
@@ -56,7 +67,14 @@ struct Cell {
 	tensor_ll S_ll;
 
 
-	// aux values computed and stored for partials
+	//	constraint variables: should always be zero
+
+
+	//hamiltonian constraint
+	real H;
+
+
+	//	aux values computed and stored for partials
 
 
 	//D_alpha_l(i) := D_i alpha
@@ -80,6 +98,16 @@ struct Cell {
 
 	//R_ll(i,j) := R_ij
 	tensor_sl R_ll;
+
+	//K_ul(i,j) := K^i_j
+	tensor_ul K_ul;
+
+	//K := K^i_k
+	real K;
+
+
+	//	operators for ease of use in algorithms
+
 
 	Cell operator*(const real &b) const {
 		const Cell &a = *this;

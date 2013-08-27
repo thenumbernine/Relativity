@@ -214,8 +214,66 @@ struct ADMFormalism {
 					}
 				}
 			}
+		}	
+
+		//K and K_ul depend on K_ll and gamma_uu
+		for (iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			Cell &cell = *iter;
+			
+			const tensor_sl &K_ll = cell.K_ll;
+			const tensor_su &gamma_uu = cell.gamma_uu;
+			
+			//K^i_j := gamma^ik K_kj
+			tensor_ul &K_ul = cell.K_ul;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					K_ul(i,j) = 0;
+					for (int k = 0; k < dim; ++k) {
+						K_ul(i,j) += gamma_uu(i,k) * K_ll(k,j);
+					}
+				}
+			}
+
+			//K := K^i_i
+			real &K = cell.K;
+			K = 0.;
+			for (int i = 0; i < dim; ++i) {
+				K += K_ul(i,i);
+			}
 		}
 
+		//calcConstraints
+		for (iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			Cell &cell = *iter;
+		
+			const tensor_su &gamma_uu = cell.gamma_uu;
+			const tensor_sl &R_ll = cell.R_ll;
+			const tensor_ul &K_ul = cell.K_ul;
+			const real &K = cell.K;
+			const real &rho = cell.rho;
+
+			//R = gamma^ij R_ij
+			real R = 0.;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					R += gamma_uu(i,j) * R_ll(i,j);
+				}
+			}
+
+			//H = 1/2 (R + K^2 - K^j_i K^i_j) - 8 pi rho
+			real &H = cell.H;
+			H = R + K * K;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					H -= K_ul(j,i) * K_ul(i,j);
+				}
+			}
+			H *= .5;
+			H -= 8 * M_PI * rho;
+
+		}
+
+		//calcPartial
 		for (iter = writeCells->begin(); iter != writeCells->end(); ++iter) {
 			const Cell &readCell = (*readCells)(iter.index);
 			Cell &writeCell = *iter;
@@ -230,6 +288,8 @@ struct ADMFormalism {
 			const tensor_usl &conn_ull = readCell.conn_ull;
 			const tensor_sl &R_ll = readCell.R_ll;
 			const tensor_su &gamma_uu = readCell.gamma_uu;
+			const tensor_ul &K_ul = readCell.K_ul;
+			const real &K = readCell.K;
 
 			//D_D_alpha_ll(j,i) = diff_j diff_i alpha
 			tensor_ll D_D_alpha_ll = covariantDerivative(*readCells, &Cell::D_alpha_l, dx, iter.index);
@@ -253,23 +313,6 @@ struct ADMFormalism {
 				for (int j = 0; j <= i; ++j) {
 					partial_t.gamma_ll(i,j) = -2. * alpha * K_ll(i,j) + D_beta_ll(i,j) + D_beta_ll(j,i);
 				}
-			}
-
-			//K^i_j := gamma^ik K_kj
-			tensor_ul K_ul;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					K_ul(i,j) = 0;
-					for (int k = 0; k < dim; ++k) {
-						K_ul(i,j) += gamma_uu(i,k) * K_ll(k,j);
-					}
-				}
-			}
-
-			//K := K^i_i
-			real K = 0.;
-			for (int i = 0; i < dim; ++i) {
-				K += K_ul(i,i);
 			}
 
 			//partial_K_lll(k,i,j) := partial_k K_ij
@@ -347,6 +390,8 @@ struct ADMFormalism {
 			}
 		}
 
+		o << "H\t";
+
 		o << std::endl;
 	}
 
@@ -400,7 +445,10 @@ struct ADMFormalism {
 			//rho
 
 			//S_ij
-		
+
+			//H
+			o << cell.H << "\t";
+
 			o << std::endl;
 		}
 	}
