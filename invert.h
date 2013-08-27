@@ -14,7 +14,7 @@ for any sort of rank-2 tensor object
 template<typename input_type>
 struct determinantClass;
 
-template<int dim, typename real>
+template<typename real, int dim>
 struct determinantClass<tensor<real, symmetric<lower<dim>, lower<dim>>>> {
 	typedef real output_type;
 	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> input_type;
@@ -39,7 +39,7 @@ determinant(const input_type &a) {
 template<typename input_type>
 struct invertClass;
 
-template<int dim, typename real>
+template<typename real, int dim>
 struct invertClass<tensor<real, symmetric<lower<dim>,lower<dim>>>> {
 	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> input_type;
 	typedef tensor<real, symmetric<upper<dim>, upper<dim>>> output_type;
