@@ -1,4 +1,5 @@
 TARGETDIR := /data/local/bin/
+GNUPLOT := droidplot
 
 DEPS :=\
 	admformalism.h \
@@ -32,6 +33,7 @@ install_test: test
 
 run: install 
 	$(TARGETDIR)relativity
+	$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; splot 'black_hole.txt' using 1:2:4"
 
 run_test: install_test
 	$(TARGETDIR)test

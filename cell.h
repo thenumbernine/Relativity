@@ -80,5 +80,33 @@ struct Cell {
 
 	//R_ll(i,j) := R_ij
 	tensor_sl R_ll;
+
+	Cell operator*(const real &b) const {
+		const Cell &a = *this;
+		Cell c;
+		c.alpha = a.alpha * b;
+		c.beta_u = a.beta_u * b;
+		c.gamma_ll = a.gamma_ll * b;
+		c.K_ll = a.K_ll * b;
+		//these should be maintained - and are probably a separate structure for that reason? 
+		c.rho = a.rho * b;
+		c.S_ll = a.S_ll * b;
+		//the rest are computed mid-iteration.  once again, separate structure?
+		return c;
+	}
+
+	Cell operator+(const Cell &b) const {
+		const Cell &a = *this;
+		Cell c;
+		c.alpha = a.alpha + b.alpha;
+		c.beta_u = a.beta_u + b.beta_u;
+		c.gamma_ll = a.gamma_ll + b.gamma_ll;
+		c.K_ll = a.K_ll + a.K_ll;
+		//these should be maintained
+		c.rho = a.rho;
+		c.S_ll = a.S_ll;
+		//the rest are computed mid-iteration
+		return c;
+	}
 };
 

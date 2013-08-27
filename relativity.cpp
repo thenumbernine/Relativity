@@ -9,6 +9,8 @@ namespace Test {
 
 typedef double real;
 enum { dim = 1 };
+enum { res = 100 };
+enum { iters = 100 };
 typedef ::vector<real,dim> vector;
 typedef ::ADMFormalism<real,dim> ADMFormalism;
 typedef ADMFormalism::deref_type deref_type;
@@ -38,9 +40,16 @@ struct Base {
 	vector min, max, center;
 	deref_type res;
 	ADMFormalism *sim;
-			
-	Base(real maxDist_, int res_) 
-	: maxDist(maxDist_), min(-maxDist_), max(maxDist_), res(res_), sim(NULL) {
+	int numIters;
+	
+	Base(real maxDist_, int res_, int numIters_) 
+	: 	maxDist(maxDist_), 
+		min(-maxDist_),
+		max(maxDist_),
+		res(res_),
+		sim(NULL),
+		numIters(numIters_)
+	{
 		center = (max + min) * .5;
 	}
 
@@ -53,20 +62,26 @@ struct Base {
 	
 	virtual void run() {
 		ofstream f(filename().c_str());
+		
 		sim->outputHeaders(f);
+		f << endl;
 		sim->outputLine(f);
 
 		//update
-		//cout << "iterating..." << endl;
-		//const real dt = .01;
-		//sim->update(dt);
-
+		cout << "iterating..." << endl;
+		const real dt = .01;
+		for (int i = 0; i < numIters; ++i) {
+			sim->update(dt);
+			f << endl;
+			sim->outputLine(f);
+		}
+		
 		cout << "done!" << endl;
 	}
 };
 
 struct Sun : public Base {
-	Sun() : Base(2. * sunRadiusInM, 10) {}
+	Sun() : Base(2. * sunRadiusInM, Test::res, Test::iters) {}
 
 	virtual const string filename() const { return "sun.txt"; }
 
@@ -98,7 +113,7 @@ struct Sun : public Base {
 See the Kerr-Schild section of the scratch paper in the README
 */
 struct BlackHole : public Base {
-	BlackHole() : Base(2. * sunRadiusInM, 10) {}
+	BlackHole() : Base(2. * sunRadiusInM, Test::res, Test::iters) {}
 
 	virtual const string filename() const { return "black_hole.txt"; }
 

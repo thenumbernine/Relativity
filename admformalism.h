@@ -305,6 +305,12 @@ struct ADMFormalism {
 					}
 				}
 			}
+
+			//now that we have the partials, well,
+			//I should return them as a grid of their own ... or calculate to them as a Grid member variable
+			//then accumulate them and do whatever using whatever explicit method
+			//next comes implicit methods.
+			writeCell = readCell + partial_t * dt;
 		}
 
 		//and swap
@@ -314,6 +320,8 @@ struct ADMFormalism {
 
 	void outputHeaders(std::ostream &o) {
 		static const char *coordNames[] = {"x", "y", "z"};
+		
+		o << "#";
 
 		o << "t\t";
 	
