@@ -30,7 +30,10 @@ struct ADMFormalism {
 	
 	//used for indexes
 	typedef ::vector<int,dim> deref_type;	
-	
+
+	typedef ::lower<dim> lower;
+	typedef ::upper<dim> upper;
+
 	typedef typename Cell::tensor_u tensor_u;
 	typedef typename Cell::tensor_l tensor_l;
 	typedef typename Cell::tensor_ll tensor_ll;
@@ -38,9 +41,9 @@ struct ADMFormalism {
 	typedef typename Cell::tensor_sl tensor_sl;
 	typedef typename Cell::tensor_usl tensor_usl;
     typedef typename Cell::tensor_lsl tensor_lsl;
-	typedef ::tensor<real,upper<dim>,lower<dim>> tensor_ul;
-	typedef ::tensor<real,lower<dim>,upper<dim>> tensor_lu;
-	typedef ::tensor<real,symmetric<lower<dim>,lower<dim>>,symmetric<lower<dim>,lower<dim>>> tensor_slsl;
+	typedef ::tensor<real,upper,lower> tensor_ul;
+	typedef ::tensor<real,lower,upper> tensor_lu;
+	typedef ::tensor<real,symmetric<lower,lower>,symmetric<lower,lower>> tensor_slsl;
 	typedef ::vector<real,dim> vector;
 
 	Grid cellHistory0, cellHistory1;
