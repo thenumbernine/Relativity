@@ -207,7 +207,7 @@ struct Cell {
 
 	Cell operator*(const real &b) const {
 		const Cell &a = *this;
-		Cell c;
+		Cell c = a;
 		c.alpha = a.alpha * b;
 		c.beta_u = a.beta_u * b;
 		c.gamma_ll = a.gamma_ll * b;
@@ -224,7 +224,7 @@ struct Cell {
 
 	Cell operator+(const Cell &b) const {
 		const Cell &a = *this;
-		Cell c;
+		Cell c = a;
 		c.alpha = a.alpha + b.alpha;
 		c.beta_u = a.beta_u + b.beta_u;
 		c.gamma_ll = a.gamma_ll + b.gamma_ll;

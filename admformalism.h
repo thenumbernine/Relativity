@@ -538,6 +538,16 @@ struct ADMFormalism {
 		}
 
 		for (int i = 0; i < dim; ++i) {
+			o << "beta_" << coordNames[i] << "\t";
+		}
+
+		o << "ln sqrt gamma\t";
+
+		o << "ln psi\t";
+
+		o << "psi\t";
+
+		for (int i = 0; i < dim; ++i) {
 			for (int j = 0; j <= i; ++j) {
 				o << "gamma_" << coordNames[i] << coordNames[j] << "\t";
 			}
@@ -545,7 +555,31 @@ struct ADMFormalism {
 
 		for (int i = 0; i < dim; ++i) {
 			for (int j = 0; j <= i; ++j) {
+				o << "gamma^" << coordNames[i] << coordNames[j] << "\t";
+			}
+		}
+
+		for (int i = 0; i < dim; ++i) {
+			for (int j = 0; j <= i; ++j) {
+				o << "gammaBar_" << coordNames[i] << coordNames[j] << "\t";
+			}
+		}
+
+		for (int i = 0; i < dim; ++i) {
+			for (int j = 0; j <= i; ++j) {
+				o << "gammaBar^" << coordNames[i] << coordNames[j] << "\t";
+			}
+		}
+
+		for (int i = 0; i < dim; ++i) {
+			for (int j = 0; j <= i; ++j) {
 				o << "K_" << coordNames[i] << coordNames[j] << "\t";
+			}
+		}
+		
+		for (int i = 0; i < dim; ++i) {
+			for (int j = 0; j <= i; ++j) {
+				o << "gamma^" << coordNames[i] << coordNames[j] << "\t";
 			}
 		}
 
@@ -563,7 +597,7 @@ struct ADMFormalism {
 	}
 
 	void outputLine(std::ostream &o) {
-	
+		
 		//typedef typename Grid::const_iterator ConstGridIter;
 		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
 			const Cell &cell = *iter;
@@ -574,7 +608,7 @@ struct ADMFormalism {
 			o << time << "\t";
 
 			//space
-			//this can't be right.  don't coordinates move with the shift functions / lie dragging?
+			//do coordinates move with the shift functions / lie dragging?
 			//should I initialize these and iterate them as well?
 			vector x = coordForIndex(iter.index);
 			for (int i = 0; i < dim; ++i) {
@@ -589,22 +623,62 @@ struct ADMFormalism {
 				o << cell.beta_u(i) << "\t";
 			}
 
+			//beta_i
+			for (int i = 0; i < dim; ++i) {
+				o << cell.beta_l(i) << "\t";
+			}
+
+			//ln(sqrt(gamma))
+			o << cell.ln_sqrt_gamma << "\t";
+
+			//ln(psi)
+			o << cell.ln_psi << "\t";
+
+			//psi
+			o << cell.psi << "\t";
+
 			//gamma_ij
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					o << cell.gamma_ll(i,j) << "\t";
 				}
 			}
-		
+
+			//gamma^ij
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					o << cell.gamma_uu(i,j) << "\t";
+				}
+			}
+			
+			//gammaBar_ij
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					o << cell.gammaBar_ll(i,j) << "\t";
+				}
+			}
+
+			//gammaBar^ij
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					o << cell.gammaBar_uu(i,j) << "\t";
+				}
+			}
+			
 			//K_ij
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					o << cell.K_ll(i,j) << "\t";
 				}
 			}
-		
-			//K
-
+			
+			//gamma^ij
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					o << cell.gamma_uu(i,j) << "\t";
+				}
+			}
+	
 			//R_ij
 
 			//R

@@ -20,9 +20,9 @@ DEPS :=\
 run: install 
 	$(TARGETDIR)relativity
 	# 1D without history:
-	#$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; plot 'black_hole.txt' using 2:8"
+	#$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; plot 'black_hole.txt' using 2:16"
 	# 1D with history:
-	$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; splot 'black_hole.txt' using 1:2:8"
+	$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; splot 'black_hole.txt' using 1:2:16"
 
 run_test: install_test
 	$(TARGETDIR)test

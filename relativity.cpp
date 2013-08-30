@@ -8,7 +8,7 @@ using namespace std;
 namespace Test {
 
 typedef double real;
-enum { res = 100 };
+enum { res = 10 };
 enum { iters = 100 };
 
 //universal constants
