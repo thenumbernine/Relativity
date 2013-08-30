@@ -2,6 +2,7 @@
 
 #include "vector.h"
 #include "tensor.h"
+#include "invert.h"
 
 template<typename real_, int dim_>
 struct Cell {
@@ -154,9 +155,19 @@ struct Cell {
 	// calculations of aux values
 
 
+	//used during init
+	//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
+	void calcLnSqrtGammaFromGammaLL() {
+		//gamma = det(gamma_ij)
+		real gamma = determinant(gamma_ll);
+
+		//ln_sqrt_gamma := ln(sqrt(gamma))
+		ln_sqrt_gamma = .5 * log(gamma);
+	}
+
 	//ln_psi := ln(psi) = 1/6 ln(sqrt(gamma))
 	//psi = exp(ln(psi))
-	void calcPsi() {
+	void calcPsiFromLnSqrtGamma() {
 		//ln(psi) = 1/6 ln(sqrt(gamma))
 		ln_psi = ln_sqrt_gamma / 6.;
 

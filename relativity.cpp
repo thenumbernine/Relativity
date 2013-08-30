@@ -222,8 +222,9 @@ struct KerrSchild : public Base<dim> {
 					gamma_ll(i,j) = eta(i,j) + (2. - eta(i,j)) * H * l_l(i) * l_l(j);
 				}
 			}
-
-			cell.calcPsi();
+		
+			cell.calcLnSqrtGammaFromGammaLL();
+			cell.calcPsiFromLnSqrtGamma();
 			cell.calcGammaBar();
 
 			tensor_su &gamma_uu = cell.gamma_uu;
@@ -281,8 +282,8 @@ int main() {
 	);
 	/**/
 
-
-	test.outputHistory = false;
+//	test.outputHistory = false;
+	
 	test.init();
 	test.sim->init();
 	test.run();

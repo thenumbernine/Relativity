@@ -91,9 +91,9 @@ struct ADMFormalism {
 
 	//ln_psi := ln(psi) = 1/6 ln(sqrt(gamma))
 	//psi = exp(ln(psi))
-	void calcPsi() {
+	void calcPsiFromLnSqrtGamma() {
 		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
-			iter->calcPsi();
+			iter->calcPsiFromLnSqrtGamma();
 		}
 	}
 
@@ -195,17 +195,11 @@ struct ADMFormalism {
 		
 		//calc gamma from gamma_ij
 		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
-			Cell &cell = *iter;
-		
-			//gamma = det(gamma_ij)
-			real gamma = determinant(cell.gamma_ll);
-
-			//ln_sqrt_gamma := ln(sqrt(gamma))
-			cell.ln_sqrt_gamma = .5 * log(gamma);
+			iter->calcLnSqrtGammaFromGammaLL();
 		}
 		
 		//calc psi and ln(psi) from ln(sqrt(gamma))
-		calcPsi();
+		calcPsiFromLnSqrtGamma();
 	
 		//calc gammaBar_ij, gammaBar^ij, gamma^ij from psi
 		calcGammaBar();
@@ -215,7 +209,6 @@ struct ADMFormalism {
 		
 		//calc K from K^i_j
 		calc_K();
-
 	}
 
 	vector coordForIndex(const DerefType &index) const {
@@ -230,7 +223,7 @@ struct ADMFormalism {
 		//during this process read and write to the same cell
 		
 		//calc psi and ln(psi) from ln(sqrt(gamma))
-		calcPsi();
+		calcPsiFromLnSqrtGamma();
 	
 		//calc gammaBar^ij, gammaBar_ij, and gamma^ij from gamma_ij, and psi
 		calcGammaBar();
@@ -556,6 +549,10 @@ struct ADMFormalism {
 			}
 		}
 
+		o << "psi\t";
+		
+		o << "K\t";
+
 		o << "H\t";
 
 		for (int i = 0; i < dim; ++i) {
@@ -615,6 +612,12 @@ struct ADMFormalism {
 			//rho
 
 			//S_ij
+
+			//psi
+			o << cell.psi << "\t";
+			
+			//K
+			o << cell.K << "\t";
 
 			//H
 			o << cell.H << "\t";
