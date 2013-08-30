@@ -8,17 +8,8 @@ using namespace std;
 namespace Test {
 
 typedef double real;
-enum { dim = 1 };
 enum { res = 100 };
 enum { iters = 100 };
-typedef ::vector<real,dim> vector;
-typedef ::ADMFormalism<real,dim> ADMFormalism;
-typedef ADMFormalism::deref_type deref_type;
-
-typedef ADMFormalism::tensor_l tensor_l;
-typedef ADMFormalism::tensor_u tensor_u;
-typedef ADMFormalism::tensor_sl tensor_sl;
-typedef ADMFormalism::tensor_su tensor_su;
 
 //universal constants
 const real speedOfLightInMPerS = 299792458.;
@@ -35,19 +26,33 @@ const real sunRadiusInM = 6.955e+8;
 const real sunVolumeInM3 = 4. / 3. * M_PI * sunRadiusInM * sunRadiusInM * sunRadiusInM;
 const real sunDensityInM_2 = sunMassInKg * metersPerKg / sunVolumeInM3;
 
+const real sunRotationInRad_S = 2.8e-6;
+const real sunRotationInM = sunRotationInRad_S / metersPerS;
+const real sunAngularMomentumInKgM2_S = .4 * sunMassInKg * sunRadiusInM * sunRadiusInM * sunRotationInRad_S;
+const real sunAngularMomentumInM = .4 * sunMassInM * sunRadiusInM * sunRadiusInM * sunRotationInM;
+
 template<int dim>
 struct RunClass;
 
 template<>
 struct RunClass<1> {
 	//1D case splot's all time slices together
-	void operator()(ADMFormalism *sim, ostream &f, int numIters) {
-		sim->outputLine(f);
+	void operator()(::ADMFormalism<real, 1> *sim, ostream &f, int numIters, bool outputHistory) {
+		if (outputHistory) {
+			sim->outputLine(f);
+		}
 
 		cout << "iterating..." << endl;
-		const real dt = .01;
+		const real dt = .1;
 		for (int i = 0; i < numIters; ++i) {
 			sim->update(dt);
+			
+			if (outputHistory) {
+				sim->outputLine(f);
+			}
+		}
+
+		if (!outputHistory) {
 			sim->outputLine(f);
 		}
 	}
@@ -56,7 +61,7 @@ struct RunClass<1> {
 template<>
 struct RunClass<2> {
 	//2D case splots the last one
-	void operator()(ADMFormalism *sim, ostream &f, int numIters) {
+	void operator()(::ADMFormalism<real, 2> *sim, ostream &f, int numIters) {
 		cout << "iterating..." << endl;
 		const real dt = .01;
 		for (int i = 0; i < numIters; ++i) {
@@ -67,20 +72,28 @@ struct RunClass<2> {
 	}
 };
 
+template<int dim>
 struct Base {
+	typedef ::vector<real,dim> vector;
+	typedef ::ADMFormalism<real,dim> ADMFormalism;
+	typedef typename ADMFormalism::DerefType DerefType;
+
 	real maxDist;
 	vector min, max, center;
-	deref_type res;
+	DerefType res;
 	ADMFormalism *sim;
 	int numIters;
-	
+
+	bool outputHistory;	//only used for 1D case
+
 	Base(real maxDist_, int res_, int numIters_) 
 	: 	maxDist(maxDist_), 
 		min(-maxDist_),
 		max(maxDist_),
 		res(res_),
 		sim(NULL),
-		numIters(numIters_)
+		numIters(numIters_),
+		outputHistory(true)
 	{
 		center = (max + min) * .5;
 	}
@@ -97,24 +110,32 @@ struct Base {
 		ofstream f(filename().c_str());
 		sim->outputHeaders(f);
 
-		Test::RunClass<dim>()(sim, f, numIters);
+		Test::RunClass<dim>()(sim, f, numIters, outputHistory);
 		
 		cout << "done!" << endl;
 	}
 };
 
-struct Sun : public Base {
+template<int dim>
+struct Sun : public Base<dim> {
+	typedef Test::Base<dim> Base;
+	typedef typename Base::ADMFormalism ADMFormalism;
+	typedef typename Base::vector vector;
+	
 	Sun() : Base(2. * sunRadiusInM, Test::res, Test::iters) {}
 
 	virtual const string filename() const { return "sun.txt"; }
 
 	virtual void init() {
 		Base::init();
+	
+		ADMFormalism* &sim = Base::sim;
+		vector &center = Base::center;
 		
 		//provide initial conditions
 		cout << "providing initial conditions..." << endl;
-		for (ADMFormalism::GridIter iter = sim->readCells->begin(); iter != sim->readCells->end(); ++iter) {
-			ADMFormalism::Cell &cell = *iter;
+		for (typename ADMFormalism::GridIter iter = sim->readCells->begin(); iter != sim->readCells->end(); ++iter) {
+			typename ADMFormalism::Cell &cell = *iter;
 			vector v = sim->coordForIndex(iter.index) - center;
 			real r = vector::length(v);
 			real sunMassOver2Radius = sunMassInM / (2. * r);
@@ -135,32 +156,54 @@ struct Sun : public Base {
 /*
 See the Kerr-Schild section of the scratch paper in the README
 */
-struct BlackHole : public Base {
-	BlackHole() : Base(2. * sunRadiusInM, Test::res, Test::iters) {}
+template<int dim>
+struct KerrSchild : public Base<dim> {
+	typedef Test::Base<dim> Base;
+
+	typedef typename Base::vector vector;
+	typedef typename Base::ADMFormalism ADMFormalism;
+	typedef typename ADMFormalism::tensor_l tensor_l;
+	typedef typename ADMFormalism::tensor_u tensor_u;
+	typedef typename ADMFormalism::tensor_sl tensor_sl;
+	typedef typename ADMFormalism::tensor_su tensor_su;
+
+	real M;		//black hole mass <=> half the Schwarzschild radius
+	real Q;		//total charge
+	real J;		//total angular momentum
+	
+	KerrSchild(
+		real R_,	//half width of each dimension in the simulation
+		real M_,	//mass of black hole
+		real J_, 	//total angular momentum of black hole
+		real Q_)	//total charge of black hole
+	: Base(R_, Test::res, Test::iters),
+		M(M_),
+		J(J_),
+		Q(Q_)
+	{}
 
 	virtual const string filename() const { return "black_hole.txt"; }
 
 	virtual void init() {
 		Base::init();
-
-		const real blackHoleMassInKg = 4. * sunMassInM;	//2.7 solar masses is upper bound for neutron stars
-		const real M = blackHoleMassInKg * metersPerKg;	//black hole mass in meters
 		
-		const real Q = 0.;		//total charge
-		const real J = 0.;		//total angular momentum
-		const real a = J / M;	//angular momentum density
+		real a = J / M;	//angular momentum density
 		
 		tensor_sl eta;
 		for (int i = 0; i < dim; ++i) {
 			eta(i,i) = 1.;
 		}
 
+		vector &min = Base::min;
+		vector &max = Base::max;
+		ADMFormalism* &sim = Base::sim;
+
 		//provide initial conditions
 		
 		cout << "providing initial conditions..." << endl;
 		vector center = (max + min) * .5;
-		for (ADMFormalism::GridIter iter = sim->readCells->begin(); iter != sim->readCells->end(); ++iter) {
-			ADMFormalism::Cell &cell = *iter;
+		for (typename ADMFormalism::GridIter iter = sim->readCells->begin(); iter != sim->readCells->end(); ++iter) {
+			typename ADMFormalism::Cell &cell = *iter;
 			vector v = sim->coordForIndex(iter.index) - center;
 			real r = vector::length(v);
 			real x = v(0);
@@ -180,8 +223,10 @@ struct BlackHole : public Base {
 				}
 			}
 
+			cell.calcPsi();
+			cell.calcGammaBar();
+
 			tensor_su &gamma_uu = cell.gamma_uu;
-			gamma_uu = invert(gamma_ll);
 
 			tensor_u l_u;
 			for (int i = 0; i < dim; ++i) {
@@ -217,9 +262,29 @@ struct BlackHole : public Base {
 }
 
 int main() {
-	typedef ::Test::BlackHole Test;
-	Test test;
+	using namespace Test;
+	
+	/* GRO J0422+32 : the smallest black hole yet found * /
+	KerrSchild<1> test(
+		4.1 * sunRadiusInM,		//simulation radius
+		4.1 * sunMassInM,		//black hole mass
+		0,						//angular momentum
+		0						//charge
+	);
+	/**/
+	/* Sagitarrius A* : The supermassive black hole in the center of the Milky Way */
+	KerrSchild<1> test(
+		4.1e+6 * sunRadiusInM,
+		4.1e+6 * sunMassInM,
+		0,
+		0
+	);
+	/**/
+
+
+	test.outputHistory = false;
 	test.init();
+	test.sim->init();
 	test.run();
 }
 

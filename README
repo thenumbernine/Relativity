@@ -212,21 +212,42 @@ K_ab = (-alpha a_0 - diff_0 alpha, 	-alpha a_j)
 What am I doing wrong?
 
 Another note: if you use the metric to raise the spatial tensor, i.e. gamma_a^c = gamma_ab g^bc then you get a non-symmetric tensor
+that may or may not have a beta in the time/space components.
+Despite this the book denotes the gammas with no particular order to a & b, as if gamma_a^b == gamma^a_b.
+This would imply (as I read on p.54) that the components of gamma_at are zero as well as gamma^at
+And this would mean that the identity g^ab = gamma^ab + n^a n^b is only true for the contravariant case
+(leaving the covariant case to not be subject to the same identity...)
 
 
 
 momentum density term:
 
 S_ab = gamma_a^c gamma_b^d T_cd
-S^a_a = g^ab S_ab 
-	  = g^ab gamma_a^c gamma_b^d T_cd
-	  = gamma^cb gamma_b^d T_cd
-	  = gamma^cd T_cd
-	  = gamma^ij T_ij (since the other gamma^ab components are zero)
+S^ab = gamma^ac gamma^bd T_cd
+	 = gamma^ai gamma^bj T_ij (since gamma^at = 0)
+S^ij = gamma^ik gamma^jl T_kl
 
+"Numerical Relativity" p.47
+S^i = -gamma^ij n^a T_aj
 
-
-
+S = S^a_a
+  = g^ab S_ab 
+  = g^ab gamma_a^c gamma_b^d T_cd
+  = gamma^cb gamma_b^d T_cd
+  = gamma^cd T_cd
+  = gamma^ij T_ij (since the other gamma^ab components are zero)
+("Numerical Relativity" p.47) gives the following:
+S_ij = gamma_ia gamma_jb T^ab	<- which may or may not include the betas in gamma_ab = g_ab - n_a n_b
+S = gamma^ij S_ij
+  = gamma_ai gamma^ij gamma_jb T^ab
+  = (gamma_ac gamma^cj - gamma_at gamma^tj) gamma_jb T^ab
+  = (gamma_a^j - gamma_at gamma^tj) gamma_jb T^ab
+  = (gamma_a^j gamma_jb - gamma_at gamma^tj gamma_jb) T^ab
+  = (gamma_a^c gamma_cb - gamma_a^t gamma_tb - gamma_at gamma^tj gamma_jb) T^ab
+  = (gamma_ab - gamma_a^t gamma_tb - gamma_at (gamma^tj gamma_jb)) T^ab
+  = (gamma_ab - gamma_a^t gamma_tb - gamma_at (gamma^td gamma_db - gamma^tt gamma_tb)) T^ab
+  = (gamma_ab - gamma_a^t gamma_tb - gamma_at gamma^t_b + gamma_at gamma^tt gamma_tb) T^ab
+	There are our extra spatial terms.
 
 Kerr-Schild coordinates in terms of lapse and shift
 (I'm sure someone else has done this already -- and done a better job)
@@ -316,3 +337,43 @@ H = 1/2 (R + K^2 - K_ji K^ij) - 8 pi rho	<- if K is purely spatial
 H = 1/2 (R + K^2 - K^j_i K^i_j) - 8 pi rho
 
 Momentum:
+S_a = -gamma_a^b n^c T_bc
+D_b K^b_a - D_a K = 8 pi S_a
+
+D_j (K^ij - gamma^ij K) = 8 pi S^i
+M^i = D_j (K^ij - gamma^ij K) - 8 pi S^i
+
+
+
+
+Metric Conformal Factor:
+
+psi = conformal factor
+gammaBar_ij = background metric
+gamma_ij = psi^4 gammaBar_ij
+
+gamma = det(gamma_ij)	<- by definition 
+det(gamma_ij * s) = s^3 gamma	<- 3D determinant of scaled matrix
+1 = gamma (gamma^(-1/3))^3 = det(gamma_ij * gamma^(-1/3))
+gammaBar_ij = gamma^(-1/3) gamma_ij	<- such that det(gammaBar_ij) = 1
+
+psi^4 = gamma^(1/3)
+psi = gamma^(1/12)
+
+"Numerical Relativity" p.56 provides a convenient formula for deriving the metric (and properties) from the conformal metric:
+
+connection coefficients:
+conn^i_jk = connBar^i_jk + 2 (delta^i_j DBar_k ln(psi) + delta^i_k DBar_j ln(psi) - gammaBar_jk gammaBar^il DBar_l ln(psi))
+
+Ricci curvature:
+R_ij = RBar_ij - 2 (DBar_i DBar_j ln(psi) + gammaBar_ij gammaBar^lm DBar_l DBar_m ln(psi)) + 4 ((DBar_i ln(psi)) (DBar_j ln(psi)) - gammaBar_ij gammaBar^lm (DBar_l ln(psi)) (DBar_m ln(psi)))
+
+Gaussian curvature:
+R = psi^-4 RBar - 8 psi^-5 gammaBar^ij DBar_i DBar_j psi
+
+Hamiltonian constraint:
+8 gammaBar^ij DBar_i DBar_j psi - psi RBar - psi^5 K^2 + psi^5 K_ij K^ij = -16 pi psi^5 rho
+
+From our evolved ln(sqrt(gamma)) we get:
+gamma^(1/2) = psi^6
+ln(sqrt(gamma)) = 6 ln(psi)

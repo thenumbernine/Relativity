@@ -37,12 +37,12 @@ struct symmetric {
 	enum { dim = index1::dim };
 	enum { rank = index1::rank + index2::rank };
 	
-	template<typename inner_type, typename scalar_type>
-	struct body : public generic_symmat<inner_type, index1::dim, scalar_type, body<inner_type, scalar_type>> {
-		typedef generic_symmat<inner_type, index1::dim, scalar_type, body<inner_type, scalar_type>> parent;
+	template<typename InnerType, typename scalar_type>
+	struct body : public generic_symmat<InnerType, index1::dim, scalar_type, body<InnerType, scalar_type>> {
+		typedef generic_symmat<InnerType, index1::dim, scalar_type, body<InnerType, scalar_type>> parent;
 		body() : parent() {}
 		body(const body &b) : parent(b) {}
-		body(const inner_type &t) : parent(t) {}
+		body(const InnerType &t) : parent(t) {}
 	};
 };
 
@@ -52,12 +52,12 @@ struct antisymmetric {
 	enum { dim = index1::dim };
 	enum { rank = index1::rank + index2::rank };
 
-	template<typename inner_type, typename scalar_type>
-	struct body : public generic_antisymmat<inner_type, index1::dim, scalar_type, body<inner_type, scalar_type>> {
-		typedef generic_antisymmat<inner_type, index1::dim, scalar_type, body<inner_type, scalar_type>> parent;
+	template<typename InnerType, typename scalar_type>
+	struct body : public generic_antisymmat<InnerType, index1::dim, scalar_type, body<InnerType, scalar_type>> {
+		typedef generic_antisymmat<InnerType, index1::dim, scalar_type, body<InnerType, scalar_type>> parent;
 		body() : parent() {}
 		body(const body &b) : parent(b) {}
-		body(const inner_type &t) : parent(t) {}
+		body(const InnerType &t) : parent(t) {}
 	};
 };
 

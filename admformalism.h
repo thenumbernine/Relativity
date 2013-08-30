@@ -14,6 +14,10 @@
 #include "invert.h"
 #include "derivative.h"
 
+/*
+ADM Formalism class generates partial t values for the K_ll and gamma_ll structures.
+the rest of the properties can be seen as read-only ... should I store them in a separate structure than the Cell?
+*/
 template<typename real_, int dim_>
 struct ADMFormalism {
 	typedef real_ real;
@@ -29,7 +33,7 @@ struct ADMFormalism {
 		//(pull from cell where you can)
 	
 	//used for indexes
-	typedef ::vector<int,dim> deref_type;	
+	typedef ::vector<int,dim> DerefType;	
 
 	typedef ::lower<dim> lower;
 	typedef ::upper<dim> upper;
@@ -43,14 +47,15 @@ struct ADMFormalism {
     typedef typename Cell::tensor_lsl tensor_lsl;
 	typedef ::tensor<real,upper,lower> tensor_ul;
 	typedef ::tensor<real,lower,upper> tensor_lu;
+	typedef ::tensor<real,lower,symmetric<upper,upper>> tensor_lsu;
 	typedef ::tensor<real,symmetric<lower,lower>,symmetric<lower,lower>> tensor_slsl;
 	typedef ::vector<real,dim> vector;
 
 	Grid cellHistory0, cellHistory1;
 	Grid *readCells, *writeCells;
-
+	
 	//resolution of our grids, stored here as well as in each grid for convenience
-	deref_type size;
+	DerefType size;
 
 	//x(0) == min
 	vector min;
@@ -68,7 +73,7 @@ struct ADMFormalism {
 	//intended for use with output matching up iteration slices 
 	real time;
 
-	ADMFormalism(const vector &min_, const vector &max_, const deref_type &size_)
+	ADMFormalism(const vector &min_, const vector &max_, const DerefType &size_)
 	:	time(0),
 		size(size_),
 		min(min_),
@@ -82,19 +87,154 @@ struct ADMFormalism {
 		writeCells(&cellHistory1)
 	{}
 
-	vector coordForIndex(const deref_type &index) const {
+	//aux calculations
+
+	//ln_psi := ln(psi) = 1/6 ln(sqrt(gamma))
+	//psi = exp(ln(psi))
+	void calcPsi() {
+		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			iter->calcPsi();
+		}
+	}
+
+	//gammaBar_ij = psi^-4 gamma_ij
+	//gammaBar^ij = inverse(gammaBar_ij)
+	//gamma^ij = psi^-4 gammaBar^ij
+	void calcGammaBar() {
+		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			iter->calcGammaBar();
+		}
+	}
+
+	//K^i_j = gamma^ik K_kj
+	void calc_K_ul() {
+		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			Cell &cell = *iter;
+			
+			const tensor_sl &K_ll = cell.K_ll;
+			const tensor_su &gamma_uu = cell.gamma_uu;
+		
+			//K^i_j := gamma^ik K_kj
+			tensor_ul &K_ul = cell.K_ul;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					K_ul(i,j) = 0;
+					for (int k = 0; k < dim; ++k) {
+						K_ul(i,j) += gamma_uu(i,k) * K_ll(k,j);
+					}
+				}
+			}
+		}
+	}
+
+	//K = K^i_i
+	void calc_K() {
+		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			Cell &cell = *iter;
+			
+			const tensor_ul &K_ul = cell.K_ul;
+			const tensor_su &gamma_uu = cell.gamma_uu;
+			
+			//K := K^i_i
+			real &K = cell.K;
+			K = 0.;
+			for (int i = 0; i < dim; ++i) {
+				K += K_ul(i,i);
+			}
+		}
+	}
+
+	//K^ij = K^i_k gamma^kj
+	void calc_K_uu() {
+		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			Cell &cell = *iter;
+			
+			const tensor_ul &K_ul = cell.K_ul;
+			const tensor_su &gamma_uu = cell.gamma_uu;
+			
+			//K_uu(i,j) := K^ij = K^i_k gamma^kj
+			tensor_su &K_uu = cell.K_uu;
+			for (int i = 0; i  < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					K_uu(i,j) = 0;
+					for (int k = 0; k < dim; ++k) {
+						K_uu(i,j) += K_ul(i,k) * gamma_uu(k,j);
+					}
+				}
+			}
+		}
+	}
+
+	//tr_K_sq := tr(K^2) = (K^2)^i_i = K^ij K_ji = K^i_j K^j_i
+	void calc_tr_K_sq() {
+		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			Cell &cell = *iter;
+			
+			const tensor_su &K_uu = cell.K_uu;
+			const tensor_sl &K_ll = cell.K_ll;
+			
+			//tr_K_sq := tr(K^2) = K^ij K_ij
+			real &tr_K_sq = cell.tr_K_sq;
+			tr_K_sq = 0.;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					tr_K_sq += K_uu(i,j) * K_ll(i,j); 
+				}
+			}
+		}
+	}
+	
+	//call after providing initial value data in the form of alpha, beta^i, gamma_ij
+	//this calculates the extra formalism variables
+	//currently K and ln_sqrt_gamma
+	void init() {
+		
+		//one way we could do this is with requests and dirty bits and dependency graphs ...
+		//that would cut down on the number of loops (and subsequently the amount of paging going on)
+		//we could quickly accomplish this by making a single Cell<bool> and just setting flags as it goes ...
+		
+		//calc gamma from gamma_ij
+		for (GridIter iter = readCells->begin(); iter != readCells->end(); ++iter) {
+			Cell &cell = *iter;
+		
+			//gamma = det(gamma_ij)
+			real gamma = determinant(cell.gamma_ll);
+
+			//ln_sqrt_gamma := ln(sqrt(gamma))
+			cell.ln_sqrt_gamma = .5 * log(gamma);
+		}
+		
+		//calc psi and ln(psi) from ln(sqrt(gamma))
+		calcPsi();
+	
+		//calc gammaBar_ij, gammaBar^ij, gamma^ij from psi
+		calcGammaBar();
+		
+		//calc K^i_j from K_ij and gamma^ij
+		calc_K_ul();
+		
+		//calc K from K^i_j
+		calc_K();
+
+	}
+
+	vector coordForIndex(const DerefType &index) const {
 		return min + ((vector)index + .5) * dx;
 	}
 
 	//iteration
-	void update(real dt) {
-		time += dt;
-
+	void updateGeometridynamic(real dt) {
 		GridIter iter;
 		
 		//first compute and store aux values that will be subsequently used for partial differentiation
 		//during this process read and write to the same cell
+		
+		//calc psi and ln(psi) from ln(sqrt(gamma))
+		calcPsi();
 	
+		//calc gammaBar^ij, gammaBar_ij, and gamma^ij from gamma_ij, and psi
+		calcGammaBar();
+
 		//beta_l, gamma_uu, D_alpha_l
 		for (iter = readCells->begin(); iter != readCells->end(); ++iter) {
 			Cell &cell = *iter;
@@ -116,11 +256,6 @@ struct ADMFormalism {
 					beta_l(i) += gamma_ll(i,j) * beta_u(j);
 				}
 			}
-		
-			//gamma_uu(i,j) := gamma^ij = inverse of gamma_ij
-			// I could write the tensor formula for matrix inverses out (see "Gravitation", exercise 5.5e)
-			tensor_su &gamma_uu = cell.gamma_uu;
-			gamma_uu = invert(gamma_ll);
 		}
 
 		//conn_ull depends on gamma_uu
@@ -177,9 +312,9 @@ struct ADMFormalism {
 						for (int j = 0; j <= i; ++j) {
 							if (k == l) {
 								//special case for 2nd deriv along same coordinate
-								const deref_type &index = iter.index;
-								deref_type nextIndex(index);
-								deref_type prevIndex(index);
+								const DerefType &index = iter.index;
+								DerefType nextIndex(index);
+								DerefType prevIndex(index);
 								nextIndex(k) = std::max(0, std::min(readCells->size(k)-1, index(k) + 1));
 								prevIndex(k) = std::max(0, std::min(readCells->size(k)-1, index(k) - 1));
 								partial_partial_gamma_llll(k,l,i,j) = 
@@ -217,33 +352,11 @@ struct ADMFormalism {
 					}
 				}
 			}
-		}	
-
-		//K and K_ul depend on K_ll and gamma_uu
-		for (iter = readCells->begin(); iter != readCells->end(); ++iter) {
-			Cell &cell = *iter;
-			
-			const tensor_sl &K_ll = cell.K_ll;
-			const tensor_su &gamma_uu = cell.gamma_uu;
-			
-			//K^i_j := gamma^ik K_kj
-			tensor_ul &K_ul = cell.K_ul;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					K_ul(i,j) = 0;
-					for (int k = 0; k < dim; ++k) {
-						K_ul(i,j) += gamma_uu(i,k) * K_ll(k,j);
-					}
-				}
-			}
-
-			//K := K^i_i
-			real &K = cell.K;
-			K = 0.;
-			for (int i = 0; i < dim; ++i) {
-				K += K_ul(i,i);
-			}
 		}
+
+		calc_K_ul();
+		calc_K_uu();
+		calc_tr_K_sq();
 
 		//calcConstraints
 		for (iter = readCells->begin(); iter != readCells->end(); ++iter) {
@@ -252,8 +365,11 @@ struct ADMFormalism {
 			const tensor_su &gamma_uu = cell.gamma_uu;
 			const tensor_sl &R_ll = cell.R_ll;
 			const tensor_ul &K_ul = cell.K_ul;
+			const tensor_su &K_uu = cell.K_uu;
 			const real &K = cell.K;
+			const real &tr_K_sq = cell.tr_K_sq;
 			const real &rho = cell.rho;
+			const tensor_u &S_u = cell.S_u;
 
 			//R = gamma^ij R_ij
 			real R = 0.;
@@ -265,15 +381,25 @@ struct ADMFormalism {
 
 			//H = 1/2 (R + K^2 - K^j_i K^i_j) - 8 pi rho
 			real &H = cell.H;
-			H = R + K * K;
+			H = .5 * (R + K * K - tr_K_sq) - 8. * M_PI * rho;
+
+			//diff_K_uu(k,i,j) := diff_k K^ij
+			//I'm not seeing a distinction between the 4D and 3D representations of the constraints.
+			//The "Numerical Relativity" book did transition from a covariant form of the 4D constraint to a contravariant form of the 3D constraint
+			//It also added caveats on how D_i v_j = delta_i v_j only for rank-(0,2) forms and only if v was purely spatial.
+			tensor_lsu diff_K_luu = covariantDerivative(*readCells, &Cell::K_uu, dx, iter.index);
+
+			//partial_K_l(i) := partial_i K
+			tensor_l partial_K_l = partialDerivative(*readCells, &Cell::K, dx, iter.index);
+
+			//M_u(i) := M^i = D_j (K^ij - gamma^ij K) - 8 pi S^i
+			tensor_u &M_u = cell.M_u;
 			for (int i = 0; i < dim; ++i) {
+				M_u(i) = -8. * M_PI * S_u(i);
 				for (int j = 0; j < dim; ++j) {
-					H -= K_ul(j,i) * K_ul(i,j);
+					M_u(i) += diff_K_luu(j,i,j) - gamma_uu(i,j) * partial_K_l(j);
 				}
 			}
-			H *= .5;
-			H -= 8 * M_PI * rho;
-
 		}
 
 		//calcPartial
@@ -293,6 +419,7 @@ struct ADMFormalism {
 			const tensor_su &gamma_uu = readCell.gamma_uu;
 			const tensor_ul &K_ul = readCell.K_ul;
 			const real &K = readCell.K;
+			const real &tr_K_sq = readCell.tr_K_sq;
 
 			//D_D_alpha_ll(j,i) = diff_j diff_i alpha
 			tensor_ll D_D_alpha_ll = covariantDerivative(*readCells, &Cell::D_alpha_l, dx, iter.index);
@@ -303,7 +430,7 @@ struct ADMFormalism {
 			//diff_beta_ll(j,i) := diff_j beta_i = partial_j beta_i - conn^k_ij beta_k
 			tensor_ll diff_beta_ll = covariantDerivative(*readCells, &Cell::beta_l, dx, iter.index);
 			
-			//D_i beta_j = diff_i beta_j 
+			//D_beta_ll(i,j) := D_i beta_j = D_i beta_j 
 			//-- but only for lower indexes.
 			//doesn't work if either is upper (you get extra terms for the timelike component we're dropping)
 			//(see "Numerical Relativity", exercise 2.30)
@@ -352,14 +479,50 @@ struct ADMFormalism {
 				}
 			}
 
+			//D_beta_lu(i,j) := D_i beta^j = D_i beta^j
+			//why am I suspicious that, despite the above comment, I am doing just what the book says not to do?
+			tensor_lu D_beta_lu = covariantDerivative(*readCells, &Cell::beta_u, dx, iter.index);
+
+			//trace_D_beta := D_i beta^i
+			real trace_D_beta = 0;
+			for (int i = 0; i < dim; ++i) {
+				trace_D_beta += D_beta_lu(i,i);
+			}
+
+			//partial_t ln_sqrt_gamma = -alpha K + D_i beta^i
+			partial_t.ln_sqrt_gamma = -alpha * K + trace_D_beta;
+
+			//D_K_l(i) := D_i K
+			tensor_l D_K_l = covariantDerivative(*readCells, &Cell::K, dx, iter.index);
+
+			//partial_t K = -gamma^ij D_i D_j alpha + alpha(K_ij K^ij + 4 pi (rho + S)) + beta^i D_i K
+			partial_t.K = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					partial_t.K += -gamma_uu(i,j) * D_D_alpha_ll(i,j);
+				}
+				partial_t.K += beta_u(i) * D_K_l(i);
+			}
+			partial_t.K += alpha * (tr_K_sq + 4. * M_PI * (rho + S));
+
 			//now that we have the partials, well,
 			//I should return them as a grid of their own ... or calculate to them as a Grid member variable
 			//then accumulate them and do whatever using whatever explicit method
 			//next comes implicit methods.
 			writeCell = readCell + partial_t * dt;
 		}
+	}
 
-		//and swap
+	void update(real dt) {
+		time += dt;
+
+		//compute aux terms
+		//update alpha, beta, gamma
+		updateGeometridynamic(dt);
+
+		//TODO update fluid components
+
+		//and swap source and dest grids
 		//do something more clever if we ever get any more than 2 histories
 		std::swap(readCells, writeCells);
 	}
@@ -394,6 +557,10 @@ struct ADMFormalism {
 		}
 
 		o << "H\t";
+
+		for (int i = 0; i < dim; ++i) {
+			o << "M^" << coordNames[i] << "\t";
+		}
 
 		o << std::endl;
 	}
@@ -451,6 +618,11 @@ struct ADMFormalism {
 
 			//H
 			o << cell.H << "\t";
+
+			//M^i
+			for (int i = 0; i < dim; ++i) {
+				o << cell.M_u(i) << "\t";
+			}
 
 			o << std::endl;
 		}

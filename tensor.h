@@ -13,41 +13,41 @@ and any subsequently nested numeric structures.
 support class for metaprogram specializations of tensor
 
 rank 		= total rank of the structure. not necessarily the depth since some indexes (symmetric) can have >1 rank.
-inner_type 	= the next-inner-most tensor_stats type
-body_type 	= the body_type (the generic_vector subclass) associated with this nesting level
+InnerType 	= the next-inner-most TensorStats type
+BodyType 	= the BodyType (the generic_vector subclass) associated with this nesting level
 */
 template<typename scalar_type, typename... args>
-struct tensor_stats;
+struct TensorStats;
 
 template<typename scalar_type_, typename index_, typename... args>
-struct tensor_stats<scalar_type_, index_, args...> {
+struct TensorStats<scalar_type_, index_, args...> {
 	typedef scalar_type_ scalar_type;
 	typedef index_ index;
-	enum { rank = index::rank + tensor_stats<scalar_type, args...>::rank };
+	enum { rank = index::rank + TensorStats<scalar_type, args...>::rank };
 
-	typedef tensor_stats<scalar_type, args...> inner_type;
+	typedef TensorStats<scalar_type, args...> InnerType;
 
-	typedef typename index::template body<typename inner_type::body_type, scalar_type> body_type;
+	typedef typename index::template body<typename InnerType::BodyType, scalar_type> BodyType;
 	
 		//inductive cases
 	
 	//get an element in a tensor
 	template<int total_rank, int offset>
-	static scalar_type &get(body_type &body, const vector<int,total_rank> &deref) {
+	static scalar_type &get(BodyType &body, const vector<int,total_rank> &deref) {
 		vector<int,index::rank> subderef;
 		for (int i = 0; i < index::rank; ++i) {
 			subderef(i) = deref(i + offset);
 		}
-		return inner_type::template get<total_rank, offset + index::rank>(body(subderef), deref);
+		return InnerType::template get<total_rank, offset + index::rank>(body(subderef), deref);
 	}
 
 	template<int total_rank, int offset>
-	static const scalar_type &get_const(const body_type &body, const vector<int,total_rank> &deref) {
+	static const scalar_type &get_const(const BodyType &body, const vector<int,total_rank> &deref) {
 		vector<int,index::rank> subderef;
 		for (int i = 0; i < index::rank; ++i) {
 			subderef(i) = deref(i + offset);
 		}
-		return inner_type::template get_const<total_rank, offset + index::rank>(body(subderef), deref);
+		return InnerType::template get_const<total_rank, offset + index::rank>(body(subderef), deref);
 	}
 
 	//get the size of the tensor
@@ -56,25 +56,25 @@ struct tensor_stats<scalar_type_, index_, args...> {
 		for (int i = offset; i < offset + index::rank; ++i) {
 			s.v[i] = index::dim;
 		}
-		inner_type::template assign_size<total_rank, offset + index::rank>(s);
+		InnerType::template assign_size<total_rank, offset + index::rank>(s);
 	}
 };
 
 template<typename scalar_type_, typename index_>
-struct tensor_stats<scalar_type_, index_> {
+struct TensorStats<scalar_type_, index_> {
 	typedef scalar_type_ scalar_type;
 	typedef index_ index;
 	enum { rank = index::rank };
 
-	typedef tensor_stats<scalar_type> inner_type;
+	typedef TensorStats<scalar_type> InnerType;
 	
-	typedef typename index::template body<scalar_type, scalar_type> body_type;
+	typedef typename index::template body<scalar_type, scalar_type> BodyType;
 
 		//second-to-base (could be base) case
 	
 	//get an element in a tensor
 	template<int total_rank, int offset>
-	static scalar_type &get(body_type &body, const vector<int,total_rank> &deref) {
+	static scalar_type &get(BodyType &body, const vector<int,total_rank> &deref) {
 		vector<int,index::rank> subderef;
 		for (int i = 0; i < index::rank; ++i) {
 			subderef(i) = deref(i + offset);
@@ -83,7 +83,7 @@ struct tensor_stats<scalar_type_, index_> {
 	}
 
 	template<int total_rank, int offset>
-	static const scalar_type &get_const(const body_type &body, const vector<int,total_rank> &deref) {
+	static const scalar_type &get_const(const BodyType &body, const vector<int,total_rank> &deref) {
 		vector<int,index::rank> subderef;
 		for (int i = 0; i < index::rank; ++i) {
 			subderef(i) = deref(i + offset);
@@ -103,21 +103,21 @@ struct tensor_stats<scalar_type_, index_> {
 //appease the vararg specialization recursive reference
 //(it doesn't seem to recognize the single-entry base case)
 template<typename scalar_type_>
-struct tensor_stats<scalar_type_> {
+struct TensorStats<scalar_type_> {
 	typedef scalar_type_ scalar_type;
 	enum { rank = 0 };
 
-	typedef scalar_type body_type;
+	typedef scalar_type BodyType;
 
 		//base case: do nothing
 	
 		//get an element in a tensor
 	
 	template<int total_rank, int offset>
-	static scalar_type &get(body_type &body, const vector<int,total_rank> &deref) {}
+	static scalar_type &get(BodyType &body, const vector<int,total_rank> &deref) {}
 	
 	template<int total_rank, int offset>
-	static const scalar_type &get_const(const body_type &body, const vector<int,total_rank> &deref) {}
+	static const scalar_type &get_const(const BodyType &body, const vector<int,total_rank> &deref) {}
 	
 	template<int total_rank, int offset>
 	static void assign_size(vector<int,total_rank> &s) {}
@@ -125,9 +125,9 @@ struct tensor_stats<scalar_type_> {
 
 /*
 type			= tensor element type
-tensor_stats	= helper class for calculating some template values
-body_type 		= the body_type (the generic_vector subclass) of the tensor 
-deref_type 		= the dereference type that would be needed to dereference this body_type 
+TensorStats	= helper class for calculating some template values
+BodyType 		= the BodyType (the generic_vector subclass) of the tensor 
+DerefType 		= the dereference type that would be needed to dereference this BodyType 
 					= int vector with dimension equal to rank
 
 rank 		= total rank of the structure
@@ -141,19 +141,19 @@ template<typename type_, typename... args>
 struct tensor {
 	typedef type_ type;
 
-	//tensor_stats metaprogram calculates rank
+	//TensorStats metaprogram calculates rank
 	//it pulls individual entries from the index args
 	//I could have the index args themselves do the calculation
 	// but that would mean making base-case specializations for each index class 
-	typedef ::tensor_stats<type_, args...> tensor_stats;
-	typedef typename tensor_stats::body_type body_type;
+	typedef ::TensorStats<type_, args...> TensorStats;
+	typedef typename TensorStats::BodyType BodyType;
 	
-	enum { rank = tensor_stats::rank };
+	enum { rank = TensorStats::rank };
 	
-	typedef vector<int,rank> deref_type;
+	typedef vector<int,rank> DerefType;
 
 	tensor() {}
-	tensor(const body_type &body_) : body(body_) {}
+	tensor(const BodyType &body_) : body(body_) {}
 	tensor(const tensor &t) : body(t.body) {}
 	tensor(const type &v) : body(v) {}
 	
@@ -164,23 +164,23 @@ struct tensor {
 	tensor<real, upper<3>, upper<4>> v;
 	v.body(0) will return of type upper<4>::body<real, real>
 	*/
-	body_type body;
+	BodyType body;
 
 	//no way to specify a typed list of arguments
 	// (solving that problem would give us arbitrary parameter constructors for vector classes)
 	//so here's the special case instances for up to N=4
-	typename tensor_stats::inner_type::body_type &operator()(int i) { return body(i); }
-	const typename tensor_stats::inner_type::body_type &operator()(int i) const { return body(i); }
+	typename TensorStats::InnerType::BodyType &operator()(int i) { return body(i); }
+	const typename TensorStats::InnerType::BodyType &operator()(int i) const { return body(i); }
 	//...and I haven't implemented these yet ...
-	type &operator()(int i, int j) { return tensor_stats::template get<2,0>(body, vector<int,2>(i, j)); }
-	const type &operator()(int i, int j) const { return tensor_stats::template get_const<2,0>(body, vector<int,2>(i, j)); }
-	type &operator()(int i, int j, int k) { return tensor_stats::template get<3,0>(body, vector<int,3>(i, j, k)); }
-	const type &operator()(int i, int j, int k) const { return tensor_stats::template get_const<3,0>(body, vector<int,3>(i, j, k)); }
-	type &operator()(int i, int j, int k, int l) { return tensor_stats::template get<4,0>(body, vector<int,4>(i, j, k, l)); }
-	const type &operator()(int i, int j, int k, int l) const { return tensor_stats::template get_const<4,0>(body, vector<int,4>(i, j, k, l)); }
+	type &operator()(int i, int j) { return TensorStats::template get<2,0>(body, vector<int,2>(i, j)); }
+	const type &operator()(int i, int j) const { return TensorStats::template get_const<2,0>(body, vector<int,2>(i, j)); }
+	type &operator()(int i, int j, int k) { return TensorStats::template get<3,0>(body, vector<int,3>(i, j, k)); }
+	const type &operator()(int i, int j, int k) const { return TensorStats::template get_const<3,0>(body, vector<int,3>(i, j, k)); }
+	type &operator()(int i, int j, int k, int l) { return TensorStats::template get<4,0>(body, vector<int,4>(i, j, k, l)); }
+	const type &operator()(int i, int j, int k, int l) const { return TensorStats::template get_const<4,0>(body, vector<int,4>(i, j, k, l)); }
 	
-	type &operator()(const deref_type &deref) { return tensor_stats::template get<rank,0>(body, deref); }
-	const type &operator()(const deref_type &deref) const { return tensor_stats::template get_const<rank,0>(body, deref); }
+	type &operator()(const DerefType &deref) { return TensorStats::template get<rank,0>(body, deref); }
+	const type &operator()(const DerefType &deref) const { return TensorStats::template get_const<rank,0>(body, deref); }
 
 	tensor operator-() const { return tensor(-body); }
 	tensor operator+(const tensor &b) const { return tensor(body + b.body); }
@@ -188,9 +188,9 @@ struct tensor {
 	tensor operator*(const type &b) const { return tensor(body * b); }
 	tensor operator/(const type &b) const { return tensor(body / b); }
 
-	deref_type size() const {
-		deref_type s;
-		tensor_stats::template assign_size<rank, 0>(s);
+	DerefType size() const {
+		DerefType s;
+		TensorStats::template assign_size<rank, 0>(s);
 		return s;
 	};
 
@@ -208,14 +208,14 @@ struct tensor {
 	if I were to remove this then I would need some sort of alternative to do just that.
 	this is where better iterators could come into play.
 	*/
-	operator body_type&() { return body; }
-	operator const body_type&() const { return body; }
+	operator BodyType&() { return body; }
+	operator const BodyType&() const { return body; }
 
 	//maybe I should put this in body
 	//and then use a sort of nested iterator so it doesn't cover redundant elements in symmetric indexes 
 	struct iterator {
 		tensor *parent;
-		deref_type index;
+		DerefType index;
 		
 		iterator() : parent(NULL) {}
 		iterator(tensor *parent_) : parent(parent_) {}

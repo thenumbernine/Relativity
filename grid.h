@@ -8,16 +8,16 @@ template<typename type_, int rank_>
 struct Grid {
 	typedef type_ type;
 	enum { rank = rank_ };
-	typedef vector<int,rank> deref_type;
+	typedef vector<int,rank> DerefType;
 
 	type *v;
-	deref_type size;
+	DerefType size;
 	
 	//cached for quick access by dot with index vector
 	//step[0] = 1, step[1] = size[0], step[j] = product(i=1,j-1) size[i]
-	deref_type step;
+	DerefType step;
 
-	Grid(const deref_type &size_) : size(size_) {
+	Grid(const DerefType &size_) : size(size_) {
 		v = new type[size.volume()];
 		step(0) = 1;
 		for (int i = 1; i < rank; ++i) {
@@ -25,20 +25,20 @@ struct Grid {
 		}
 	}
 
-	type &operator()(const deref_type &deref) { 
-		int flat_deref = deref_type::dot(deref, step);
+	type &operator()(const DerefType &deref) { 
+		int flat_deref = DerefType::dot(deref, step);
 		assert(flat_deref >= 0 && flat_deref < size.volume());
 		return v[flat_deref];
 	}
-	const type &operator()(const deref_type &deref) const { 
-		int flat_deref = deref_type::dot(deref, step);
+	const type &operator()(const DerefType &deref) const { 
+		int flat_deref = DerefType::dot(deref, step);
 		assert(flat_deref >= 0 && flat_deref < size.volume());
 		return v[flat_deref];
 	}
 
 	struct iterator {
 		Grid *parent;
-		deref_type index;
+		DerefType index;
 		
 		iterator() : parent(NULL) {}
 		iterator(Grid *parent_) : parent(parent_) {}
@@ -57,6 +57,7 @@ struct Grid {
 		}
 
 		typename Grid::type &operator*() const { return (*parent)(index); }
+		typename Grid::type *operator->() const { return &((*parent)(index)); }
 	};
 
 	iterator begin() {
@@ -71,7 +72,7 @@ struct Grid {
 	
 	struct const_iterator {
 		const Grid *parent;
-		deref_type index;
+		DerefType index;
 		
 		const_iterator() : parent(NULL) {}
 		const_iterator(const Grid *parent_) : parent(parent_) {}
@@ -89,7 +90,8 @@ struct Grid {
 			return *this;
 		}
 
-		typename Grid::type &operator*() const { return (*parent)(index); }
+		const typename Grid::type &operator*() const { return (*parent)(index); }
+		const typename Grid::type *operator->() const { return &((*parent)(index)); }
 	};
 
 	const_iterator begin() const {
