@@ -35,6 +35,7 @@ TODO
 	the responsibility for incrementing their own offset, size, and amount (rank) of indexes in the iteration.
 - index notation expressions via expression templates.  no more for-loops.  simply "beta_l(i) = gamma_ll(i,j) * beta_u(j);"
 	this depends on the separate write iterators.  I've already got this in my Lua tensor and symbolic math libraries.  In Lua.
+- permute and constant indexes.  like boost::bind.  too bad I'm not using boost.
 
 Conventions & Notations:
 
@@ -377,3 +378,7 @@ Hamiltonian constraint:
 From our evolved ln(sqrt(gamma)) we get:
 gamma^(1/2) = psi^6
 ln(sqrt(gamma)) = 6 ln(psi)
+
+
+
+

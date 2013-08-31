@@ -1,8 +1,7 @@
 #pragma once
 
-#include <algorithm>	//min/max
-
 #include "crtp_cast.h"
+#include "clamp.h"
 
 /*
 the 'parent' curious pattern whatever for generic_vector and generic_matrix
@@ -44,7 +43,7 @@ struct generic_array {
 	static child clamp(const child &a, const child &min, const child &max) {
 		child b;
 		for (int i = 0; i < size; ++i) {
-			b.v[i] = std::max(min.v[i], std::min(max.v[i], a.v[i]));
+			b.v[i] = clamp(a.v[i], min.v[i], max.v[i]);
 		}
 		return b;
 	}

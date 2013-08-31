@@ -288,6 +288,105 @@ struct KerrSchild : public Base<dim> {
 	}
 };
 
+
+/*
+This one's coming from "Numerical Relativity" p.61:
+beta^i = 0
+gammaBar_ij = eta_ij
+rho = S^i = 0
+K_ij = K = 0
+psi = 1 + sum_a M_a / (2 r_a)
+	r_i = |x^i - C^i_a| 
+	M_i = mass of the i'th black hole
+
+...and more detail can be found in chapter 13.2
+In fact, I'm stealing 1/alpha = sum_a M_a / (r c_a) from 12.51 without fully reading the rest of the chapter
+*/
+template<int dim, int numBlackHoles>
+struct BrillLindquist : public Base<dim> {
+	typedef Test::Base<dim> Base;
+
+	typedef typename Base::vector vector;
+	typedef typename Base::ADMFormalism ADMFormalism;
+	typedef typename ADMFormalism::tensor_l tensor_l;
+	typedef typename ADMFormalism::tensor_u tensor_u;
+	typedef typename ADMFormalism::tensor_sl tensor_sl;
+	typedef typename ADMFormalism::tensor_su tensor_su;
+
+	//I should at least make this a structure or something
+	typedef tensor<real, lower<numBlackHoles>, lower<dim+1>> BlackHoleInfo;
+	BlackHoleInfo blackHoleInfo;
+
+	BrillLindquist(
+		real maxDist_,	//half width of each dimension in the simulation
+		const BlackHoleInfo &blackHoleInfo_
+	) :	Base(maxDist_, Test::res, Test::iters),
+		blackHoleInfo(blackHoleInfo_)
+	{}
+
+	virtual const string filename() const { return "multiple_black_holes.txt"; }
+
+	virtual void init() {
+		Base::init();
+		
+		tensor_sl eta;
+		for (int i = 0; i < dim; ++i) {
+			eta(i,i) = 1.;
+		}
+
+		vector &min = Base::min;
+		vector &max = Base::max;
+		ADMFormalism* &sim = Base::sim;
+
+		//provide initial conditions
+		
+		cout << "providing initial conditions..." << endl;
+		vector center = (max + min) * .5;
+		for (typename ADMFormalism::GridIter iter = sim->readCells->begin(); iter != sim->readCells->end(); ++iter) {
+			typename ADMFormalism::Cell &cell = *iter;
+			vector x = sim->coordForIndex(iter.index);
+
+			//calculate psi and gammaBar_ij
+			cell.gammaBar_ll = eta;
+			cell.psi = 1;
+			real oneOverAlpha = 0;
+			for (int i = 0; i < numBlackHoles; ++i) {
+				real M = blackHoleInfo(i, dim);
+				vector c;
+				for (int j = 0; j < dim; ++j) {
+					c(j) = blackHoleInfo(i, j);
+				}
+				real r = vector::length(x - c);
+				cell.psi += .5 * M / r;
+				oneOverAlpha += .5 * M / r;
+			}
+
+			//now "Numerical Relativity" p.59 starts off talking about Schwarzschild geometry and represents it analogous to the isotropic coordinates on p.50.
+			//The isotropic coordinates show that beta and K are all zero.
+			//gamma_ij is indeed (1 + M/(2r))^4 eta_ij coinciding with a conformal metric of gammaBar_ij = eta_ij and psi = 1 + M/(2r).
+			//The lapse is given (for a single body, p.50) as alpha = (1 - M/(2r))/(1 + M/(2r)).
+			//What about when we have multiple bodies?
+			//Alcubierre calls this data "Brill-Lindquist data" and likewise doesn't mention the lapse value any more than Baumgarte & Shapiro do
+			// except for one additional statement: alpha psi = 1 - M / (2 r), which he goes on to state implies alpha = (1 - M/(2r))/(1 + M/(2r)).
+			//That and I skimmed through ch.12 to find something like this, and it's probably wrong:
+			//cell.alpha = 1. / oneOverAlpha;
+			cell.alpha = 1.;
+
+			//from psi we need to calculate our state values
+			real psiSquared = cell.psi * cell.psi;
+			real psiToTheFourth = psiSquared * psiSquared;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					cell.gamma_ll(i,j) = cell.gammaBar_ll(i,j) * psiToTheFourth;
+				}
+			}
+
+			cell.gamma = psiToTheFourth * psiToTheFourth * psiToTheFourth;
+			cell.ln_sqrt_gamma = .5 * log(cell.gamma);
+		}
+	}
+};
+
 }
 
 int main() {
@@ -301,13 +400,23 @@ int main() {
 		0						//charge
 	);
 	/**/
-	/* Sagitarrius A* : The supermassive black hole in the center of the Milky Way */
+	/* Sagitarrius A* : The supermassive black hole in the center of the Milky Way * /
 	KerrSchild<2> test(
 		4.1e+6 * sunRadiusInM,
 		4.1e+6 * sunMassInM,
 		0,
 		0
 	);
+	/**/
+	/* binary black hole head on collision */
+	enum { dim = 1 };
+	enum { numBlackHoles = 2 };
+	tensor<real, lower<numBlackHoles>, lower<dim+1>> blackHoleInfo;
+	for (int i = 0; i < numBlackHoles; ++i) {
+		blackHoleInfo(i,0) = (i == 0 ? -1 : 1) * 2. * sunRadiusInM;
+		blackHoleInfo(i,dim) = sunMassInM;
+	}
+	BrillLindquist<dim, numBlackHoles> test(4.1 * sunRadiusInM, blackHoleInfo);
 	/**/
 
 	test.outputHistory = false;
