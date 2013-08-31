@@ -145,10 +145,10 @@ for now let's use 2-point everywhere: d/dx^i f(x) ~= (f(x + dx^i) - f(x - dx^i))
 	k = dimension to differentiate across
 */
 template<typename real, int dim, typename InputType>
-struct partialDerivativeClass;
+struct PartialDerivativeClass;
 
 template<typename real, int dim, typename... args>
-struct partialDerivativeClass<real, dim, tensor<real, args...>> {
+struct PartialDerivativeClass<real, dim, tensor<real, args...>> {
 	typedef tensor<real, args...> InputType;
 	typedef tensor<real, lower<dim>, args...> OutputType;
 	typedef ::Cell<real, dim> Cell;
@@ -156,46 +156,15 @@ struct partialDerivativeClass<real, dim, tensor<real, args...>> {
 	typedef const InputType Cell::*CellFieldType;
 	OutputType operator()(Grid &cells, CellFieldType field, const vector<real, dim> &dx, const vector<int, dim> &index) {
 		OutputType result;
-#if 0	//sub-tensor access: all-at-once
-		vector<int, dim> nextIndex = vector<int, dim>::clamp(index+1, vector<int, dim>(0), size-1);
-		vector<int, dim> prevIndex = vector<int, dim>::clamp(index-1, vector<int, dim>(0), size-1);
-		const InputType &nextT = cells(nextIndex).*field;
-		const InputType &prevT = cells(prevIndex).*field;
-		for (int k = 0; k < dim; ++k) {
-			result(k) = (nextT - prevT) / (2. * dx(k));
-		}
-#elif 1	//sub-tensor access: per-dimension. has the benefit of working with symmetric structures.
 		for (int k = 0; k < dim; ++k) {
 			result(k) = partialDerivativeCoordinate(cells, field, dx, index, k); 
 		}
-#else	//per-index.
-		//I got rid of sub-tensor accessor.
-		//not sure if it is the right thing to expose, and covariant diffs have to march through indexes anyways.
-		vector<int, dim> nextIndex = vector<int, dim>::clamp(index+1, vector<int, dim>(0), size-1);
-		vector<int, dim> prevIndex = vector<int, dim>::clamp(index-1, vector<int, dim>(0), size-1);
-		//these should be const-ref, but that'd mean making a separate const-access tensor =P
-		InputType &nextT = cells(nextIndex).*field;
-		InputType &prevT = cells(prevIndex).*field;
-		typename OutputType::DerefType output_deref;
-		for (int k = 0; k < dim; ++k) {
-			output_deref(0) = k;
-			//this is where sub-tensor is more efficient -- or I should make separate read- and write- iterators.
-			// symmetric and antisymmetric indexes don't have to march through all members,
-			// so for component-wise operations like this, I could just use thie write iterator
-			for (typename InputType::iterator i = nextT.begin(); i != nextT.end(); ++i) {
-				for (int j = 1; j < output_deref.dim; ++j) {
-					output_deref(j) = i.index(j-1);	//sub-vector dereferencing.  good idea?
-				}
-				result(output_deref) = (nextT(i.index) - prevT(i.index)) / (2. * dx(k));
-			}
-		}
-#endif
 		return result;
 	}
 };
 
 template<typename real, int dim>
-struct partialDerivativeClass<real, dim, real> {
+struct PartialDerivativeClass<real, dim, real> {
 	typedef real InputType;
 	typedef tensor<real, lower<dim>> OutputType;
 	typedef ::Cell<real, dim> Cell;
@@ -211,15 +180,108 @@ struct partialDerivativeClass<real, dim, real> {
 };
 
 template<typename real, int dim, typename InputType>
-typename partialDerivativeClass<real, dim, InputType>::OutputType
+typename PartialDerivativeClass<real, dim, InputType>::OutputType
 partialDerivative(
 	Grid<Cell<real, dim>, dim> &cells, 
 	const InputType Cell<real, dim>::* field, 
 	const vector<real, dim> &dx, 
 	const vector<int, dim> &index) 
 {
-	return partialDerivativeClass<real, dim, InputType>()(cells, field, dx, index);
+	return PartialDerivativeClass<real, dim, InputType>()(cells, field, dx, index);
 }
+
+/*
+partial second derivatives of vectors
+until I solve a few things with dereferencing, these will have to be specialized to
+*/
+
+template<typename real, int dim, typename InputType>
+struct PartialSecondDerivativeClass;
+
+template<typename real, int dim>
+struct PartialSecondDerivativeClass<real, dim, real> {
+	typedef real InputType;
+	typedef tensor<real, lower<dim>> InputPartialType;
+	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> OutputType;
+	typedef ::Cell<real, dim> Cell;
+	typedef ::Grid<Cell, dim> Grid;
+	typedef const InputType Cell::*CellFieldType;
+	typedef const InputPartialType Cell::*CellPartialFieldType;
+	OutputType operator()(Grid &cells, CellFieldType field, CellPartialFieldType partialField, const vector<real, dim> &dx, const vector<int, dim> &index) {
+		OutputType result;
+			
+		//partial2_field_ll(i,j) = partial_i partial_j field
+		for (int i = 0; i < dim; ++i) {
+			InputPartialType partial_field_l_wrt_xi = partialDerivativeCoordinate(cells, partialField, dx, index, i);
+			for (int j = 0; j <= i; ++j) {
+				if (i == j) {
+					result(i,j) = partialSecondDerivativeCoordinate(cells, field, dx, index, i);
+				} else {
+					result(i,j) = partial_field_l_wrt_xi(j);
+				}
+			}
+		}
+
+		return result;
+	}
+};
+
+template<typename real, int dim>
+struct PartialSecondDerivativeClass<real, dim, tensor<real, symmetric<lower<dim>, lower<dim>>>> {
+	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> InputType;
+	typedef tensor<real, lower<dim>, symmetric<lower<dim>, lower<dim>>> InputPartialType;
+	typedef tensor<real, symmetric<lower<dim>, lower<dim>>, symmetric<lower<dim>, lower<dim>>> OutputType;
+	typedef ::Cell<real, dim> Cell;
+	typedef ::Grid<Cell, dim> Grid;
+	typedef const InputType Cell::*CellFieldType;
+	typedef const InputPartialType Cell::*CellPartialFieldType;
+	OutputType operator()(Grid &cells, CellFieldType field, CellPartialFieldType partialField, const vector<real, dim> &dx, const vector<int, dim> &index) {
+		OutputType result;
+			
+		//partial2_field_llll(k,l,i,j) = partial_k partial_l field_ij
+		for (int k = 0; k < dim; ++k) {
+			InputPartialType partial_field_lll_wrt_xk = partialDerivativeCoordinate(cells, partialField, dx, index, k);
+			for (int l = 0; l <= k; ++l) {
+				if (k == l) {
+					/* working on subtensor dereferences * /
+					InputType partial2_field_ll_wrt_kk = partialSecondDerivativeCoordinate(cells, field, dx, index, k);
+					result(k,l) = partial2_field_ll_wrt_kk;
+					/**/
+					
+					/* per-index in the mean time */
+					InputType partial2_field_ll_wrt_kk = partialSecondDerivativeCoordinate(cells, field, dx, index, k);
+					for (int i = 0; i < dim; ++i) {
+						for (int j = 0; j <= i; ++j) {
+							result(k,l,i,j) = partial2_field_ll_wrt_kk(i,j);
+						}
+					}
+					/**/
+				} else {
+					for (int i = 0; i < dim; ++i) {
+						for (int j = 0; j <= i; ++j) {
+							result(k,l,i,j) = partial_field_lll_wrt_xk(l,i,j);
+						}
+					}
+				}
+			}
+		}
+
+		return result;
+	}
+};
+
+template<typename real, int dim, typename InputType>
+typename PartialSecondDerivativeClass<real, dim, InputType>::OutputType
+partialSecondDerivative(
+	Grid<Cell<real, dim>, dim> &cells,
+	const InputType Cell<real, dim>::*field,
+	const typename PartialSecondDerivativeClass<real, dim, InputType>::CellPartialFieldType partialField,
+	const vector<real, dim> &dx,
+	const vector<int, dim> &index)
+{
+	return PartialSecondDerivativeClass<real, dim, InputType>()(cells, field, partialField, dx, index);
+}
+
 
 /*
 covariant derivative
@@ -335,7 +397,8 @@ struct CovariantDerivativeClass<real, dim, tensor<real, symmetric<upper<dim>, up
 
 
 template<typename real, int dim, typename InputType>
-typename CovariantDerivativeClass<real, dim, InputType>::OutputType covariantDerivative(
+typename CovariantDerivativeClass<real, dim, InputType>::OutputType
+covariantDerivative(
 	Grid<Cell<real, dim>, dim> &cells, 
 	const InputType Cell<real, dim>::*field, 
 	const vector<real, dim> &dx, 

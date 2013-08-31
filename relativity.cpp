@@ -413,7 +413,7 @@ int main() {
 	enum { numBlackHoles = 2 };
 	tensor<real, lower<numBlackHoles>, lower<dim+1>> blackHoleInfo;
 	for (int i = 0; i < numBlackHoles; ++i) {
-		blackHoleInfo(i,0) = (i == 0 ? -1 : 1) * 2. * sunRadiusInM;
+		blackHoleInfo(i,0) = (i == 0 ? -1. : 1.) * 2. * sunRadiusInM;
 		blackHoleInfo(i,dim) = sunMassInM;
 	}
 	BrillLindquist<dim, numBlackHoles> test(4.1 * sunRadiusInM, blackHoleInfo);

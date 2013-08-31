@@ -52,8 +52,22 @@ int test_tensors() {
 		h2(i) = h(i);
 		cout << "h^"<<i<<" = "<< h2 << endl;
 	}
-	tensor<real, lower<3>, lower<3>, lower<3>> t;
-	cout << t << endl;
+
+	//subtensor access
+	tensor<real, upper<3>, upper<3>, upper<3>> ta;
+	for (tensor<real, upper<3>, upper<3>, upper<3>>::iterator i = ta.begin(); i != ta.end(); ++i) *i = 1.;
+	cout << "ta = " << ta << endl;
+	tensor<real, upper<3>, upper<3>> tb;
+	for (tensor<real, upper<3>, upper<3>>::iterator i = tb.begin(); i != tb.end(); ++i) *i = 2.;
+	cout << "tb = " << tb << endl;
+	ta(0) = tb;
+	cout << "ta = " << ta << endl;
+	tensor<real, upper<3>> tc;
+	for (tensor<real, upper<3>>::iterator i = tc.begin(); i != tc.end(); ++i) *i = 3.;
+	cout << "tc = " << tc << endl;
+	ta(0,0) = tc;
+	cout << "ta = " << ta << endl;
+
 
 #if 0	//not yet working
 	typedef tensor<real, 
