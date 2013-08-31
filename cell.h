@@ -35,11 +35,12 @@ struct Cell {
 		H(real()),
 		K(real()),
 		gamma(real()),
+		R(real()),
 		ln_sqrt_gamma(real()),
 		ln_psi(real()),
-		tr_K_sq(real()),
-		R(real()),
-		RBar(real())
+		DBar2_psi(real()),
+		RBar(real()),
+		tr_K_sq(real())
 	{}
 
 
@@ -164,6 +165,9 @@ struct Cell {
 
 	//DBar_ln_psi_l(i) := DBar_i ln(psi)
 	tensor_l DBar_ln_psi_l;
+
+	//DBar2_psi := gammaBar^ij DBar_i DBar_j psi
+	real DBar2_psi;
 	
 	//gammaBar_ll(i,j) := gammaBar_ij = psi^-4 gamma_ij
 	tensor_sl gammaBar_ll;

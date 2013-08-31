@@ -474,7 +474,8 @@ struct ADMFormalism {
 			tensor_ll DBar_DBar_psi_ll = covariantDerivative(targetReadCells, &Cell::DBar_psi_l, dx, iter.index, &Cell::connBar_ull);
 
 			//DBar2_psi := DBar^2 psi = gammaBar^ij DBar_i DBar_j psi
-			real DBar2_psi = 0;
+			real &DBar2_psi = cell.DBar2_psi;
+			DBar2_psi = 0;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
 					DBar2_psi += gammaBar_uu(i,j) * DBar_DBar_psi_ll(i,j);
@@ -501,7 +502,11 @@ struct ADMFormalism {
 		//calcConstraints
 		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
 			Cell &cell = *iter;
-		
+	
+			const real &psi = cell.psi;
+			const real &DBar2_psi = cell.DBar2_psi;
+			const real &R = cell.R;
+			const real &RBar = cell.RBar;
 			const tensor_su &gamma_uu = cell.gamma_uu;
 			const tensor_sl &R_ll = cell.R_ll;
 			const tensor_ul &K_ul = cell.K_ul;
@@ -511,17 +516,23 @@ struct ADMFormalism {
 			const real &rho = cell.rho;
 			const tensor_u &S_u = cell.S_u;
 
-			//R = gamma^ij R_ij
-			real R = 0.;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					R += gamma_uu(i,j) * R_ll(i,j);
-				}
-			}
+			//Hamiltonian constraint
+#if 0		//option #1: use original ADM method
 
 			//H = 1/2 (R + K^2 - K^j_i K^i_j) - 8 pi rho
 			real &H = cell.H;
 			H = .5 * (R + K * K - tr_K_sq) - 8. * M_PI * rho;
+#else		//option #2: use conformal values
+	
+			real psiSquared = psi * psi;
+			real psiToTheFourth = psiSquared * psiSquared;
+			
+			//"Numerical Relativity" p.57
+			//H = 1/2 ( -8 DBar^2 psi + psi RBar + psi^5 (K^2 - tr(K^2)) - 16 pi psi^5 rho)
+			//  = 1/2 ( -8 DBar^2 psi + psi (RBar + psi^4 (K^2 - tr(K^2) - 16 pi rho)))
+			real &H = cell.H;
+			H = .5 * (-8. * DBar2_psi + psi * (RBar * psiToTheFourth * (K * K - tr_K_sq - 16. * M_PI * rho)));
+#endif
 
 			//diff_K_uu(k,i,j) := diff_k K^ij
 			//I'm not seeing a distinction between the 4D and 3D representations of the constraints.
