@@ -126,14 +126,13 @@ struct ADMFormalism {
 		calcOverGrid(targetReadCells, &Cell::calc_psi_from_ln_sqrt_gamma);
 
 #if 0
-		//option #1: the original ADM
+		//option #1: the original ADM implementation
 		//	calculate gamma^ij from gamma_ij
 		//	calculate gamma from det(gamma_ij)
 		{
 			calcOverGrid(targetReadCells, &Cell::calc_gamma_uu_from_gamma_ll);
 		}
 #endif
-
 #if 1
 		//option #2: introduction of conformal factor
 		//	calculate gammaBar^ij and gammaBar_ij from psi and ln(sqrt(gamma))
@@ -148,15 +147,15 @@ struct ADMFormalism {
 			calcOverGrid(targetReadCells, &Cell::calc_gamma_uu_from_gammaBar_uu_and_psi);
 		}
 #endif
-
+		
 		//beta_l, gamma_uu, D_alpha_l
 		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
 			Cell &cell = *iter;
 			
 			const tensor_u &beta_u = cell.beta_u;
 			const tensor_sl &gamma_ll = cell.gamma_ll;
-			
-			//D_alpha_l(i) = diff_i alpha = partial_i alpha
+	
+			//D_alpha_l(i) := diff_i alpha = partial_i alpha
 			tensor_l &D_alpha_l = cell.D_alpha_l;
 			D_alpha_l = partialDerivative(targetReadCells, &Cell::alpha, dx, iter.index);
 
@@ -172,7 +171,51 @@ struct ADMFormalism {
 			}
 		}
 
-		//conn_ull depends on gamma_uu
+		//D_ln_psi_l depends on ln_psi
+		//partial_gammaBar_lll depends on gammaBar_ll
+		//connBar_lll depends on partial_gammaBar_lll
+		//connBar_ull depends on connBar_lll and gammaBar_uu
+		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
+			Cell &cell = *iter;
+			
+			const tensor_sl &gammaBar_ll = cell.gammaBar_ll;
+			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
+			
+			//D_ln_psi_l(i) := D_i ln(psi) = partial_i ln(psi)
+			cell.D_ln_psi_l = partialDerivative(targetReadCells, &Cell::ln_psi, dx, iter.index);
+			
+			//partial_gammaBar_lll(k)(i,j) := partial_k gammaBar_ij
+			tensor_lsl &partial_gammaBar_lll = cell.partial_gammaBar_lll;
+			partial_gammaBar_lll = partialDerivative(targetReadCells, &Cell::gammaBar_ll, dx, iter.index);
+
+			//connBar_lll(i)(j,k) := connBar_ijk = 1/2 (partial_k gammaBar_ij + partial_j gammaBar_ik - partial_i gammaBar_jk)
+			tensor_lsl &connBar_lll = cell.connBar_lll;
+			for (int k = 0; k < dim; ++k) {
+				for (int i = 0; i < dim; ++i) {
+					for (int j = 0; j <= i; ++j) {
+						connBar_lll(i,j,k) = .5 * (partial_gammaBar_lll(k,i,j) + partial_gammaBar_lll(j,i,k) - partial_gammaBar_lll(i,j,k));
+					}
+				}
+			}
+
+			//connBar_ull(i)(j,k) := conn^i_jk = gammaBar^il connBar_ljk
+			tensor_usl &connBar_ull = cell.connBar_ull;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					for (int k = 0; k <= j; ++k) {
+						connBar_ull(i,j,k) = 0;
+						for (int l = 0; l < dim; ++l) {
+							connBar_ull(i,j,k) += gammaBar_uu(i,l) * connBar_lll(l,j,k);
+						}
+					}
+				}
+			}
+		}
+
+
+		//partial_gamma_lll depends on gamma_ll
+		//conn_lll depends on partial_gamma_lll
+		//conn_ull depends on conn_lll and gamma_uu
 		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
 			Cell &cell = *iter;
 	
@@ -190,7 +233,7 @@ struct ADMFormalism {
 			for (int k = 0; k < dim; ++k) {
 				for (int i = 0; i < dim; ++i) {
 					for (int j = 0; j <= i; ++j) {
-						conn_lll(i)(j,k) = .5 * (partial_gamma_lll(k)(i,j) + partial_gamma_lll(j)(i,k) - partial_gamma_lll(i)(j,k));
+						conn_lll(i,j,k) = .5 * (partial_gamma_lll(k,i,j) + partial_gamma_lll(j,i,k) - partial_gamma_lll(i,j,k));
 					}
 				}
 			}
@@ -200,9 +243,9 @@ struct ADMFormalism {
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
 					for (int k = 0; k <= j; ++k) {
-						conn_ull(i)(j,k) = 0;
+						conn_ull(i,j,k) = 0;
 						for (int l = 0; l < dim; ++l) {
-							conn_ull(i)(j,k) += gamma_uu(i,l) * conn_lll(l)(j,k);
+							conn_ull(i,j,k) += gamma_uu(i,l) * conn_lll(l,j,k);
 						}
 					}
 				}

@@ -115,27 +115,11 @@ struct Cell {
 	//partial_gamma_lll(k,i,j) := partial_k gamma_ij
 	tensor_lsl partial_gamma_lll;
 
-	//conformal factor 
-	//currently derived from the iterated ln(sqrt(gamma))	
-	real psi;
-
-	//log of conformal factor
-	//stored separately because it's used often enough
-	//psi = gamma^(1/12)
-	//ln psi = 1/12 ln gamma = 1/6 ln(sqrt(gamma))
-	real ln_psi;
-
 	//gamma_uu(i,j) := gamma^ij = inverse(gamma_ij) = covalent(gamma_ij) / det(gamma_ij)
 	tensor_su gamma_uu;
 
 	//gamma = det(gamma_ij)
 	real gamma;
-
-	//gammaBar_ll(i,j) := gammaBar_ij = psi^-4 gamma_ij
-	tensor_sl gammaBar_ll;
-
-	//gammaBar_uu(i,j) := gammaBar^ij = psi^4 gamma^ij
-	tensor_su gammaBar_uu;
 
 	//conn_lll(i,j,k) := conn_ijk
 	tensor_lsl  conn_lll;
@@ -155,6 +139,36 @@ struct Cell {
 	//tr_K_sq := (K^2)^i_i = K^ij K_ji
 	real tr_K_sq;
 
+		//conformal factor aux variables
+
+	//conformal factor 
+	//currently derived from the iterated ln(sqrt(gamma))	
+	real psi;
+
+	//log of conformal factor
+	//stored separately because it's used often enough
+	//psi = gamma^(1/12)
+	//ln psi = 1/12 ln gamma = 1/6 ln(sqrt(gamma))
+	real ln_psi;
+
+	//D_ln_psi_l(i) := D_i ln(psi)
+	tensor_l D_ln_psi_l;
+
+	//gammaBar_ll(i,j) := gammaBar_ij = psi^-4 gamma_ij
+	tensor_sl gammaBar_ll;
+
+	//gammaBar_uu(i,j) := gammaBar^ij = psi^4 gamma^ij
+	tensor_su gammaBar_uu;
+
+	//partial_gammaBar_lll(i,j,k) := partial_i gammaBar_jk
+	tensor_lsl partial_gammaBar_lll;
+
+	//connBar_lll(i,j,k) := connBar_ijk = 1/2 (partial_k gammaBar_ij + partial_j gammaBar_ik - partial_i gammaBar_jk)
+	tensor_lsl connBar_lll;
+
+	//connBar_ull(i,j,k) := connBar^i_jk = gammaBar^il connBar_ljk
+	tensor_usl connBar_ull;
+	
 
 	// calculations of aux values
 
