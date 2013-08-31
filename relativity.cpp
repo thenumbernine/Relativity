@@ -64,7 +64,7 @@ struct RunClass<1> {
 template<>
 struct RunClass<2> {
 	//2D case splots the last one
-	void operator()(::ADMFormalism<real, 2, Integrator> *sim, ostream &f, int numIters) {
+	void operator()(::ADMFormalism<real, 2, Integrator> *sim, ostream &f, int numIters, bool outputHistory) {
 		cout << "iterating..." << endl;
 		const real dt = .01;
 		for (int i = 0; i < numIters; ++i) {
@@ -302,7 +302,7 @@ int main() {
 	);
 	/**/
 	/* Sagitarrius A* : The supermassive black hole in the center of the Milky Way */
-	KerrSchild<1> test(
+	KerrSchild<2> test(
 		4.1e+6 * sunRadiusInM,
 		4.1e+6 * sunMassInM,
 		0,
