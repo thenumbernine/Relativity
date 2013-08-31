@@ -2,7 +2,7 @@
 
 #include "vector.h"
 #include "tensor.h"
-#include "invert.h"
+#include "inverse.h"
 
 template<typename real_, int dim_>
 struct Cell {
@@ -34,6 +34,7 @@ struct Cell {
 		rho(real()),
 		H(real()),
 		K(real()),
+		gamma(real()),
 		ln_sqrt_gamma(real()),
 		ln_psi(real()),
 		tr_K_sq(real())
@@ -127,6 +128,9 @@ struct Cell {
 	//gamma_uu(i,j) := gamma^ij = inverse(gamma_ij) = covalent(gamma_ij) / det(gamma_ij)
 	tensor_su gamma_uu;
 
+	//gamma = det(gamma_ij)
+	real gamma;
+
 	//gammaBar_ll(i,j) := gammaBar_ij = psi^-4 gamma_ij
 	tensor_sl gammaBar_ll;
 
@@ -156,10 +160,11 @@ struct Cell {
 
 
 	//used during init
-	//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
-	void calcLnSqrtGammaFromGammaLL() {
+	//gamma = det(gamma_ij)
+	//ln_sqrt_gamma := ln(sqrt(gamma))
+	void calc_ln_sqrt_gamma_from_gamma_ll() {
 		//gamma = det(gamma_ij)
-		real gamma = determinant(gamma_ll);
+		gamma = determinant(gamma_ll);
 
 		//ln_sqrt_gamma := ln(sqrt(gamma))
 		ln_sqrt_gamma = .5 * log(gamma);
@@ -167,7 +172,7 @@ struct Cell {
 
 	//ln_psi := ln(psi) = 1/6 ln(sqrt(gamma))
 	//psi = exp(ln(psi))
-	void calcPsiFromLnSqrtGamma() {
+	void calc_psi_from_ln_sqrt_gamma() {
 		//ln(psi) = 1/6 ln(sqrt(gamma))
 		ln_psi = ln_sqrt_gamma / 6.;
 
@@ -175,13 +180,26 @@ struct Cell {
 		psi = exp(ln_psi);
 	}
 
+	//option-1 method
+	//gamma = det(gamma_ij)
+	//gamma^ij = ((gamma_kl)^-1)^ij
+	void calc_gamma_uu_from_gamma_ll() {
+		gamma = determinant(gamma_ll);
+		gamma_uu = inverse(gamma_ll, gamma);
+	}
+
+	//option-2 method
 	//gammaBar_ij = psi^-4 gamma_ij
 	//gammaBar^ij = inverse(gammaBar_ij)
-	//gamma^ij = psi^-4 gammaBar^ij
-	void calcGammaBar() {
+	//gamma = psi^12
+	void calc_gammaBar_uu_and_gammaBar_ll_from_psi() {
 		real psiSquared = psi * psi;
 		real psiToTheFourth = psiSquared * psiSquared;
 		real oneOverPsiToTheFourth = 1. / psiToTheFourth;
+
+		//either this or another exp() call
+		real psiToTheEighth = psiToTheFourth * psiToTheFourth;
+		gamma = psiToTheFourth * psiToTheEighth;
 
 		//gammaBar_ij = psi^-4 gamma_ij
 		for (int i = 0; i < dim; ++i) {
@@ -192,11 +210,63 @@ struct Cell {
 
 		//gammaBar^ij = inverse(gammaBar_ij)
 		gammaBar_uu = inverse(gammaBar_ll, 1.);
+	}
+
+	//option-2 method
+	//gamma^ij = psi^-4 gammaBar^ij
+	void calc_gamma_uu_from_gammaBar_uu_and_psi() {
+		real psiSquared = psi * psi;
+		real psiToTheFourth = psiSquared * psiSquared;
+		real oneOverPsiToTheFourth = 1. / psiToTheFourth;
 
 		//gamma^ij = psi^-4 gammaBar^ij
 		for (int i = 0; i < dim; ++i) {
 			for (int j = 0; j <= i; ++j) {
 				gamma_uu(i,j) = oneOverPsiToTheFourth * gammaBar_uu(i,j);
+			}
+		}
+	}
+
+	//K^i_j := gamma^ik K_kj
+	void calc_K_ul() {
+		for (int i = 0; i < dim; ++i) {
+			for (int j = 0; j < dim; ++j) {
+				K_ul(i,j) = 0;
+				for (int k = 0; k < dim; ++k) {
+					K_ul(i,j) += gamma_uu(i,k) * K_ll(k,j);
+				}
+			}
+		}
+	}
+
+	//K = K^i_i
+	void calc_K() {
+		K = 0.;
+		for (int i = 0; i < dim; ++i) {
+			K += K_ul(i,i);
+		}
+	}
+	
+	//K^ij = K^i_k gamma^kj
+	void calc_K_uu() {
+		//K_uu(i,j) := K^ij = K^i_k gamma^kj
+		for (int i = 0; i  < dim; ++i) {
+			for (int j = 0; j <= i; ++j) {
+				K_uu(i,j) = 0;
+				for (int k = 0; k < dim; ++k) {
+					K_uu(i,j) += K_ul(i,k) * gamma_uu(k,j);
+				}
+			}
+		}
+	}
+	
+	//tr_K_sq := tr(K^2) = (K^2)^i_i = K^ij K_ji = K^i_j K^j_i
+	//this method uses tr(K^2) = K^ij K_ij in particular
+	void calc_tr_K_sq() {
+		tr_K_sq = 0.;
+		for (int i = 0; i < dim; ++i) {
+			for (int j = 0; j < dim; ++j) {
+				tr_K_sq += K_uu(i,j) * K_ll(i,j); 
 			}
 		}
 	}

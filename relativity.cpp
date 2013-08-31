@@ -8,7 +8,7 @@ using namespace std;
 namespace Test {
 
 typedef double real;
-enum { res = 10 };
+enum { res = 100 };
 enum { iters = 100 };
 
 //universal constants
@@ -43,7 +43,7 @@ struct RunClass<1> {
 		}
 
 		cout << "iterating..." << endl;
-		const real dt = .1;
+		const real dt = .1 * sim->dx(0);
 		for (int i = 0; i < numIters; ++i) {
 			sim->update(dt);
 			
@@ -116,6 +116,7 @@ struct Base {
 	}
 };
 
+//this is a Schwarzschild init technically, with some matter thrown in there
 template<int dim>
 struct Sun : public Base<dim> {
 	typedef Test::Base<dim> Base;
@@ -142,10 +143,21 @@ struct Sun : public Base<dim> {
 			real oneMinusSunMassOver2Radius = 1. - sunMassOver2Radius;
 			real onePlusSunMassOver2Radius = 1. + sunMassOver2Radius;
 			real onePlusSunMassOver2RadiusSq = onePlusSunMassOver2Radius * onePlusSunMassOver2Radius;
+			
 			cell.alpha = oneMinusSunMassOver2Radius / onePlusSunMassOver2Radius; 
+		
+			//beta^i = 0
+
 			for (int i = 0; i < dim; ++i) {
 				cell.gamma_ll(i,i) = onePlusSunMassOver2RadiusSq * onePlusSunMassOver2RadiusSq;
 			}
+			
+			//gamma = det(gamma_ij)
+			//ln_sqrt_gamma := ln(sqrt(gamma))
+			cell.calc_ln_sqrt_gamma_from_gamma_ll();
+
+			//K_ij = K = 0
+			
 			if (r <= sunRadiusInM) {
 				cell.rho = sim->dx.volume() * sunDensityInM_2;
 			}
@@ -223,9 +235,19 @@ struct KerrSchild : public Base<dim> {
 				}
 			}
 		
-			cell.calcLnSqrtGammaFromGammaLL();
-			cell.calcPsiFromLnSqrtGamma();
-			cell.calcGammaBar();
+			//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
+			cell.calc_ln_sqrt_gamma_from_gamma_ll();
+			
+			//ln_psi := ln(psi) = 1/6 ln(sqrt(gamma))
+			//psi = exp(ln(psi))
+			cell.calc_psi_from_ln_sqrt_gamma();
+			
+			//gammaBar_ij = psi^-4 gamma_ij
+			//gammaBar^ij = inverse(gammaBar_ij)
+			cell.calc_gammaBar_uu_and_gammaBar_ll_from_psi();
+
+			//gamma^ij = psi^-4 gammaBar^ij
+			cell.calc_gamma_uu_from_gammaBar_uu_and_psi();
 
 			tensor_su &gamma_uu = cell.gamma_uu;
 
@@ -256,6 +278,9 @@ struct KerrSchild : public Base<dim> {
 					K_ll(i,j) = 2. * H * a / r * (eta(i,j) - (2. + H) * l_l(i) * l_l(j));
 				}
 			}
+
+			real &K = cell.K;
+			K = 2 * M * alpha * alpha * alpha / (r * r) * (1. + 3. * M / r);
 		}
 	}
 };
@@ -285,7 +310,6 @@ int main() {
 //	test.outputHistory = false;
 	
 	test.init();
-	test.sim->init();
 	test.run();
 }
 

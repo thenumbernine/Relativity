@@ -12,7 +12,7 @@ DEPS :=\
 	generic_symmat.h \
 	generic_vector.h \
 	grid.h \
-	invert.h \
+	inverse.h \
 	tensor.h \
 	tensor_index.h \
 	vector.h
