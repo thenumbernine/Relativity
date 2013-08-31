@@ -310,7 +310,7 @@ int main() {
 	);
 	/**/
 
-//	test.outputHistory = false;
+	test.outputHistory = false;
 	
 	test.init();
 	test.run();
