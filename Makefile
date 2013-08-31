@@ -4,6 +4,7 @@ GNUPLOT := droidplot
 DEPS :=\
 	admformalism.h \
 	cell.h \
+	crtp_cast.h \
 	derivative.h \
 	generic_antisymmat.h \
 	generic_array.h \
@@ -12,6 +13,7 @@ DEPS :=\
 	generic_symmat.h \
 	generic_vector.h \
 	grid.h \
+	integrators.h \
 	inverse.h \
 	tensor.h \
 	tensor_index.h \
@@ -20,9 +22,9 @@ DEPS :=\
 run: install 
 	$(TARGETDIR)relativity
 	# 1D without history:
-	#$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; plot 'black_hole.txt' using 2:16"
+	$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; plot 'black_hole.txt' using 2:16"
 	# 1D with history:
-	$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; splot 'black_hole.txt' using 1:2:16"
+	#$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; splot 'black_hole.txt' using 1:2:16"
 
 run_test: install_test
 	$(TARGETDIR)test
@@ -46,4 +48,5 @@ clean:
 	-rm test
 
 .PHONY: all install install_test run run_test clean
+
 

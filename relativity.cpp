@@ -1,4 +1,5 @@
 #include "admformalism.h"
+#include "integrators.h"
 
 #include <fstream>
 #include <iostream>
@@ -10,6 +11,8 @@ namespace Test {
 typedef double real;
 enum { res = 100 };
 enum { iters = 100 };
+
+typedef RK4Integrator Integrator;
 
 //universal constants
 const real speedOfLightInMPerS = 299792458.;
@@ -37,7 +40,7 @@ struct RunClass;
 template<>
 struct RunClass<1> {
 	//1D case splot's all time slices together
-	void operator()(::ADMFormalism<real, 1> *sim, ostream &f, int numIters, bool outputHistory) {
+	void operator()(::ADMFormalism<real, 1, Integrator> *sim, ostream &f, int numIters, bool outputHistory) {
 		if (outputHistory) {
 			sim->outputLine(f);
 		}
@@ -61,7 +64,7 @@ struct RunClass<1> {
 template<>
 struct RunClass<2> {
 	//2D case splots the last one
-	void operator()(::ADMFormalism<real, 2> *sim, ostream &f, int numIters) {
+	void operator()(::ADMFormalism<real, 2, Integrator> *sim, ostream &f, int numIters) {
 		cout << "iterating..." << endl;
 		const real dt = .01;
 		for (int i = 0; i < numIters; ++i) {
@@ -74,8 +77,8 @@ struct RunClass<2> {
 
 template<int dim>
 struct Base {
-	typedef ::vector<real,dim> vector;
-	typedef ::ADMFormalism<real,dim> ADMFormalism;
+	typedef ::vector<real, dim> vector;
+	typedef ::ADMFormalism<real, dim, Integrator> ADMFormalism;
 	typedef typename ADMFormalism::DerefType DerefType;
 
 	real maxDist;

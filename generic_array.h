@@ -2,6 +2,8 @@
 
 #include <algorithm>	//min/max
 
+#include "crtp_cast.h"
+
 /*
 the 'parent' curious pattern whatever for generic_vector and generic_matrix
 	type_ is the type of each element
@@ -114,6 +116,36 @@ struct generic_array {
 			c.v[i] = a.v[i] / b;
 		}
 		return c;
+	}
+
+	//these will have to be overridden to return the correct type (unless I cast it here...)
+	
+	child &operator+=(const child &b) {
+		for (int i = 0; i < size; ++i) {
+			v[i] += b.v[i];
+		}
+		return crtp_cast<child>(*this);
+	}
+
+	child &operator-=(const child &b) {
+		for (int i = 0; i < size; ++i) {
+			v[i] -= b.v[i];
+		}
+		return crtp_cast<child>(*this);
+	}
+
+	child &operator*=(const scalar_type &b) {
+		for (int i = 0; i < size; ++i) {
+			v[i] *= b;
+		}
+		return crtp_cast<child>(*this);
+	}
+
+	child &operator/=(const scalar_type &b) {
+		for (int i = 0; i < size; ++i) {
+			v[i] /= b;
+		}
+		return crtp_cast<child>(*this);
 	}
 };
 

@@ -104,6 +104,24 @@ struct Grid {
 		return i;
 	}
 
+	//'assignment', i.e. copying
+	//not quite the most ambiguous operator to overload, but getting there
+	Grid &copy(const Grid &grid) {
+		assert(grid.size == size);
+		for (const_iterator iter = grid.begin(); iter != grid.end(); ++iter) {
+			(*this)(iter.index) = *iter;
+		}
+		return *this;
+	}
 
+	//*this += b * t
+	template<typename real>
+	Grid &multAdd(const Grid &b, real t) {
+		assert(b.size == size);
+		for (const_iterator iter = b.begin(); iter != b.end(); ++iter) {
+			(*this)(iter.index) += *iter * t;
+		}
+		return *this;
+	}
 };
 

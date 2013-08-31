@@ -187,6 +187,10 @@ struct tensor {
 	tensor operator-(const tensor &b) const { return tensor(body - b.body); }
 	tensor operator*(const type &b) const { return tensor(body * b); }
 	tensor operator/(const type &b) const { return tensor(body / b); }
+	tensor &operator+=(const tensor &b) { body += b.body; return *this; }
+	tensor &operator-=(const tensor &b) { body -= b.body; return *this; }
+	tensor &operator*=(const type &b) { body *= b; return *this; }
+	tensor &operator/=(const type &b) { body /= b; return *this; }
 
 	DerefType size() const {
 		DerefType s;

@@ -308,5 +308,35 @@ struct Cell {
 		//the rest are computed mid-iteration
 		return c;
 	}
+
+	//I want to preserve the aux variables for debug output
+	//but I don't want to calculate them once prior to getting partials (as integrators do many times per step)
+	// and calculate them again just to output debug info
+	//solutions?
+	// - dirty bits and two calcAux() calls
+	// - copying stuff over here
+	// - separate out cells into ADM, ADMAux, StressEnergy, etc
+	//I'll do the 2nd for now...
+	Cell &operator+=(const Cell &a) {
+		real old_alpha = alpha;
+		tensor_u old_beta_u = beta_u;
+		tensor_sl old_gamma_ll = gamma_ll;
+		tensor_sl old_K_ll = K_ll;
+		real old_K = K;
+		real old_ln_sqrt_gamma = ln_sqrt_gamma;
+
+		//copy *all* over
+		(*this) = a;
+
+		//and only update these fields
+		alpha = old_alpha;
+		beta_u += old_beta_u;
+		gamma_ll += old_gamma_ll;
+		K_ll += old_K_ll;
+		K += old_K;
+		ln_sqrt_gamma += old_ln_sqrt_gamma;
+		
+		return *this;
+	}
 };
 
