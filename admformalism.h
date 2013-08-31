@@ -175,21 +175,22 @@ struct ADMFormalism {
 			for (int k = 0; k < dim; ++k) {
 				tensor_lsl partial_gamma_lll_wrt_xk = partialDerivativeCoordinate(cells, partial_gammaField_lll, dx, iter.index, k);
 				for (int l = 0; l <= k; ++l) {
-					for (int i = 0; i < dim; ++i) {
-						for (int j = 0; j <= i; ++j) {
-							if (k == l) {
-								//special case for 2nd deriv along same coordinate
-								const DerefType &index = iter.index;
-								DerefType nextIndex(index);
-								DerefType prevIndex(index);
-								nextIndex(k) = std::max(0, std::min(cells.size(k)-1, index(k) + 1));
-								prevIndex(k) = std::max(0, std::min(cells.size(k)-1, index(k) - 1));
-								partial_partial_gamma_llll(k,l,i,j) = 
-									((cells(nextIndex).*partial_gammaField_lll)(l,i,j) 
-									- (cell.*partial_gammaField_lll)(l,i,j) * 2. 
-									+ (cells(prevIndex).*partial_gammaField_lll)(l,i,j))
-										/ (dx(k) * dx(k));
-							} else {
+					if (k == l) {
+						/* working on my 2nd partial method * /
+						partial_partial_gamma_llll(k,l) = partialSecondDerivativeCoordinate(cells, gammaField_ll, dx, iter.index, k);
+						/**/
+						
+						/* per-index in the mean time */
+						tensor_sl partial_partial_gamma_ll_wrt_kk = partialSecondDerivativeCoordinate(cells, gammaField_ll, dx, iter.index, k);
+						for (int i = 0; i < dim; ++i) {
+							for (int j = 0; j <= i; ++j) {
+								partial_partial_gamma_llll(k,l,i,j) = partial_partial_gamma_ll_wrt_kk(i,j);
+							}
+						}
+						/**/
+					} else {
+						for (int i = 0; i < dim; ++i) {
+							for (int j = 0; j <= i; ++j) {
 								partial_partial_gamma_llll(k,l,i,j) = partial_gamma_lll_wrt_xk(l,i,j);
 							}
 						}
@@ -306,113 +307,11 @@ struct ADMFormalism {
 		calcConnections(targetReadCells, &Cell::gammaBar_ll, &Cell::gammaBar_uu, &Cell::partial_gammaBar_lll, &Cell::connBar_lll, &Cell::connBar_ull, &Cell::RBar_ll, &Cell::RBar);
 
 #if 0	//option #1: original
+		//TODO if you want to use this here and the conformal-based Hamiltonian later, you have to move a few aux field calculations out of the commented block below 
 
-		//partial_gamma_lll depends on gamma_ll
-		//conn_lll depends on partial_gamma_lll
-		//conn_ull depends on conn_lll and gamma_uu
-		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
-			Cell &cell = *iter;
-	
-			const tensor_sl &gamma_ll = cell.gamma_ll;
-			const tensor_su &gamma_uu = cell.gamma_uu;
-
-			//partial_gamma_lll(k,i,j) := partial_k gamma_ij
-			tensor_lsl &partial_gamma_lll = cell.partial_gamma_lll;
-			partial_gamma_lll = partialDerivative(targetReadCells, &Cell::gamma_ll, dx, iter.index);
-
-			//3D hypersurface connection coefficients
-			//only need spatial coefficients (since gamma^at = 0, so conn^t_ab = 0.  see "Numerical Relativity", p.48)
-			//conn_lll(i,j,k) := conn_ijk = 1/2 (partial_k gamma_ij + partial_j gamma_ik - partial_i gamma_jk)
-			tensor_lsl &conn_lll = cell.conn_lll;
-			for (int k = 0; k < dim; ++k) {
-				for (int i = 0; i < dim; ++i) {
-					for (int j = 0; j <= i; ++j) {
-						conn_lll(i,j,k) = .5 * (partial_gamma_lll(k,i,j) + partial_gamma_lll(j,i,k) - partial_gamma_lll(i,j,k));
-					}
-				}
-			}
-
-			//conn_ull(i,j,k) := conn^i_jk = gamma^il conn_ljk
-			tensor_usl &conn_ull = cell.conn_ull;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					for (int k = 0; k <= j; ++k) {
-						conn_ull(i,j,k) = 0;
-						for (int l = 0; l < dim; ++l) {
-							conn_ull(i,j,k) += gamma_uu(i,l) * conn_lll(l,j,k);
-						}
-					}
-				}
-			}
-		}
-
-		//R_ll depends on conn_ull and partial_gamma_lll
-		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
-			Cell &cell = *iter;
-
-			const tensor_su &gamma_uu = cell.gamma_uu;
-			const tensor_usl &conn_ull = cell.conn_ull;
-			const tensor_lsl &conn_lll = cell.conn_lll;
-			
-			//partial_partial_gamma_llll(k,l,i,j) = partial_k partial_l gamma_ij
-			tensor_slsl partial_partial_gamma_llll;
-			for (int k = 0; k < dim; ++k) {
-				tensor_lsl partial_gamma_lll_wrt_xk = partialDerivativeCoordinate(targetReadCells, &Cell::partial_gamma_lll, dx, iter.index, k);
-				for (int l = 0; l <= k; ++l) {
-					for (int i = 0; i < dim; ++i) {
-						for (int j = 0; j <= i; ++j) {
-							if (k == l) {
-								//special case for 2nd deriv along same coordinate
-								const DerefType &index = iter.index;
-								DerefType nextIndex(index);
-								DerefType prevIndex(index);
-								nextIndex(k) = std::max(0, std::min(targetReadCells.size(k)-1, index(k) + 1));
-								prevIndex(k) = std::max(0, std::min(targetReadCells.size(k)-1, index(k) - 1));
-								partial_partial_gamma_llll(k,l,i,j) = 
-									(targetReadCells(nextIndex).partial_gamma_lll(l,i,j) 
-									- cell.partial_gamma_lll(l,i,j) * 2. 
-									+ targetReadCells(prevIndex).partial_gamma_lll(l,i,j))
-										/ (dx(k) * dx(k));
-							} else {
-								partial_partial_gamma_llll(k,l,i,j) = partial_gamma_lll_wrt_xk(l,i,j);
-							}
-						}
-					}
-				}
-			}
-
-			//"Numerical Relativity" p.48
-			//R_ll(i,j) := R_ij = 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
-			tensor_sl &R_ll = cell.R_ll;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					R_ll(i,j) = 0.;
-					for (int k = 0; k < dim; ++k) {
-						for (int l = 0; l < dim; ++l) {
-							R_ll(i,j) += .5 * gamma_uu(k,l) * (
-								partial_partial_gamma_llll(i,l,k,j)
-								+ partial_partial_gamma_llll(k,j,i,l)
-								- partial_partial_gamma_llll(i,j,k,l)
-								- partial_partial_gamma_llll(k,l,i,j));
-							for (int m = 0; m < dim; ++m) {
-								R_ll(i,j) += gamma_uu(k,l) * (
-									conn_ull(m,i,l) * conn_lll(m,k,j)
-									- conn_ull(m,i,j) * conn_lll(m,k,l));
-							}
-						}
-					}
-				}
-			}
-
-			//R = R^i_i = gamma^ij R_ij
-			real &R = cell.R;
-			R = 0;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					R += gamma_uu(i,j) * R_ll(i,j);
-				}
-			}
-		}
+		//calculates partial_gamma_lll, conn_lll, conn_ull, R_ll, R
+		// depends on gamma_ll, gamma_uu
+		calcConnections(targetReadCells, &Cell::gamma_ll, &Cell::gamma_uu, &Cell::partial_gamma_lll, &Cell::conn_lll, &Cell::conn_ull, &Cell::R_ll, &Cell::R);
 #endif
 #if 1	//use conformal metric info
 	

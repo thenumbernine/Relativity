@@ -9,6 +9,31 @@ and any subsequently nested numeric structures.
 */
 
 
+//linearly access nested types
+//so NestedTensorStats<TensorStats, 0>::BodyType == the body type of the tensor
+//so NestedTensorStats<TensorStats, 1>::BodyType == the body type of the second index and on down of the tensor 
+//	something should go horribly wrong if you try to access midway through a rank>1 index (i.e. symmetric's 1st index only)
+template<typename InnerType, int depth, int rank = InnerType::rank>
+struct NestedTensorStats {
+	typedef typename NestedTensorStats<InnerType, depth, rank-1>::BodyType BodyType;
+};
+
+template<typename InnerType, int depth>
+struct NestedTensorStats<InnerType, depth, 1> {
+	typedef typename NestedTensorStats<typename InnerType::InnerType, depth-1, InnerType::InnerType::rank>::BodyType BodyType;
+};
+
+template<typename InnerType, int depth>
+struct NestedTensorStats<InnerType, depth, 0> {
+	typedef typename InnerType::BodyType BodyType;
+};
+
+template<typename InnerType>
+struct NestedTensorStats<InnerType, 0, 1> {
+	typedef typename InnerType::BodyType BodyType;
+};
+
+
 /*
 support class for metaprogram specializations of tensor
 
@@ -58,6 +83,9 @@ struct TensorStats<scalar_type_, index_, args...> {
 		}
 		InnerType::template assign_size<total_rank, offset + index::rank>(s);
 	}
+	
+	template<int depth>
+	struct Nested : public NestedTensorStats<TensorStats, depth> {};
 };
 
 template<typename scalar_type_, typename index_>
@@ -98,6 +126,9 @@ struct TensorStats<scalar_type_, index_> {
 			s.v[i] = index::dim;
 		}
 	}
+	
+	template<int depth>
+	struct Nested : public NestedTensorStats<TensorStats, depth> {};
 };
 
 //appease the vararg specialization recursive reference
@@ -121,21 +152,25 @@ struct TensorStats<scalar_type_> {
 	
 	template<int total_rank, int offset>
 	static void assign_size(vector<int,total_rank> &s) {}
+
+	template<int depth>
+	struct Nested : public NestedTensorStats<TensorStats, depth> {};
 };
 
+
 /*
-type			= tensor element type
+type		= tensor element type
 TensorStats	= helper class for calculating some template values
-BodyType 		= the BodyType (the generic_vector subclass) of the tensor 
-DerefType 		= the dereference type that would be needed to dereference this BodyType 
-					= int vector with dimension equal to rank
+BodyType 	= the BodyType (the generic_vector subclass) of the tensor 
+DerefType 	= the dereference type that would be needed to dereference this BodyType 
+				= int vector with dimension equal to rank
 
 rank 		= total rank of the structure
 examples:
 	3-element vector:					tensor<double,upper<3>>
 	4-element one-form:					tensor<double,lower<4>>
 	matrix (contravariant matrix):		tensor<double,upper<3>,upper<3>>
-	metric tensor (symmetric covariant matrix):	tensor<double,symmetric<lower<3>,lower<3>>>
+	metric tensor (symmetric covariant matrix):	tensor<double, symmetric<lower<3>, lower<3>>>
 */
 template<typename type_, typename... args>
 struct tensor {
@@ -169,15 +204,15 @@ struct tensor {
 	//no way to specify a typed list of arguments
 	// (solving that problem would give us arbitrary parameter constructors for vector classes)
 	//so here's the special case instances for up to N=4
-	typename TensorStats::InnerType::BodyType &operator()(int i) { return body(i); }
-	const typename TensorStats::InnerType::BodyType &operator()(int i) const { return body(i); }
+	typename TensorStats::template Nested<1>::BodyType &operator()(int i) { return body(i); }
+	const typename TensorStats::template Nested<1>::BodyType &operator()(int i) const { return body(i); }
 	//...and I haven't implemented these yet ...
-	type &operator()(int i, int j) { return TensorStats::template get<2,0>(body, vector<int,2>(i, j)); }
-	const type &operator()(int i, int j) const { return TensorStats::template get_const<2,0>(body, vector<int,2>(i, j)); }
-	type &operator()(int i, int j, int k) { return TensorStats::template get<3,0>(body, vector<int,3>(i, j, k)); }
-	const type &operator()(int i, int j, int k) const { return TensorStats::template get_const<3,0>(body, vector<int,3>(i, j, k)); }
-	type &operator()(int i, int j, int k, int l) { return TensorStats::template get<4,0>(body, vector<int,4>(i, j, k, l)); }
-	const type &operator()(int i, int j, int k, int l) const { return TensorStats::template get_const<4,0>(body, vector<int,4>(i, j, k, l)); }
+	typename TensorStats::template Nested<2>::BodyType &operator()(int i, int j) { return TensorStats::template get<2,0>(body, vector<int,2>(i, j)); }
+	const typename TensorStats::template Nested<2>::BodyType &operator()(int i, int j) const { return TensorStats::template get_const<2,0>(body, vector<int,2>(i, j)); }
+	typename TensorStats::template Nested<3>::BodyType &operator()(int i, int j, int k) { return TensorStats::template get<3,0>(body, vector<int,3>(i, j, k)); }
+	const typename TensorStats::template Nested<3>::BodyType &operator()(int i, int j, int k) const { return TensorStats::template get_const<3,0>(body, vector<int,3>(i, j, k)); }
+	typename TensorStats::template Nested<4>::BodyType &operator()(int i, int j, int k, int l) { return TensorStats::template get<4,0>(body, vector<int,4>(i, j, k, l)); }
+	const typename TensorStats::template Nested<4>::BodyType &operator()(int i, int j, int k, int l) const { return TensorStats::template get_const<4,0>(body, vector<int,4>(i, j, k, l)); }
 	
 	type &operator()(const DerefType &deref) { return TensorStats::template get<rank,0>(body, deref); }
 	const type &operator()(const DerefType &deref) const { return TensorStats::template get_const<rank,0>(body, deref); }

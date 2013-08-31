@@ -18,112 +18,124 @@ struct PartialDerivativeCoordinateClass;
 
 template<typename real, int dim, typename InputType>
 struct PartialDerivativeCoordinateClass<real, dim, InputType, 2> {
-	typedef ::Cell<real, dim> Cell;
-	typedef ::Grid<Cell, dim> Grid;
-	typedef const InputType Cell::*CellFieldType;
-	typedef ::vector<real, dim> vector;
-	typedef ::vector<int, dim> DerefType;
-	InputType operator()(Grid &cells, CellFieldType field, const vector &dx, const DerefType &index, int k) {
-		DerefType nextIndex = index;
-		DerefType prevIndex = index;
-		nextIndex(k) = clamp(index(k) + 1, 0, cells.size(k) - 1);
-		prevIndex(k) = clamp(index(k) - 1, 0, cells.size(k) - 1);
-		return (cells(nextIndex).*field - cells(prevIndex).*field) * (1. / (2. * dx(k)));
+	InputType operator()(Grid<Cell<real, dim>, dim> &cells, const InputType Cell<real, dim>::*field, const vector<real, dim> &dx, const vector<int, dim> &index, int k) {
+		return (
+			cells.getOffset(index,k,1).*field 
+			- cells.getOffset(index,k,-1).*field) 
+				* (1. / (2. * dx(k)));
 	}
 };
 
 template<typename real, int dim, typename InputType>
 struct PartialDerivativeCoordinateClass<real, dim, InputType, 4> {
-	typedef ::Cell<real, dim> Cell;
-	typedef ::Grid<Cell, dim> Grid;
-	typedef const InputType Cell::*CellFieldType;
-	typedef ::vector<real, dim> vector;
-	typedef ::vector<int, dim> DerefType;
-	InputType operator()(Grid &cells, CellFieldType field, const vector &dx, const DerefType &index, int k) {
-		DerefType next2Index = index;
-		DerefType nextIndex = index;
-		DerefType prevIndex = index;
-		DerefType prev2Index = index;
-		next2Index(k) = clamp(index(k) + 2, 0, cells.size(k) - 1);
-		nextIndex(k) = clamp(index(k) + 1, 0, cells.size(k) - 1);
-		prevIndex(k) = clamp(index(k) - 1, 0, cells.size(k) - 1);
-		prev2Index(k) = clamp(index(k) - 2, 0, cells.size(k) - 1);
-		return (-(cells(next2Index).*field) + cells(nextIndex).*field * 8. - cells(prevIndex).*field * 8. + cells(prev2Index).*field) * (1. / (12. * dx(k)));
+	InputType operator()(Grid<Cell<real, dim>, dim> &cells, const InputType Cell<real, dim>::*field, const vector<real, dim> &dx, const vector<int, dim> &index, int k) {
+		return (
+			-(cells.getOffset(index,k,2).*field) 
+			+ cells.getOffset(index,k,1).*field * 8. 
+			- cells.getOffset(index,k,-1).*field * 8. 
+			+ cells.getOffset(index,k,-2).*field) 
+				* (1. / (12. * dx(k)));
 	}
 };
 
 template<typename real, int dim, typename InputType>
 struct PartialDerivativeCoordinateClass<real, dim, InputType, 6> {
-	typedef ::Cell<real, dim> Cell;
-	typedef ::Grid<Cell, dim> Grid;
-	typedef const InputType Cell::*CellFieldType;
-	typedef ::vector<real, dim> vector;
-	typedef ::vector<int, dim> DerefType;
-	InputType operator()(Grid &cells, CellFieldType field, const vector &dx, const DerefType &index, int k) {
-		DerefType next3Index = index;
-		DerefType next2Index = index;
-		DerefType nextIndex = index;
-		DerefType prevIndex = index;
-		DerefType prev2Index = index;
-		DerefType prev3Index = index;
-		next3Index(k) = clamp(index(k) + 3, 0, cells.size(k) - 1);
-		next2Index(k) = clamp(index(k) + 2, 0, cells.size(k) - 1);
-		nextIndex(k) = clamp(index(k) + 1, 0, cells.size(k) - 1);
-		prevIndex(k) = clamp(index(k) - 1, 0, cells.size(k) - 1);
-		prev2Index(k) = clamp(index(k) - 2, 0, cells.size(k) - 1);
-		prev3Index(k) = clamp(index(k) - 3, 0, cells.size(k) - 1);
+	InputType operator()(Grid<Cell<real, dim>, dim> &cells, const InputType Cell<real, dim>::*field, const vector<real, dim> &dx, const vector<int, dim> &index, int k) {
 		return (
-			cells(next3Index).*field
-			- cells(next2Index).*field * 9.
-			+ cells(nextIndex).*field * 45.
-			- cells(prevIndex).*field * 45.
-			+ cells(prev2Index).*field * 9.
-			- cells(prev3Index).*field)
+			cells.getOffset(index,k,3).*field
+			- cells.getOffset(index,k,2).*field * 9.
+			+ cells.getOffset(index,k,1).*field * 45.
+			- cells.getOffset(index,k,-1).*field * 45.
+			+ cells.getOffset(index,k,-2).*field * 9.
+			- cells.getOffset(index,k,-3).*field)
 				* (1. / (60. * dx(k)));
 	}
 };
 
 template<typename real, int dim, typename InputType>
 struct PartialDerivativeCoordinateClass<real, dim, InputType, 8> {
-	typedef ::Cell<real, dim> Cell;
-	typedef ::Grid<Cell, dim> Grid;
-	typedef const InputType Cell::*CellFieldType;
-	typedef ::vector<real, dim> vector;
-	typedef ::vector<int, dim> DerefType;
-	InputType operator()(Grid &cells, CellFieldType field, const vector &dx, const DerefType &index, int k) {
-		DerefType next4Index = index;
-		DerefType next3Index = index;
-		DerefType next2Index = index;
-		DerefType nextIndex = index;
-		DerefType prevIndex = index;
-		DerefType prev2Index = index;
-		DerefType prev3Index = index;
-		DerefType prev4Index = index;
-		next4Index(k) = clamp(index(k) + 4, 0, cells.size(k) - 1);
-		next3Index(k) = clamp(index(k) + 3, 0, cells.size(k) - 1);
-		next2Index(k) = clamp(index(k) + 2, 0, cells.size(k) - 1);
-		nextIndex(k) = clamp(index(k) + 1, 0, cells.size(k) - 1);
-		prevIndex(k) = clamp(index(k) - 1, 0, cells.size(k) - 1);
-		prev2Index(k) = clamp(index(k) - 2, 0, cells.size(k) - 1);
-		prev3Index(k) = clamp(index(k) - 3, 0, cells.size(k) - 1);
-		prev4Index(k) = clamp(index(k) - 4, 0, cells.size(k) - 1);
+	InputType operator()(Grid<Cell<real, dim>, dim> &cells, const InputType Cell<real, dim>::*field, const vector<real, dim> &dx, const vector<int, dim> &index, int k) {
 		return (
-			-(cells(next4Index).*field) * 3.
-			+ cells(next3Index).*field * 32.
-			- cells(next2Index).*field * 168.
-			+ cells(nextIndex).*field * 672.
-			- cells(prevIndex).*field * 672.
-			+ cells(prev2Index).*field * 168.
-			- cells(prev3Index).*field * 32.
-			+ cells(prev4Index).*field * 3.)
+			-(cells.getOffset(index,k,4).*field) * 3.
+			+ cells.getOffset(index,k,3).*field * 32.
+			- cells.getOffset(index,k,2).*field * 168.
+			+ cells.getOffset(index,k,1).*field * 672.
+			- cells.getOffset(index,k,-1).*field * 672.
+			+ cells.getOffset(index,k,-2).*field * 168.
+			- cells.getOffset(index,k,-3).*field * 32.
+			+ cells.getOffset(index,k,-4).*field * 3.)
 				* (1. / (840. * dx(k)));
 	}
 };
 
-
 template<typename real, int dim, typename InputType>
 InputType partialDerivativeCoordinate(Grid<Cell<real, dim>, dim> &cells, InputType Cell<real, dim>::*field, const vector<real, dim> &dx, const vector<int, dim> &index, int k) {
 	return PartialDerivativeCoordinateClass<real, dim, InputType, 8>()(cells, field, dx, index, k);
+}
+
+
+template<typename real, int dim, typename InputType, int accuracy>
+struct PartialSecondDerivativeCoordinateClass;
+
+template<typename real, int dim, typename InputType>
+struct PartialSecondDerivativeCoordinateClass<real, dim, InputType, 2> {
+	InputType operator()(Grid<Cell<real, dim>, dim> &cells, const InputType Cell<real, dim>::*field, const vector<real, dim> &dx, const vector<int, dim> &index, int k) {
+		return (
+			cells.getOffset(index,k,1).*field 
+			- cells(index).*field * 2.
+			+ cells.getOffset(index,k,-1).*field) 
+				* (1. / (dx(k) * dx(k)));
+	}
+};
+
+template<typename real, int dim, typename InputType>
+struct PartialSecondDerivativeCoordinateClass<real, dim, InputType, 4> {
+	InputType operator()(Grid<Cell<real, dim>, dim> &cells, const InputType Cell<real, dim>::*field, const vector<real, dim> &dx, const vector<int, dim> &index, int k) {
+		return (
+			-(cells.getOffset(index,k,2).*field) 
+			+ cells.getOffset(index,k,1).*field * 16. 
+			- cells(index).*field * 30.
+			+ cells.getOffset(index,k,-1).*field * 16. 
+			- cells.getOffset(index,k,-2).*field) 
+				* (1. / (12. * dx(k) * dx(k)));
+	}
+};
+
+template<typename real, int dim, typename InputType>
+struct PartialSecondDerivativeCoordinateClass<real, dim, InputType, 6> {
+	InputType operator()(Grid<Cell<real, dim>, dim> &cells, const InputType Cell<real, dim>::*field, const vector<real, dim> &dx, const vector<int, dim> &index, int k) {
+		return (
+			cells.getOffset(index,k,3).*field * 2.
+			- cells.getOffset(index,k,2).*field * 27.
+			+ cells.getOffset(index,k,1).*field * 270.
+			- cells(index).*field * 490.
+			+ cells.getOffset(index,k,-1).*field * 270.
+			- cells.getOffset(index,k,-2).*field * 27.
+			+ cells.getOffset(index,k,-3).*field * 2.)
+				* (1. / (180. * dx(k) * dx(k)));
+	}
+};
+
+template<typename real, int dim, typename InputType>
+struct PartialSecondDerivativeCoordinateClass<real, dim, InputType, 8> {
+	InputType operator()(Grid<Cell<real, dim>, dim> &cells, const InputType Cell<real, dim>::*field, const vector<real, dim> &dx, const vector<int, dim> &index, int k) {
+		return (
+			-(cells.getOffset(index,k,4).*field) * 9.
+			+ cells.getOffset(index,k,3).*field * 128.
+			- cells.getOffset(index,k,2).*field * 1008.
+			+ cells.getOffset(index,k,1).*field * 8064.
+			- cells(index).*field * 14350.
+			+ cells.getOffset(index,k,-1).*field * 8064.
+			- cells.getOffset(index,k,-2).*field * 1008.
+			+ cells.getOffset(index,k,-3).*field * 128.
+			- cells.getOffset(index,k,-4).*field * 9.)
+				* (1. / (5040. * dx(k) * dx(k)));
+	}
+};
+
+template<typename real, int dim, typename InputType>
+InputType partialSecondDerivativeCoordinate(Grid<Cell<real, dim>, dim> &cells, InputType Cell<real, dim>::*field, const vector<real, dim> &dx, const vector<int, dim> &index, int k) {
+	return PartialSecondDerivativeCoordinateClass<real, dim, InputType, 8>()(cells, field, dx, index, k);
 }
 
 /*

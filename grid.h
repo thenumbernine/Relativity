@@ -36,6 +36,21 @@ struct Grid {
 		return v[flat_deref];
 	}
 
+	//offset + clamp
+	// because I wanted to write it concisely
+	//but didn't want to offset by an entire vector, then clamp an entire vector
+	type &getOffset(DerefType deref, int dim, int offset) {
+		deref(dim) = clamp(deref(dim) + offset, 0, size(dim)-1);
+		return (*this)(deref);
+	}
+	const type &getOffset(DerefType deref, int dim, int offset) const {
+		deref(dim) = clamp(deref(dim) + offset, 0, size(dim)-1);
+		return (*this)(deref);
+	}
+
+
+	// iterators
+
 	struct iterator {
 		Grid *parent;
 		DerefType index;
@@ -103,6 +118,8 @@ struct Grid {
 		i.index(rank-1) = size(rank-1);
 		return i;
 	}
+
+	//these two are used by integrtors:
 
 	//'assignment', i.e. copying
 	//not quite the most ambiguous operator to overload, but getting there
