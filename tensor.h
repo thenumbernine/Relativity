@@ -290,27 +290,37 @@ struct tensor {
 
 template<typename type, typename... args>
 std::ostream &operator<<(std::ostream &o, tensor<type, args...> &t) {
+	
 	typedef ::tensor<type, args...> tensor;
 	typedef typename tensor::iterator iterator;
 	enum { rank = tensor::rank };
+	typedef typename tensor::DerefType DerefType;
 	const char *empty = "";
 	const char *sep = ", ";
 	vector<const char *,rank> seps(empty);
 	for (iterator i = t.begin(); i != t.end(); ++i) {
-		for (int j = 0; j < rank; ++j) {
-			if (i.index(j) == 0) {
-				if (j < rank-1) o << seps(j+1);
-				o << "(";
-				if (j < rank-1) seps(j+1) = sep;
-			}
-		}
 		o << seps(0);
+		for (int j = 0; j < rank; ++j) {
+			bool matches = true;
+			for (int k = 0; k < rank - j; ++k) {
+				if (i.index(k) != 0) {
+					matches = false;
+					break;
+				}
+			}
+			if (matches) o << "(";
+		}
 		o << *i;
 		seps(0) = sep;
 		for (int j = 0; j < rank; ++j) {
-			if (i.index(0) == t.size()(0)-1) {
-				o << ")";
+			bool matches = true;
+			for (int k = 0; k < rank - j; ++k) {
+				if (i.index(k) != t.size()(k)-1) {
+					matches = false;
+					break;
+				}
 			}
+			if (matches) o << ")";
 		}
 	}
 	return o;

@@ -170,28 +170,28 @@ struct ADMFormalism {
 			const tensor_usl &conn_ull = cell.*connField_ull;
 			const tensor_lsl &conn_lll = cell.*connField_lll;
 			
-			//partial_partial_gamma_llll(k,l,i,j) = partial_k partial_l gamma_ij
-			tensor_slsl partial_partial_gamma_llll;
+			//partial2_gamma_llll(k,l,i,j) = partial_k partial_l gamma_ij
+			tensor_slsl partial2_gamma_llll;
 			for (int k = 0; k < dim; ++k) {
 				tensor_lsl partial_gamma_lll_wrt_xk = partialDerivativeCoordinate(cells, partial_gammaField_lll, dx, iter.index, k);
 				for (int l = 0; l <= k; ++l) {
 					if (k == l) {
 						/* working on my 2nd partial method * /
-						partial_partial_gamma_llll(k,l) = partialSecondDerivativeCoordinate(cells, gammaField_ll, dx, iter.index, k);
+						partial2_gamma_llll(k,l) = partialSecondDerivativeCoordinate(cells, gammaField_ll, dx, iter.index, k);
 						/**/
 						
 						/* per-index in the mean time */
-						tensor_sl partial_partial_gamma_ll_wrt_kk = partialSecondDerivativeCoordinate(cells, gammaField_ll, dx, iter.index, k);
+						tensor_sl partial2_gamma_ll_wrt_kk = partialSecondDerivativeCoordinate(cells, gammaField_ll, dx, iter.index, k);
 						for (int i = 0; i < dim; ++i) {
 							for (int j = 0; j <= i; ++j) {
-								partial_partial_gamma_llll(k,l,i,j) = partial_partial_gamma_ll_wrt_kk(i,j);
+								partial2_gamma_llll(k,l,i,j) = partial2_gamma_ll_wrt_kk(i,j);
 							}
 						}
 						/**/
 					} else {
 						for (int i = 0; i < dim; ++i) {
 							for (int j = 0; j <= i; ++j) {
-								partial_partial_gamma_llll(k,l,i,j) = partial_gamma_lll_wrt_xk(l,i,j);
+								partial2_gamma_llll(k,l,i,j) = partial_gamma_lll_wrt_xk(l,i,j);
 							}
 						}
 					}
@@ -207,10 +207,10 @@ struct ADMFormalism {
 					for (int k = 0; k < dim; ++k) {
 						for (int l = 0; l < dim; ++l) {
 							R_ll(i,j) += .5 * gamma_uu(k,l) * (
-								partial_partial_gamma_llll(i,l,k,j)
-								+ partial_partial_gamma_llll(k,j,i,l)
-								- partial_partial_gamma_llll(i,j,k,l)
-								- partial_partial_gamma_llll(k,l,i,j));
+								partial2_gamma_llll(i,l,k,j)
+								+ partial2_gamma_llll(k,j,i,l)
+								- partial2_gamma_llll(i,j,k,l)
+								- partial2_gamma_llll(k,l,i,j));
 							for (int m = 0; m < dim; ++m) {
 								R_ll(i,j) += gamma_uu(k,l) * (
 									conn_ull(m,i,l) * conn_lll(m,k,j)
@@ -320,11 +320,11 @@ struct ADMFormalism {
 		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
 			Cell &cell = *iter;
 
-			tensor_l &DBar_ln_psi_l = cell.DBar_ln_psi_l;
-			tensor_sl &gammaBar_ll = cell.gammaBar_ll;
-			tensor_su &gammaBar_uu = cell.gammaBar_uu;
-			tensor_usl &connBar_ull = cell.connBar_ull;
-			tensor_sl &gamma_ll = cell.gamma_ll;
+			const tensor_l &DBar_ln_psi_l = cell.DBar_ln_psi_l;
+			const tensor_sl &gammaBar_ll = cell.gammaBar_ll;
+			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
+			const tensor_usl &connBar_ull = cell.connBar_ull;
+			const tensor_sl &gamma_ll = cell.gamma_ll;
 			tensor_usl &conn_ull = cell.conn_ull;
 			tensor_lsl &conn_lll = cell.conn_lll;
 	
@@ -365,14 +365,14 @@ struct ADMFormalism {
 			const tensor_sl &gammaBar_ll = cell.gammaBar_ll;
 			const tensor_sl &RBar_ll = cell.RBar_ll;
 	
-			//DBar_DBar_ln_psi_ll(i,j) := DBar_i DBar_j ln(psi)
-			tensor_ll DBar_DBar_ln_psi_ll = covariantDerivative(targetReadCells, &Cell::DBar_ln_psi_l, dx, iter.index, &Cell::connBar_ull);
+			//DBar2_ln_psi_ll(i,j) := DBar_i DBar_j ln(psi)
+			tensor_ll DBar2_ln_psi_ll = covariantDerivative(targetReadCells, &Cell::DBar_ln_psi_l, dx, iter.index, &Cell::connBar_ull);
 
 			//DBar2_ln_psi := DBar^2 ln(psi) = gammaBar^ij DBar_i DBar_j ln(psi)
 			real DBar2_ln_psi = 0;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
-					DBar2_ln_psi += gammaBar_uu(i,j) * DBar_DBar_ln_psi_ll(i,j);
+					DBar2_ln_psi += gammaBar_uu(i,j) * DBar2_ln_psi_ll(i,j);
 				}
 			}
 
@@ -389,19 +389,19 @@ struct ADMFormalism {
 			tensor_sl &R_ll = cell.R_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
-					R_ll(i,j) = RBar_ll(i,j) - 2. * (DBar_DBar_ln_psi_ll(i,j) + gammaBar_ll(i,j) * DBar2_ln_psi) + 4. * (DBar_ln_psi_l(i) * DBar_ln_psi_l(j) - gammaBar_ll(i,j) * normBar_DBar_ln_psi);
+					R_ll(i,j) = RBar_ll(i,j) - 2. * (DBar2_ln_psi_ll(i,j) + gammaBar_ll(i,j) * DBar2_ln_psi) + 4. * (DBar_ln_psi_l(i) * DBar_ln_psi_l(j) - gammaBar_ll(i,j) * normBar_DBar_ln_psi);
 				}
 			}
 
-			//DBar_DBar_psi_ll(i,j) := DBar_i DBar_j psi
-			tensor_ll DBar_DBar_psi_ll = covariantDerivative(targetReadCells, &Cell::DBar_psi_l, dx, iter.index, &Cell::connBar_ull);
+			//DBar2_psi_ll(i,j) := DBar_i DBar_j psi
+			tensor_ll DBar2_psi_ll = covariantDerivative(targetReadCells, &Cell::DBar_psi_l, dx, iter.index, &Cell::connBar_ull);
 
 			//DBar2_psi := DBar^2 psi = gammaBar^ij DBar_i DBar_j psi
 			real &DBar2_psi = cell.DBar2_psi;
 			DBar2_psi = 0;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
-					DBar2_psi += gammaBar_uu(i,j) * DBar_DBar_psi_ll(i,j);
+					DBar2_psi += gammaBar_uu(i,j) * DBar2_psi_ll(i,j);
 				}
 			}
 
@@ -494,8 +494,8 @@ struct ADMFormalism {
 			const real &K = readCell.K;
 			const real &tr_K_sq = readCell.tr_K_sq;
 
-			//D_D_alpha_ll(j,i) = diff_j diff_i alpha
-			tensor_ll D_D_alpha_ll = covariantDerivative(targetReadCells, &Cell::D_alpha_l, dx, iter.index, &Cell::conn_ull);
+			//D2_alpha_ll(j,i) = diff_j diff_i alpha
+			tensor_ll D2_alpha_ll = covariantDerivative(targetReadCells, &Cell::D_alpha_l, dx, iter.index, &Cell::conn_ull);
 
 			//partial_beta_ll(j,i) := partial_j beta_i
 			tensor_ll partial_beta_ll = partialDerivative(targetReadCells, &Cell::beta_l, dx, iter.index);
@@ -541,7 +541,7 @@ struct ADMFormalism {
 						partialTCell.K_ll(i,j) -= alpha * 2. * K_ll(i,k) * K_ul(k,j);
 					}
 					partialTCell.K_ll(i,j) += alpha * K * K_ll(i,j) 
-						- D_D_alpha_ll(i,j)
+						- D2_alpha_ll(i,j)
 						- 8. * M_PI * alpha * (
 							S_ll(i,j) - .5 * gamma_ll(i,j) * (S - rho));
 					for (int k = 0; k < dim; ++k) {
@@ -572,7 +572,7 @@ struct ADMFormalism {
 			partialTCell.K = 0;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
-					partialTCell.K += -gamma_uu(i,j) * D_D_alpha_ll(i,j);
+					partialTCell.K += -gamma_uu(i,j) * D2_alpha_ll(i,j);
 				}
 				partialTCell.K += beta_u(i) * D_K_l(i);
 			}

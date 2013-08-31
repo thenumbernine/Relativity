@@ -36,14 +36,26 @@ int test_tensors() {
 
 	typedef tensor<real,upper<3>,upper<3>> matrix;
 	matrix h;
+	int index = 0;
+	for (int i = 0; i < 3; ++i) {
+		for (int j = 0; j < 3; ++j) {
+			h(i,j) = ++index;
+		}
+	}
 	cout << "size " << h.size() << endl;
 	cout << "rank " << h.rank << endl;
 	for (int i = 0; i < 3; ++i) {
 		for (int j = 0; j < 3; ++j) {
-			cout << "h^" << i << j << " = " << h(i)(j) << endl;
+			cout << "h^" << i << j << " = " << h(i,j) << endl;
 		}
+		matrix h2;
+		h2(i) = h(i);
+		cout << "h^"<<i<<" = "<< h2 << endl;
 	}
+	tensor<real, lower<3>, lower<3>, lower<3>> t;
+	cout << t << endl;
 
+#if 0	//not yet working
 	typedef tensor<real, 
 		antisymmetric<lower<2>, lower<2>>,
 		antisymmetric<lower<2>, lower<2>>
@@ -73,6 +85,7 @@ int test_tensors() {
 			}
 		}
 	}
+#endif
 }
 
 int main() {

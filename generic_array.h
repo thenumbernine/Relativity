@@ -39,6 +39,19 @@ struct generic_array {
 		}
 	}
 
+	//subset
+	template<int start, int length>
+	generic_array<type, length, scalar_type, child> subset() {	//bastard child.  this will make vec2s who think their CRAP type is vec3
+		static_assert(length <= size, "cannot get a subset that is greater than the array itself");
+		static_assert(start >= 0, "cannot get negative bounds subsets");
+		static_assert(start <= size - length, "cannot get subsets that span past the end");
+		generic_array<type, length, scalar_type, child> s;
+		for (int i = 0; i < length; ++i) {
+			s.v[i] = v[start+i];
+		}
+		return s;
+	}	
+
 	//bounds
 	static child clamp(const child &a, const child &min, const child &max) {
 		child b;
@@ -50,7 +63,8 @@ struct generic_array {
 
 	//boolean operations
 
-	bool operator==(const child &b) const {
+	template<typename childType2>
+	bool operator==(const generic_array<type, size, scalar_type, childType2> &b) const {
 		const generic_array &a = *this;
 		for (int i = 0; i < size; ++i) {
 			if (a.v[i] != b.v[i]) return false;
