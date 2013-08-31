@@ -20,7 +20,7 @@ template<typename real, int dim, typename InputType>
 struct PartialDerivativeCoordinateClass<real, dim, InputType, 2> {
 	typedef ::Cell<real, dim> Cell;
 	typedef ::Grid<Cell, dim> Grid;
-	typedef InputType Cell::*CellFieldType;
+	typedef const InputType Cell::*CellFieldType;
 	typedef ::vector<real, dim> vector;
 	typedef ::vector<int, dim> DerefType;
 	InputType operator()(Grid &cells, CellFieldType field, const vector &dx, const DerefType &index, int k) {
@@ -36,7 +36,7 @@ template<typename real, int dim, typename InputType>
 struct PartialDerivativeCoordinateClass<real, dim, InputType, 4> {
 	typedef ::Cell<real, dim> Cell;
 	typedef ::Grid<Cell, dim> Grid;
-	typedef InputType Cell::*CellFieldType;
+	typedef const InputType Cell::*CellFieldType;
 	typedef ::vector<real, dim> vector;
 	typedef ::vector<int, dim> DerefType;
 	InputType operator()(Grid &cells, CellFieldType field, const vector &dx, const DerefType &index, int k) {
@@ -56,7 +56,7 @@ template<typename real, int dim, typename InputType>
 struct PartialDerivativeCoordinateClass<real, dim, InputType, 6> {
 	typedef ::Cell<real, dim> Cell;
 	typedef ::Grid<Cell, dim> Grid;
-	typedef InputType Cell::*CellFieldType;
+	typedef const InputType Cell::*CellFieldType;
 	typedef ::vector<real, dim> vector;
 	typedef ::vector<int, dim> DerefType;
 	InputType operator()(Grid &cells, CellFieldType field, const vector &dx, const DerefType &index, int k) {
@@ -87,7 +87,7 @@ template<typename real, int dim, typename InputType>
 struct PartialDerivativeCoordinateClass<real, dim, InputType, 8> {
 	typedef ::Cell<real, dim> Cell;
 	typedef ::Grid<Cell, dim> Grid;
-	typedef InputType Cell::*CellFieldType;
+	typedef const InputType Cell::*CellFieldType;
 	typedef ::vector<real, dim> vector;
 	typedef ::vector<int, dim> DerefType;
 	InputType operator()(Grid &cells, CellFieldType field, const vector &dx, const DerefType &index, int k) {
@@ -141,7 +141,7 @@ struct partialDerivativeClass<real, dim, tensor<real, args...>> {
 	typedef tensor<real, lower<dim>, args...> OutputType;
 	typedef ::Cell<real, dim> Cell;
 	typedef ::Grid<Cell, dim> Grid;
-	typedef InputType Cell::*CellFieldType;
+	typedef const InputType Cell::*CellFieldType;
 	OutputType operator()(Grid &cells, CellFieldType field, const vector<real, dim> &dx, const vector<int, dim> &index) {
 		OutputType result;
 #if 0	//sub-tensor access: all-at-once
@@ -188,7 +188,7 @@ struct partialDerivativeClass<real, dim, real> {
 	typedef tensor<real, lower<dim>> OutputType;
 	typedef ::Cell<real, dim> Cell;
 	typedef ::Grid<Cell, dim> Grid;
-	typedef InputType Cell::*CellFieldType;
+	typedef const InputType Cell::*CellFieldType;
 	OutputType operator()(Grid &cells, CellFieldType field, const vector<real, dim> &dx, const vector<int, dim> &index) {
 		OutputType result;
 		for (int k = 0; k < dim; ++k) {
@@ -202,7 +202,7 @@ template<typename real, int dim, typename InputType>
 typename partialDerivativeClass<real, dim, InputType>::OutputType
 partialDerivative(
 	Grid<Cell<real, dim>, dim> &cells, 
-	InputType Cell<real, dim>::* field, 
+	const InputType Cell<real, dim>::* field, 
 	const vector<real, dim> &dx, 
 	const vector<int, dim> &index) 
 {
@@ -219,17 +219,17 @@ but symmetric mixed does not
 I think I'll make specializations for that reason ...
 */
 template<typename real, int dim, typename InputType>
-struct covariantDerivativeClass;
+struct CovariantDerivativeClass;
 
 //scalar specialization
 //diff_i alpha = partial_i alpha
 template<typename real, int dim>
-struct covariantDerivativeClass<real, dim, real> {
+struct CovariantDerivativeClass<real, dim, real> {
 	typedef real InputType;
 	typedef tensor<real, lower<dim>> OutputType;
 	typedef ::Cell<real, dim> Cell;
 	typedef ::Grid<Cell, dim> Grid;
-	typedef InputType Cell::*CellFieldType;
+	typedef const InputType Cell::*CellFieldType;
 	typedef typename Cell::tensor_usl tensor_usl;
 	typedef tensor_usl Cell::*ConnFieldType;
 	OutputType operator()(Grid &cells, CellFieldType field, const vector<real, dim> &dx, const vector<int, dim> &index, ConnFieldType connField_ull) {
@@ -240,12 +240,12 @@ struct covariantDerivativeClass<real, dim, real> {
 //vector specialization
 //diff_i v^j = partial_i v^j + conn^j_ki v^k
 template<typename real, int dim>
-struct covariantDerivativeClass<real, dim, tensor<real, upper<dim>>> {
+struct CovariantDerivativeClass<real, dim, tensor<real, upper<dim>>> {
 	typedef tensor<real, upper<dim>> InputType;
 	typedef tensor<real, lower<dim>, upper<dim>> OutputType;
 	typedef ::Cell<real, dim> Cell;
 	typedef ::Grid<Cell, dim> Grid;
-	typedef InputType Cell::*CellFieldType;
+	typedef const InputType Cell::*CellFieldType;
 	typedef typename Cell::tensor_usl tensor_usl;
 	typedef tensor_usl Cell::*ConnFieldType;
 	OutputType operator()(Grid &cells, CellFieldType field, const vector<real, dim> &dx, const vector<int, dim> &index, ConnFieldType connField_ull) {
@@ -266,12 +266,12 @@ struct covariantDerivativeClass<real, dim, tensor<real, upper<dim>>> {
 //one-form specialization
 //diff_i w_j = partial_i w_j - conn^k_ji w_k
 template<typename real, int dim>
-struct covariantDerivativeClass<real, dim, tensor<real, lower<dim>>> {
+struct CovariantDerivativeClass<real, dim, tensor<real, lower<dim>>> {
 	typedef tensor<real, lower<dim>> InputType;
 	typedef tensor<real, lower<dim>, lower<dim>> OutputType;
 	typedef ::Cell<real, dim> Cell;
 	typedef ::Grid<Cell, dim> Grid;
-	typedef InputType Cell::*CellFieldType;
+	typedef const InputType Cell::*CellFieldType;
 	typedef typename Cell::tensor_usl tensor_usl;
 	typedef tensor_usl Cell::*ConnFieldType;
 	OutputType operator()(Grid &cells, CellFieldType field, const vector<real, dim> &dx, const vector<int, dim> &index, ConnFieldType connField_ull) {
@@ -292,12 +292,12 @@ struct covariantDerivativeClass<real, dim, tensor<real, lower<dim>>> {
 //symmetric rank-(2,0) tensor specialization
 //diff_i t^jk = partial_i t^jk + conn^j_li t^lk + conn^k_li t^jl
 template<typename real, int dim>
-struct covariantDerivativeClass<real, dim, tensor<real, symmetric<upper<dim>, upper<dim>>>> {
+struct CovariantDerivativeClass<real, dim, tensor<real, symmetric<upper<dim>, upper<dim>>>> {
 	typedef tensor<real, symmetric<upper<dim>, upper<dim>>> InputType;
 	typedef tensor<real, lower<dim>, symmetric<upper<dim>, upper<dim>>> OutputType;
 	typedef ::Cell<real, dim> Cell;
 	typedef ::Grid<Cell, dim> Grid;
-	typedef InputType Cell::*CellFieldType;
+	typedef const InputType Cell::*CellFieldType;
 	typedef typename Cell::tensor_usl tensor_usl;
 	typedef tensor_usl Cell::*ConnFieldType;
 	OutputType operator()(Grid &cells, CellFieldType field, const vector<real, dim> &dx, const vector<int, dim> &index, ConnFieldType connField_ull) {
@@ -323,13 +323,13 @@ struct covariantDerivativeClass<real, dim, tensor<real, symmetric<upper<dim>, up
 
 
 template<typename real, int dim, typename InputType>
-typename covariantDerivativeClass<real, dim, InputType>::OutputType covariantDerivative(
+typename CovariantDerivativeClass<real, dim, InputType>::OutputType covariantDerivative(
 	Grid<Cell<real, dim>, dim> &cells, 
-	InputType Cell<real, dim>::*field, 
+	const InputType Cell<real, dim>::*field, 
 	const vector<real, dim> &dx, 
 	const vector<int, dim> &index,
 	typename Cell<real, dim>::tensor_usl Cell<real, dim>::*connField)
 {
-	return covariantDerivativeClass<real, dim, InputType>()(cells, field, dx, index, connField);
+	return CovariantDerivativeClass<real, dim, InputType>()(cells, field, dx, index, connField);
 }
 
