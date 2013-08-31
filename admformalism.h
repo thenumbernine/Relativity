@@ -168,7 +168,7 @@ struct ADMFormalism {
 			}
 		}
 
-		//D_ln_psi_l depends on ln_psi
+		//DBar_ln_psi_l depends on ln_psi
 		//partial_gammaBar_lll depends on gammaBar_ll
 		//connBar_lll depends on partial_gammaBar_lll
 		//connBar_ull depends on connBar_lll and gammaBar_uu
@@ -178,8 +178,11 @@ struct ADMFormalism {
 			const tensor_sl &gammaBar_ll = cell.gammaBar_ll;
 			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
 			
-			//D_ln_psi_l(i) := D_i ln(psi) = partial_i ln(psi)
-			cell.D_ln_psi_l = partialDerivative(targetReadCells, &Cell::ln_psi, dx, iter.index);
+			//DBar_ln_psi_l(i) := DBar_i ln(psi) = partial_i ln(psi)
+			cell.DBar_ln_psi_l = partialDerivative(targetReadCells, &Cell::ln_psi, dx, iter.index);
+
+			//DBar_psi_l(i) := DBar_i psi
+			cell.DBar_psi_l = partialDerivative(targetReadCells, &Cell::psi, dx, iter.index);
 			
 			//partial_gammaBar_lll(k,i,j) := partial_k gammaBar_ij
 			tensor_lsl &partial_gammaBar_lll = cell.partial_gammaBar_lll;
@@ -245,7 +248,7 @@ struct ADMFormalism {
 			}
 
 			//"Numerical Relativity" p.48
-			//R_ll(i,j) := ricci_ij = 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
+			//R_ll(i,j) := R_ij = 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
 			//"Numerical Relativity" p.57 first mentions RBar_ij
 			tensor_sl &RBar_ll = cell.RBar_ll;
 			for (int i = 0; i < dim; ++i) {
@@ -265,6 +268,15 @@ struct ADMFormalism {
 							}
 						}
 					}
+				}
+			}
+			
+			//RBar = gammaBar^ij RBar_ij
+			real &RBar = cell.RBar;
+			RBar = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					RBar += gammaBar_uu(i,j) * RBar_ll(i,j);
 				}
 			}
 		}
@@ -346,7 +358,7 @@ struct ADMFormalism {
 			}
 
 			//"Numerical Relativity" p.48
-			//R_ll(i,j) := ricci_ij = 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
+			//R_ll(i,j) := R_ij = 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
 			tensor_sl &R_ll = cell.R_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
@@ -367,16 +379,25 @@ struct ADMFormalism {
 					}
 				}
 			}
+
+			//R = R^i_i = gamma^ij R_ij
+			real &R = cell.R;
+			R = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					R += gamma_uu(i,j) * R_ll(i,j);
+				}
+			}
 		}
 #endif
 #if 1	//use conformal metric info
 	
-		//conn_ull depends on connBar_ull, D_ln_psi_l, gammaBar_uu, gammaBar_ll
+		//conn_ull depends on connBar_ull, DBar_ln_psi_l, gammaBar_uu, gammaBar_ll
 		//conn_lll depends on conn_ull and gamma_ll
 		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
 			Cell &cell = *iter;
 
-			tensor_l &D_ln_psi_l = cell.D_ln_psi_l;
+			tensor_l &DBar_ln_psi_l = cell.DBar_ln_psi_l;
 			tensor_sl &gammaBar_ll = cell.gammaBar_ll;
 			tensor_su &gammaBar_uu = cell.gammaBar_uu;
 			tensor_usl &connBar_ull = cell.connBar_ull;
@@ -389,10 +410,10 @@ struct ADMFormalism {
 				for (int j = 0; j < dim; ++j) {
 					for (int k = 0; k <= j; ++k) {
 						conn_ull(i,j,k) = connBar_ull(i,j,k);
-						if (i == j) conn_ull(i,j,k) += 2. * D_ln_psi_l(k);
-						if (i == k) conn_ull(i,j,k) += 2. * D_ln_psi_l(j);
+						if (i == j) conn_ull(i,j,k) += 2. * DBar_ln_psi_l(k);
+						if (i == k) conn_ull(i,j,k) += 2. * DBar_ln_psi_l(j);
 						for (int l = 0; l < dim; ++l) {
-							conn_ull(i,j,k) += gammaBar_ll(j,k) * gammaBar_uu(i,l) * D_ln_psi_l(l);
+							conn_ull(i,j,k) -= 2. * gammaBar_ll(j,k) * gammaBar_uu(i,l) * DBar_ln_psi_l(l);
 						}
 					}
 				}
@@ -413,8 +434,58 @@ struct ADMFormalism {
 		
 		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
 			Cell &cell = *iter;
-		
-			tensor_ll D_D_ln_psi_ll = covariantDerivative(targetReadCells, &Cell::D_ln_psi_l, dx, iter.index, &Cell::connBar_ull);
+
+			const real &psi = cell.psi;
+			const real &RBar = cell.RBar;
+			const tensor_l &DBar_ln_psi_l = cell.DBar_ln_psi_l;
+			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
+			const tensor_sl &gammaBar_ll = cell.gammaBar_ll;
+			const tensor_sl &RBar_ll = cell.RBar_ll;
+	
+			//DBar_DBar_ln_psi_ll(i,j) := DBar_i DBar_j ln(psi)
+			tensor_ll DBar_DBar_ln_psi_ll = covariantDerivative(targetReadCells, &Cell::DBar_ln_psi_l, dx, iter.index, &Cell::connBar_ull);
+
+			//DBar2_ln_psi := DBar^2 ln(psi) = gammaBar^ij DBar_i DBar_j ln(psi)
+			real DBar2_ln_psi = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					DBar2_ln_psi += gammaBar_uu(i,j) * DBar_DBar_ln_psi_ll(i,j);
+				}
+			}
+
+			//normBar_DBar_ln_psi = gammaBar^ij (DBar_i ln(psi)) (DBar_j ln(psi))
+			real normBar_DBar_ln_psi = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					normBar_DBar_ln_psi += gammaBar_uu(i,j) * DBar_ln_psi_l(i) * DBar_ln_psi_l(j);
+				}
+			}
+
+			//"Numerical Relativity" p.57
+			//R_ll(i,j) := R_ij = RBar_ij - 2 (DBar_i DBar_j ln(psi) + gammaBar_ij gammaBar^lm DBar_l DBar_m ln(psi)) + 4((DBar_i ln(psi)) (DBar_j ln(psi)) - gammaBar_ij gammaBar^lm (DBar_l ln(psi)) (DBar_m ln(psi)))
+			tensor_sl &R_ll = cell.R_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					R_ll(i,j) = RBar_ll(i,j) - 2. * (DBar_DBar_ln_psi_ll(i,j) + gammaBar_ll(i,j) * DBar2_ln_psi) + 4. * (DBar_ln_psi_l(i) * DBar_ln_psi_l(j) - gammaBar_ll(i,j) * normBar_DBar_ln_psi);
+				}
+			}
+
+			//DBar_DBar_psi_ll(i,j) := DBar_i DBar_j psi
+			tensor_ll DBar_DBar_psi_ll = covariantDerivative(targetReadCells, &Cell::DBar_psi_l, dx, iter.index, &Cell::connBar_ull);
+
+			//DBar2_psi := DBar^2 psi = gammaBar^ij DBar_i DBar_j psi
+			real DBar2_psi = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					DBar2_psi += gammaBar_uu(i,j) * DBar_DBar_psi_ll(i,j);
+				}
+			}
+
+			//R = psi^-4 RBar - 8 psi^-5 DBar^2 psi = (RBar - 8 (DBar^2 psi) / psi) / psi^4
+			real psiSquared = psi * psi;
+			real psiToTheFourth = psiSquared * psiSquared;
+			real &R = cell.R;
+			R = (RBar - 8. * DBar2_psi / psi) / psiToTheFourth;
 		}
 #endif
 
@@ -651,6 +722,14 @@ struct ADMFormalism {
 			}
 		}
 
+		for (int i = 0; i < dim; ++i) {
+			for (int j = 0; j <= i; ++j) {
+				o << "R_" << coordNames[i] << coordNames[j] << "\t";
+			}
+		}
+
+		o << "R\t";
+
 		o << "psi\t";
 		
 		o << "K\t";
@@ -748,8 +827,14 @@ struct ADMFormalism {
 			}
 	
 			//R_ij
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					o << cell.R_ll(i,j) << "\t";
+				}
+			}
 
 			//R
+			o << cell.R << "\t";
 
 			//rho
 

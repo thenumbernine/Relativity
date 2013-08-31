@@ -37,7 +37,9 @@ struct Cell {
 		gamma(real()),
 		ln_sqrt_gamma(real()),
 		ln_psi(real()),
-		tr_K_sq(real())
+		tr_K_sq(real()),
+		R(real()),
+		RBar(real())
 	{}
 
 
@@ -130,6 +132,12 @@ struct Cell {
 	//R_ll(i,j) := R_ij
 	tensor_sl R_ll;
 
+	//Gaussian (scalar) curvature
+	//R = R^i_i
+	real R;
+
+		//curvature aux variables
+
 	//K_ul(i,j) := K^i_j
 	tensor_ul K_ul;
 
@@ -151,8 +159,11 @@ struct Cell {
 	//ln psi = 1/12 ln gamma = 1/6 ln(sqrt(gamma))
 	real ln_psi;
 
-	//D_ln_psi_l(i) := D_i ln(psi)
-	tensor_l D_ln_psi_l;
+	//DBar_psi_l(i) := DBar_i psi
+	tensor_l DBar_psi_l;
+
+	//DBar_ln_psi_l(i) := DBar_i ln(psi)
+	tensor_l DBar_ln_psi_l;
 	
 	//gammaBar_ll(i,j) := gammaBar_ij = psi^-4 gamma_ij
 	tensor_sl gammaBar_ll;
@@ -171,6 +182,10 @@ struct Cell {
 	
 	//RBar_ll(i,j) := RBar_ij
 	tensor_sl RBar_ll;
+	
+	//RBar = gammaBar^ij RBar_ij
+	real RBar;
+
 
 	// calculations of aux values
 
