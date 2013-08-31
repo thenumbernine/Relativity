@@ -153,7 +153,7 @@ struct Cell {
 
 	//D_ln_psi_l(i) := D_i ln(psi)
 	tensor_l D_ln_psi_l;
-
+	
 	//gammaBar_ll(i,j) := gammaBar_ij = psi^-4 gamma_ij
 	tensor_sl gammaBar_ll;
 
@@ -169,6 +169,8 @@ struct Cell {
 	//connBar_ull(i,j,k) := connBar^i_jk = gammaBar^il connBar_ljk
 	tensor_usl connBar_ull;
 	
+	//RBar_ll(i,j) := RBar_ij
+	tensor_sl RBar_ll;
 
 	// calculations of aux values
 

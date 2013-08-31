@@ -125,7 +125,9 @@ struct covariantDerivativeClass<real,dim,real> {
 	typedef ::Cell<real,dim> Cell;
 	typedef ::Grid<Cell,dim> Grid;
 	typedef InputType Cell::*CellFieldType;
-	OutputType operator()(Grid &cells, CellFieldType field, const vector<real,dim> &dx, const vector<int,dim> &index) {
+	typedef typename Cell::tensor_usl tensor_usl;
+	typedef tensor_usl Cell::*ConnFieldType;
+	OutputType operator()(Grid &cells, CellFieldType field, const vector<real,dim> &dx, const vector<int,dim> &index, ConnFieldType connField_ull) {
 		return partialDerivative(cells, field, dx, index);
 	}
 };
@@ -139,13 +141,16 @@ struct covariantDerivativeClass<real,dim,tensor<real, upper<dim>>> {
 	typedef ::Cell<real,dim> Cell;
 	typedef ::Grid<Cell,dim> Grid;
 	typedef InputType Cell::*CellFieldType;
-	OutputType operator()(Grid &cells, CellFieldType field, const vector<real,dim> &dx, const vector<int,dim> &index) {
+	typedef typename Cell::tensor_usl tensor_usl;
+	typedef tensor_usl Cell::*ConnFieldType;
+	OutputType operator()(Grid &cells, CellFieldType field, const vector<real,dim> &dx, const vector<int,dim> &index, ConnFieldType connField_ull) {
 		OutputType result = partialDerivative(cells, field, dx, index);
 		Cell &cell = cells(index);
+		const tensor_usl &conn_ull = cell.*connField_ull;
 		for (int k = 0; k < dim; ++k) {
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
-					result(k,i) += cell.conn_ull(i,j,k) * (cell.*field)(j);
+					result(k,i) += conn_ull(i,j,k) * (cell.*field)(j);
 				}
 			}
 		}
@@ -162,13 +167,16 @@ struct covariantDerivativeClass<real, dim, tensor<real, lower<dim>>> {
 	typedef ::Cell<real,dim> Cell;
 	typedef ::Grid<Cell,dim> Grid;
 	typedef InputType Cell::*CellFieldType;
-	OutputType operator()(Grid &cells, CellFieldType field, const vector<real,dim> &dx, const vector<int,dim> &index) {
+	typedef typename Cell::tensor_usl tensor_usl;
+	typedef tensor_usl Cell::*ConnFieldType;
+	OutputType operator()(Grid &cells, CellFieldType field, const vector<real,dim> &dx, const vector<int,dim> &index, ConnFieldType connField_ull) {
 		OutputType result = partialDerivative(cells, field, dx, index);
 		Cell &cell = cells(index);
+		const tensor_usl &conn_ull = cell.*connField_ull;
 		for (int k = 0; k < dim; ++k) {
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
-					result(k,i) -= cell.conn_ull(j,i,k) * (cell.*field)(j);
+					result(k,i) -= conn_ull(j,i,k) * (cell.*field)(j);
 				}
 			}
 		}
@@ -185,9 +193,12 @@ struct covariantDerivativeClass<real, dim, tensor<real, symmetric<upper<dim>, up
 	typedef ::Cell<real,dim> Cell;
 	typedef ::Grid<Cell,dim> Grid;
 	typedef InputType Cell::*CellFieldType;
-	OutputType operator()(Grid &cells, CellFieldType field, const vector<real,dim> &dx, const vector<int,dim> &index) {
+	typedef typename Cell::tensor_usl tensor_usl;
+	typedef tensor_usl Cell::*ConnFieldType;
+	OutputType operator()(Grid &cells, CellFieldType field, const vector<real,dim> &dx, const vector<int,dim> &index, ConnFieldType connField_ull) {
 		OutputType result = partialDerivative(cells, field, dx, index);
 		Cell &cell = cells(index);
+		const tensor_usl &conn_ull = cell.*connField_ull;
 		//<-for the generic covariant definition, from here
 		for (int i = 0; i < dim; ++i) {
 			for (int j = 0; j < dim; ++j) {
@@ -195,8 +206,8 @@ struct covariantDerivativeClass<real, dim, tensor<real, symmetric<upper<dim>, up
 					//-> to here could be replaced with a write-iterator (note that means not looping over all symmetric indexes)
 					for (int l = 0; l < dim; ++l) {
 						//...and then these would be replaced with a product-per-index in the source term
-						result(i,j,k) += cell.conn_ull(j,l,i) * (cell.*field)(l,k);
-						result(i,j,k) += cell.conn_ull(k,l,i) * (cell.*field)(j,l);
+						result(i,j,k) += conn_ull(j,l,i) * (cell.*field)(l,k);
+						result(i,j,k) += conn_ull(k,l,i) * (cell.*field)(j,l);
 					}
 				}
 			}
@@ -207,12 +218,13 @@ struct covariantDerivativeClass<real, dim, tensor<real, symmetric<upper<dim>, up
 
 
 template<typename real, int dim, typename InputType>
-typename covariantDerivativeClass<real,dim,InputType>::OutputType covariantDerivative(
+typename covariantDerivativeClass<real, dim, InputType>::OutputType covariantDerivative(
 	Grid<Cell<real,dim>,dim> &cells, 
 	InputType Cell<real,dim>::*field, 
 	const vector<real,dim> &dx, 
-	const vector<int,dim> &index) 
+	const vector<int,dim> &index,
+	typename Cell<real,dim>::tensor_usl Cell<real,dim>::*connField)
 {
-	return covariantDerivativeClass<real,dim,InputType>()(cells, field, dx, index);
+	return covariantDerivativeClass<real,dim,InputType>()(cells, field, dx, index, connField);
 }
 

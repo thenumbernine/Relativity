@@ -129,23 +129,20 @@ struct ADMFormalism {
 		//option #1: the original ADM implementation
 		//	calculate gamma^ij from gamma_ij
 		//	calculate gamma from det(gamma_ij)
-		{
-			calcOverGrid(targetReadCells, &Cell::calc_gamma_uu_from_gamma_ll);
-		}
+		calcOverGrid(targetReadCells, &Cell::calc_gamma_uu_from_gamma_ll);
 #endif
 #if 1
 		//option #2: introduction of conformal factor
 		//	calculate gammaBar^ij and gammaBar_ij from psi and ln(sqrt(gamma))
 		//	calculate gamma^ij from gammaBar^ij from gammaBar_ij
 		//	calculate gamma from ln(sqrt(gamma))
-		{
-			//gammaBar_ij = psi^-4 gamma_ij
-			//gammaBar^ij = inverse(gammaBar_ij)
-			calcOverGrid(targetReadCells, &Cell::calc_gammaBar_uu_and_gammaBar_ll_from_psi);
-		
-			//gamma^ij = psi^-4 gammaBar^ij
-			calcOverGrid(targetReadCells, &Cell::calc_gamma_uu_from_gammaBar_uu_and_psi);
-		}
+			
+		//gammaBar_ij = psi^-4 gamma_ij
+		//gammaBar^ij = inverse(gammaBar_ij)
+		calcOverGrid(targetReadCells, &Cell::calc_gammaBar_uu_and_gammaBar_ll_from_psi);
+	
+		//gamma^ij = psi^-4 gammaBar^ij
+		calcOverGrid(targetReadCells, &Cell::calc_gamma_uu_from_gammaBar_uu_and_psi);
 #endif
 		
 		//beta_l, gamma_uu, D_alpha_l
@@ -184,11 +181,11 @@ struct ADMFormalism {
 			//D_ln_psi_l(i) := D_i ln(psi) = partial_i ln(psi)
 			cell.D_ln_psi_l = partialDerivative(targetReadCells, &Cell::ln_psi, dx, iter.index);
 			
-			//partial_gammaBar_lll(k)(i,j) := partial_k gammaBar_ij
+			//partial_gammaBar_lll(k,i,j) := partial_k gammaBar_ij
 			tensor_lsl &partial_gammaBar_lll = cell.partial_gammaBar_lll;
 			partial_gammaBar_lll = partialDerivative(targetReadCells, &Cell::gammaBar_ll, dx, iter.index);
 
-			//connBar_lll(i)(j,k) := connBar_ijk = 1/2 (partial_k gammaBar_ij + partial_j gammaBar_ik - partial_i gammaBar_jk)
+			//connBar_lll(i,j,k) := connBar_ijk = 1/2 (partial_k gammaBar_ij + partial_j gammaBar_ik - partial_i gammaBar_jk)
 			tensor_lsl &connBar_lll = cell.connBar_lll;
 			for (int k = 0; k < dim; ++k) {
 				for (int i = 0; i < dim; ++i) {
@@ -198,7 +195,7 @@ struct ADMFormalism {
 				}
 			}
 
-			//connBar_ull(i)(j,k) := conn^i_jk = gammaBar^il connBar_ljk
+			//connBar_ull(i,j,k) := conn^i_jk = gammaBar^il connBar_ljk
 			tensor_usl &connBar_ull = cell.connBar_ull;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
@@ -212,6 +209,67 @@ struct ADMFormalism {
 			}
 		}
 
+		//RBar_ll depends on connBar_ull and partial_gammaBar_lll
+		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
+			Cell &cell = *iter;
+
+			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
+			const tensor_usl &connBar_ull = cell.connBar_ull;
+			const tensor_lsl &connBar_lll = cell.connBar_lll;
+			
+			//partial_partial_gammaBar_llll(k,l,i,j) = partial_k partial_l gammaBar_ij
+			tensor_slsl partial_partial_gammaBar_llll;
+			for (int k = 0; k < dim; ++k) {
+				tensor_lsl partial_gammaBar_lll_wrt_xk = partialDerivativeCoordinate(targetReadCells, &Cell::partial_gammaBar_lll, dx, iter.index, k);
+				for (int l = 0; l <= k; ++l) {
+					for (int i = 0; i < dim; ++i) {
+						for (int j = 0; j <= i; ++j) {
+							if (k == l) {
+								//special case for 2nd deriv along same coordinate
+								const DerefType &index = iter.index;
+								DerefType nextIndex(index);
+								DerefType prevIndex(index);
+								nextIndex(k) = std::max(0, std::min(targetReadCells.size(k)-1, index(k) + 1));
+								prevIndex(k) = std::max(0, std::min(targetReadCells.size(k)-1, index(k) - 1));
+								partial_partial_gammaBar_llll(k,l,i,j) = 
+									(targetReadCells(nextIndex).partial_gammaBar_lll(l,i,j) 
+									- cell.partial_gammaBar_lll(l,i,j) * 2. 
+									+ targetReadCells(prevIndex).partial_gammaBar_lll(l,i,j))
+										/ (dx(k) * dx(k));
+							} else {
+								partial_partial_gammaBar_llll(k,l,i,j) = partial_gammaBar_lll_wrt_xk(l,i,j);
+							}
+						}
+					}
+				}
+			}
+
+			//"Numerical Relativity" p.48
+			//R_ll(i,j) := ricci_ij = 1/2 gamma^kl (partial_i partial_l gamma_kj + partial_k partial_j gamma_il - partial_i partial_j gamma_kl - partial_k partial_l gamma_ij) + gamma^kl (conn^m_il conn_mkj - conn^m_ij conn_mkl)
+			//"Numerical Relativity" p.57 first mentions RBar_ij
+			tensor_sl &RBar_ll = cell.RBar_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					RBar_ll(i,j) = 0.;
+					for (int k = 0; k < dim; ++k) {
+						for (int l = 0; l < dim; ++l) {
+							RBar_ll(i,j) += .5 * gammaBar_uu(k,l) * (
+								partial_partial_gammaBar_llll(i,l,k,j)
+								+ partial_partial_gammaBar_llll(k,j,i,l)
+								- partial_partial_gammaBar_llll(i,j,k,l)
+								- partial_partial_gammaBar_llll(k,l,i,j));
+							for (int m = 0; m < dim; ++m) {
+								RBar_ll(i,j) += gammaBar_uu(k,l) * (
+									connBar_ull(m,i,l) * connBar_lll(m,k,j)
+									- connBar_ull(m,i,j) * connBar_lll(m,k,l));
+							}
+						}
+					}
+				}
+			}
+		}
+
+#if 0	//option #1: original
 
 		//partial_gamma_lll depends on gamma_ll
 		//conn_lll depends on partial_gamma_lll
@@ -222,13 +280,13 @@ struct ADMFormalism {
 			const tensor_sl &gamma_ll = cell.gamma_ll;
 			const tensor_su &gamma_uu = cell.gamma_uu;
 
-			//partial_gamma_lll(k)(i,j) := partial_k gamma_ij
+			//partial_gamma_lll(k,i,j) := partial_k gamma_ij
 			tensor_lsl &partial_gamma_lll = cell.partial_gamma_lll;
 			partial_gamma_lll = partialDerivative(targetReadCells, &Cell::gamma_ll, dx, iter.index);
 
 			//3D hypersurface connection coefficients
 			//only need spatial coefficients (since gamma^at = 0, so conn^t_ab = 0.  see "Numerical Relativity", p.48)
-			//conn_lll(i)(j,k) := conn_ijk = 1/2 (partial_k gamma_ij + partial_j gamma_ik - partial_i gamma_jk)
+			//conn_lll(i,j,k) := conn_ijk = 1/2 (partial_k gamma_ij + partial_j gamma_ik - partial_i gamma_jk)
 			tensor_lsl &conn_lll = cell.conn_lll;
 			for (int k = 0; k < dim; ++k) {
 				for (int i = 0; i < dim; ++i) {
@@ -238,7 +296,7 @@ struct ADMFormalism {
 				}
 			}
 
-			//conn_ull(i)(j,k) := conn^i_jk = gamma^il conn_ljk
+			//conn_ull(i,j,k) := conn^i_jk = gamma^il conn_ljk
 			tensor_usl &conn_ull = cell.conn_ull;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
@@ -260,7 +318,7 @@ struct ADMFormalism {
 			const tensor_usl &conn_ull = cell.conn_ull;
 			const tensor_lsl &conn_lll = cell.conn_lll;
 			
-			//partial_partial_gamma_llll(k,l)(i,j) = partial_k partial_l gamma_ij
+			//partial_partial_gamma_llll(k,l,i,j) = partial_k partial_l gamma_ij
 			tensor_slsl partial_partial_gamma_llll;
 			for (int k = 0; k < dim; ++k) {
 				tensor_lsl partial_gamma_lll_wrt_xk = partialDerivativeCoordinate(targetReadCells, &Cell::partial_gamma_lll, dx, iter.index, k);
@@ -310,6 +368,55 @@ struct ADMFormalism {
 				}
 			}
 		}
+#endif
+#if 1	//use conformal metric info
+	
+		//conn_ull depends on connBar_ull, D_ln_psi_l, gammaBar_uu, gammaBar_ll
+		//conn_lll depends on conn_ull and gamma_ll
+		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
+			Cell &cell = *iter;
+
+			tensor_l &D_ln_psi_l = cell.D_ln_psi_l;
+			tensor_sl &gammaBar_ll = cell.gammaBar_ll;
+			tensor_su &gammaBar_uu = cell.gammaBar_uu;
+			tensor_usl &connBar_ull = cell.connBar_ull;
+			tensor_sl &gamma_ll = cell.gamma_ll;
+			tensor_usl &conn_ull = cell.conn_ull;
+			tensor_lsl &conn_lll = cell.conn_lll;
+	
+			//conn^i_jk = connBar^i_jk + 2 (delta^i_j DBar_k ln(psi) + delta^i_k DBar_j ln(psi) - gammaBar_jk gammaBar^il DBar_l ln(psi))
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					for (int k = 0; k <= j; ++k) {
+						conn_ull(i,j,k) = connBar_ull(i,j,k);
+						if (i == j) conn_ull(i,j,k) += 2. * D_ln_psi_l(k);
+						if (i == k) conn_ull(i,j,k) += 2. * D_ln_psi_l(j);
+						for (int l = 0; l < dim; ++l) {
+							conn_ull(i,j,k) += gammaBar_ll(j,k) * gammaBar_uu(i,l) * D_ln_psi_l(l);
+						}
+					}
+				}
+			}
+
+			//conn_ijk = gamma_il conn^l_jk
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					for (int k = 0; k <= j; ++k) {
+						conn_lll(i,j,k) = 0;
+						for (int l = 0; l < dim; ++l) {
+							conn_lll(i,j,k) += gamma_ll(i,l) * conn_ull(l,j,k);
+						}
+					}
+				}
+			}
+		}
+		
+		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
+			Cell &cell = *iter;
+		
+			tensor_ll D_D_ln_psi_ll = covariantDerivative(targetReadCells, &Cell::D_ln_psi_l, dx, iter.index, &Cell::connBar_ull);
+		}
+#endif
 
 		//K^i_j := gamma^ik K_kj
 		calcOverGrid(targetReadCells, &Cell::calc_K_ul);
@@ -349,7 +456,7 @@ struct ADMFormalism {
 			//I'm not seeing a distinction between the 4D and 3D representations of the constraints.
 			//The "Numerical Relativity" book did transition from a covariant form of the 4D constraint to a contravariant form of the 3D constraint
 			//It also added caveats on how D_i v_j = delta_i v_j only for rank-(0,2) forms and only if v was purely spatial.
-			tensor_lsu diff_K_luu = covariantDerivative(targetReadCells, &Cell::K_uu, dx, iter.index);
+			tensor_lsu diff_K_luu = covariantDerivative(targetReadCells, &Cell::K_uu, dx, iter.index, &Cell::conn_ull);
 
 			//partial_K_l(i) := partial_i K
 			tensor_l partial_K_l = partialDerivative(targetReadCells, &Cell::K, dx, iter.index);
@@ -383,13 +490,13 @@ struct ADMFormalism {
 			const real &tr_K_sq = readCell.tr_K_sq;
 
 			//D_D_alpha_ll(j,i) = diff_j diff_i alpha
-			tensor_ll D_D_alpha_ll = covariantDerivative(targetReadCells, &Cell::D_alpha_l, dx, iter.index);
+			tensor_ll D_D_alpha_ll = covariantDerivative(targetReadCells, &Cell::D_alpha_l, dx, iter.index, &Cell::conn_ull);
 
-			//partial_beta_ll(j)(i) := partial_j beta_i
+			//partial_beta_ll(j,i) := partial_j beta_i
 			tensor_ll partial_beta_ll = partialDerivative(targetReadCells, &Cell::beta_l, dx, iter.index);
 			
 			//diff_beta_ll(j,i) := diff_j beta_i = partial_j beta_i - conn^k_ij beta_k
-			tensor_ll diff_beta_ll = covariantDerivative(targetReadCells, &Cell::beta_l, dx, iter.index);
+			tensor_ll diff_beta_ll = covariantDerivative(targetReadCells, &Cell::beta_l, dx, iter.index, &Cell::conn_ull);
 			
 			//D_beta_ll(i,j) := D_i beta_j = D_i beta_j 
 			//-- but only for lower indexes.
@@ -442,7 +549,7 @@ struct ADMFormalism {
 
 			//D_beta_lu(i,j) := D_i beta^j = D_i beta^j
 			//why am I suspicious that, despite the above comment, I am doing just what the book says not to do?
-			tensor_lu D_beta_lu = covariantDerivative(targetReadCells, &Cell::beta_u, dx, iter.index);
+			tensor_lu D_beta_lu = covariantDerivative(targetReadCells, &Cell::beta_u, dx, iter.index, &Cell::conn_ull);
 
 			//trace_D_beta := D_i beta^i
 			real trace_D_beta = 0;
@@ -454,7 +561,7 @@ struct ADMFormalism {
 			partialTCell.ln_sqrt_gamma = -alpha * K + trace_D_beta;
 
 			//D_K_l(i) := D_i K
-			tensor_l D_K_l = covariantDerivative(targetReadCells, &Cell::K, dx, iter.index);
+			tensor_l D_K_l = covariantDerivative(targetReadCells, &Cell::K, dx, iter.index, &Cell::conn_ull);
 
 			//partial_t K = -gamma^ij D_i D_j alpha + alpha(K_ij K^ij + 4 pi (rho + S)) + beta^i D_i K
 			partialTCell.K = 0;
