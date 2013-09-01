@@ -33,14 +33,10 @@ const double sunAngularMomentumInM = .4 * sunMassInM * sunRadiusInM * sunRadiusI
 
 using namespace std;
 
-//typedef double real;
-//enum { iters = 100 };
-//typedef RK4Integrator Integrator;
-
 //N-D case splots the last slice 
-template<int dim, typename real, typename Integrator>
+template<int dim, typename real>
 struct RunClass {
-	void operator()(::ADMFormalism<real, dim, Integrator> *sim, ostream &f, int numIters, bool outputHistory) {
+	void operator()(::ADMFormalism<real, dim> *sim, ostream &f, int numIters, bool outputHistory) {
 		cout << "iterating..." << endl;
 		const real dt = .1 * sim->dx(0);
 		for (int i = 0; i < numIters; ++i) {
@@ -52,9 +48,9 @@ struct RunClass {
 };
 
 //1D case splot's all time slices together, or just one slice
-template<typename real, typename Integrator>
-struct RunClass<1, real, Integrator> {
-	void operator()(::ADMFormalism<real, 1, Integrator> *sim, ostream &f, int numIters, bool outputHistory) {
+template<typename real>
+struct RunClass<1, real> {
+	void operator()(::ADMFormalism<real, 1> *sim, ostream &f, int numIters, bool outputHistory) {
 		if (outputHistory) {
 			sim->outputLine(f);
 		}
@@ -75,16 +71,18 @@ struct RunClass<1, real, Integrator> {
 	}
 };
 
-template<int dim, typename real, typename Integrator>
+template<int dim, typename real>
 struct Base {
 	typedef ::vector<real, dim> vector;
-	typedef ::ADMFormalism<real, dim, Integrator> ADMFormalism;
+	typedef ::ADMFormalism<real, dim> ADMFormalism;
+	typedef ::IIntegrator<real, dim> IIntegrator;
 	typedef typename ADMFormalism::DerefType DerefType;
 
 	real maxDist;
 	vector min, max, center;
 	DerefType res;
 	ADMFormalism *sim;
+	IIntegrator *integrator;
 	int numIters;
 
 	bool outputHistory;	//only used for 1D case
@@ -102,24 +100,30 @@ struct Base {
 	}
 
 	virtual void init() {
+		assert(!sim);
+		assert(integrator);
 		cout << "constructing sim..." << endl;
-		sim = new ADMFormalism(min, max, res);
+		sim = new ADMFormalism(min, max, res, integrator);
+	}
+
+	virtual ~Base() {
+		delete sim;
 	}
 
 	//update
 	virtual void run(ostream &f) {
 		sim->outputHeaders(f);
 
-		RunClass<dim, real, Integrator>()(sim, f, numIters, outputHistory);
+		RunClass<dim, real>()(sim, f, numIters, outputHistory);
 		
 		cout << "done!" << endl;
 	}
 };
 
 //this is a Schwarzschild init technically, with some matter thrown in there
-template<int dim, typename real, typename Integrator>
-struct Sun : public Base<dim, real, Integrator> {
-	typedef ::Base<dim, real, Integrator> Base;
+template<int dim, typename real>
+struct Sun : public Base<dim, real> {
+	typedef ::Base<dim, real> Base;
 	typedef typename Base::ADMFormalism ADMFormalism;
 	typedef typename Base::vector vector;
 	
@@ -169,9 +173,9 @@ struct Sun : public Base<dim, real, Integrator> {
 /*
 See the Kerr-Schild section of the scratch paper in the README
 */
-template<int dim, typename real, typename Integrator>
-struct KerrSchild : public Base<dim, real, Integrator> {
-	typedef ::Base<dim, real, Integrator> Base;
+template<int dim, typename real>
+struct KerrSchild : public Base<dim, real> {
+	typedef ::Base<dim, real> Base;
 
 	typedef typename Base::vector vector;
 	typedef typename Base::ADMFormalism ADMFormalism;
@@ -291,9 +295,9 @@ psi = 1 + sum_a M_a / (2 r_a)
 ...and more detail can be found in chapter 13.2
 In fact, I'm stealing 1/alpha = sum_a M_a / (r c_a) from 12.51 without fully reading the rest of the chapter
 */
-template<int dim, typename real, typename Integrator>
-struct BrillLindquist : public Base<dim, real, Integrator> {
-	typedef ::Base<dim, real, Integrator> Base;
+template<int dim, typename real>
+struct BrillLindquist : public Base<dim, real> {
+	typedef ::Base<dim, real> Base;
 
 	typedef typename Base::vector vector;
 	typedef typename Base::ADMFormalism ADMFormalism;
@@ -502,8 +506,8 @@ void runSimTest(const SimParams &params, TestType &test) {
 	test.run(f);
 }
 
-template<int dim, typename real, typename integrator>
-void runSimIntegrator(SimParams &params) {
+template<int dim, typename real>
+void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 	if (!params.args.size()) throw Exception() << "expected simulation arguments";
 	string simType = params.args[0];
 	params.args.erase(params.args.begin());
@@ -529,7 +533,7 @@ void runSimIntegrator(SimParams &params) {
 		cerr << "angular momentum " << angularMomentum << endl;
 		cerr << "charge " << charge << endl;
 
-		KerrSchild<dim, real, integrator> test(
+		KerrSchild<dim, real> test(
 			params.res,
 			params.iter,
 			params.size * sunRadiusInM,
@@ -538,6 +542,7 @@ void runSimIntegrator(SimParams &params) {
 			charge
 		);
 
+		test.integrator = integrator;
 		runSimTest(params, test);
 	} else if (simType == "brill-lindquist") {
 		if (!params.args.size()) throw Exception() << "expected simulation arguments";
@@ -565,12 +570,14 @@ void runSimIntegrator(SimParams &params) {
 			blackHoleInfos.push_back(blackHoleInfo);
 		}
 
-		BrillLindquist<dim, real, integrator> test(
+		BrillLindquist<dim, real> test(
 			params.res,
 			params.iter,
 			params.size * sunRadiusInM, 
 			blackHoleInfos);
 	
+		test.integrator = integrator;
+		
 		runSimTest(params, test);
 	} else {
 		throw Exception() << "got unknown simulation type " << simType;
@@ -579,16 +586,19 @@ void runSimIntegrator(SimParams &params) {
 
 template<int dim, typename real>
 void runSimPrecision(SimParams &params) {
+	IIntegrator<real, dim> *integrator = NULL;
 	switch (params.integrator) {
 	case INTEGRATOR_EULER:
-		runSimIntegrator<dim, real, EulerIntegrator>(params);
+		integrator = new EulerIntegrator<real, dim>();
 		break;
 	case INTEGRATOR_RK4:
-		runSimIntegrator<dim, real, RK4Integrator>(params);
+		integrator = new RK4Integrator<real, dim>();
 		break;
 	default:
 		throw Exception() << "got an integrator I couldn't handle " << params.integrator;
 	}
+	runSimIntegrator<dim, real>(params, integrator);
+	delete integrator;
 }
 
 template<int dim>

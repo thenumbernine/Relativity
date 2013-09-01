@@ -18,11 +18,15 @@ struct Grid {
 	DerefType step;
 
 	Grid(const DerefType &size_) : size(size_) {
-		v = new type[size.volume()];
+		v = new type[size.volume()]();
 		step(0) = 1;
 		for (int i = 1; i < rank; ++i) {
 			step(i) = step(i-1) * size(i-1);
 		}
+	}
+
+	~Grid() {
+		delete[] v;
 	}
 
 	type &operator()(const DerefType &deref) { 

@@ -14,20 +14,18 @@
 #include "inverse.h"
 #include "derivative.h"
 
+#include "i_integrator.h"
+#include "i_admformalism.h"
+
 /*
 ADM Formalism class generates partial t values for the K_ll and gamma_ll structures.
 the rest of the properties can be seen as read-only ... should I store them in a separate structure than the AuxCell?
 */
-template<typename real_, int dim_, typename Integrator_>
-struct ADMFormalism {
+template<typename real_, int dim_>
+struct ADMFormalism : public IADMFormalism<real_, dim_> {
 	typedef real_ real;
 	enum { dim = dim_ };
 	
-		//integrator types
-	
-	typedef Integrator_ Integrator;
-	typedef typename Integrator::template Body<ADMFormalism> IntegratorBody;
-
 		//cell types
 
 	typedef ::GeomCell<real,dim> GeomCell;
@@ -80,7 +78,7 @@ struct ADMFormalism {
 	vector dx;
 
 	//integrator
-	IntegratorBody integrator;
+	IIntegrator<real, dim> *integrator;
 
 	//grids
 	GeomGrid geomGrid0;
@@ -91,14 +89,18 @@ struct ADMFormalism {
 	GeomGrid *geomGridReadCurrent;
 	GeomGrid *geomGridWriteCurrent;
 	
-	ADMFormalism(const vector &min_, const vector &max_, const DerefType &size_)
+	ADMFormalism(
+		const vector &min_, 
+		const vector &max_, 
+		const DerefType &size_,
+		IIntegrator<real, dim> *integrator_)
 	:	time(0),
 		size(size_),
 		min(min_),
 		max(max_),
 		range(max_ - min_),
 		dx((max_ - min_) / vector(size_)),
-		integrator(size_),
+		integrator(integrator_),
 		//need non-void constructor call, but want an array ...
 		geomGrid0(size_),
 		geomGrid1(size_),
@@ -107,7 +109,7 @@ struct ADMFormalism {
 		geomGridReadCurrent(&geomGrid0),
 		geomGridWriteCurrent(&geomGrid1)
 	{
-		integrator.sim = this;
+		integrator->init(this, size);
 	}
 
 	//aux calculations
@@ -210,8 +212,16 @@ struct ADMFormalism {
 		return min + ((vector)index + .5) * dx;
 	}
 
+	virtual GeomGrid *getGeomGridReadCurrent() {
+		return geomGridReadCurrent;
+	}
+
+	virtual GeomGrid *getGeomGridWriteCurrent() {
+		return geomGridWriteCurrent;
+	}
+	
 	//iteration
-	void getGeometridynamicPartials(
+	virtual void getGeometridynamicPartials(
 		real dt, 
 		const GeomGrid &geomGridRead,	//read from this.  last iteration state.
 		GeomGrid &partial_t_geomGrid)			//next iteration partials
@@ -777,7 +787,7 @@ struct ADMFormalism {
 	}
 
 	void update(real dt) {
-		integrator.update(dt);
+		integrator->update(dt);
 
 		time += dt;
 

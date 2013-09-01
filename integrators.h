@@ -9,11 +9,28 @@ that includes ...
 	- math operations on grids (copyGrid, scale, add)
 */
 
-template<typename ADMFormalism_>
-struct IntegratorBody {
-	typedef ADMFormalism_ ADMFormalism;
-	typedef typename ADMFormalism::real real;
-	typedef typename ADMFormalism::GeomGrid GeomGrid;
+#include "cell.h"
+#include "grid.h"
+#include "i_integrator.h"
+#include "i_admformalism.h"
+
+template<typename real, int dim>
+struct Integrator : public IIntegrator<real, dim> {
+	typedef Grid<GeomCell<real, dim>, dim> GeomGrid;
+	typedef ::IADMFormalism<real, dim> IADMFormalism;
+
+	IADMFormalism *sim;
+	vector<int, dim> size;
+
+	Integrator() : sim(NULL) {}
+	
+	virtual void init(IADMFormalism *sim_, const ::vector<int, dim> &size_) {
+		sim = sim_;
+		size = size_;
+	}
+	
+	//either manually init here after the fact and switch all grids to pointers
+	//or init all the grids in ctor and implement a copy ctor in the grids
 
 	void copyGrid(GeomGrid &dst, const GeomGrid &src) {
 		for (typename GeomGrid::const_iterator iter = src.begin(); iter != src.end(); ++iter) {
@@ -28,78 +45,98 @@ struct IntegratorBody {
 	}
 };
 
-struct EulerIntegrator {
-	template<typename ADMFormalism_>
-	struct Body : public IntegratorBody<ADMFormalism_> {
-		typedef ADMFormalism_ ADMFormalism;
-		typedef typename ADMFormalism::real real;
-		typedef typename ADMFormalism::DerefType DerefType;
-		typedef typename ADMFormalism::GeomGrid GeomGrid;
+template<typename real, int dim>
+struct EulerIntegrator : public Integrator<real, dim> {
+	typedef ::Integrator<real, dim> Integrator;
+	typedef typename Integrator::IADMFormalism IADMFormalism;
+	typedef typename Integrator::GeomGrid GeomGrid;
+	
+	GeomGrid *partialTCells;
+
+	EulerIntegrator() : Integrator(), partialTCells(NULL) {}
+	
+	virtual ~EulerIntegrator() {
+		delete partialTCells;
+	}
+
+	virtual void init(IADMFormalism *sim_, const ::vector<int, dim> &size_) {
+		Integrator::init(sim_, size_);
 		
-		ADMFormalism *sim;
+		assert(!partialTCells);
+		partialTCells = new GeomGrid(Integrator::size);
+	}
 
-		GeomGrid partialTCells;
+	virtual void update(real dt) {
+		//compute aux terms
+		//return partial cells
+		Integrator::sim->getGeometridynamicPartials(dt, *Integrator::sim->getGeomGridReadCurrent(), *partialTCells);
 
-		Body(const DerefType &size)
-		:	partialTCells(size)
-		{}
-
-		void update(real dt) {
-			//compute aux terms
-			//return partial cells
-			sim->getGeometridynamicPartials(dt, *sim->geomGridReadCurrent, partialTCells);
-
-			//update write buffer
-			copyGrid(*sim->geomGridWriteCurrent, *sim->geomGridReadCurrent);
-			multAddGrid(*sim->geomGridWriteCurrent, partialTCells, dt);
-		}
-	};
+		//update write buffer
+		copyGrid(*Integrator::sim->getGeomGridWriteCurrent(), *Integrator::sim->getGeomGridReadCurrent());
+		multAddGrid(*Integrator::sim->getGeomGridWriteCurrent(), *partialTCells, dt);
+	}
 };
 
-struct RK4Integrator {
-	template<typename ADMFormalism_>
-	struct Body : IntegratorBody<ADMFormalism_> {
-		typedef ADMFormalism_ ADMFormalism;
-		typedef typename ADMFormalism::real real;
-		typedef typename ADMFormalism::DerefType DerefType;
-		typedef typename ADMFormalism::GeomGrid GeomGrid;
+template<typename real, int dim>
+struct RK4Integrator : public Integrator<real, dim> {
+	typedef ::Integrator<real, dim> Integrator;
+	typedef typename Integrator::IADMFormalism IADMFormalism;
+	typedef typename Integrator::GeomGrid GeomGrid;
+	
+	GeomGrid *xtmp;
+	GeomGrid *k1, *k2, *k3, *k4;
+
+	RK4Integrator() : Integrator(), xtmp(NULL), k1(NULL), k2(NULL), k3(NULL), k4(NULL) {}
+	
+	virtual ~RK4Integrator() {
+		delete xtmp;
+		delete k1;
+		delete k2;
+		delete k3;
+		delete k4;
+	}
+	
+	virtual void init(IADMFormalism *sim_, const ::vector<int, dim> &size_) {
+		Integrator::init(sim_, size_);
 		
-		ADMFormalism *sim;
+		assert(!xtmp);
+		xtmp = new GeomGrid(Integrator::size);
+		assert(!k1);
+		k1 = new GeomGrid(Integrator::size);
+		assert(!k2);
+		k2 = new GeomGrid(Integrator::size);
+		assert(!k3);
+		k3 = new GeomGrid(Integrator::size);
+		assert(!k4);
+		k4 = new GeomGrid(Integrator::size);
+	}
 
-		GeomGrid xtmp;
-		GeomGrid k1, k2, k3, k4;
+	virtual void update(real dt) {
+		//k1 = f(x)
+		GeomGrid *x1 = Integrator::sim->getGeomGridReadCurrent();
+		Integrator::sim->getGeometridynamicPartials(dt, *x1, *k1);
+		
+		//k2 = f(x + k1 * dt/2)
+		copyGrid(*xtmp, *x1);
+		multAddGrid(*xtmp, *k1, .5 * dt);
+		Integrator::sim->getGeometridynamicPartials(dt, *xtmp, *k2);
 
-		Body(const DerefType &size)
-		: xtmp(size), k1(size), k2(size), k3(size), k4(size)
-		{}
+		//k3 = f(x + k2 * dt/2)
+		copyGrid(*xtmp, *x1);
+		multAddGrid(*xtmp, *k2, .5 * dt);
+		Integrator::sim->getGeometridynamicPartials(dt, *xtmp, *k3);
 
-		void update(real dt) {
-			//k1 = f(x)
-			GeomGrid &x1 = *sim->geomGridReadCurrent;
-			sim->getGeometridynamicPartials(dt, x1, k1);
-			
-			//k2 = f(x + k1 * dt/2)
-			copyGrid(xtmp, x1);
-			multAddGrid(xtmp, k1, .5 * dt);
-			sim->getGeometridynamicPartials(dt, xtmp, k2);
+		//k4 = f(x + k3 * dt)
+		copyGrid(*xtmp, *x1);
+		multAddGrid(*xtmp, *k3, dt);
+		Integrator::sim->getGeometridynamicPartials(dt, *xtmp, *k4);
 
-			//k3 = f(x + k2 * dt/2)
-			copyGrid(xtmp, x1);
-			multAddGrid(xtmp, k2, .5 * dt);
-			sim->getGeometridynamicPartials(dt, xtmp, k3);
-
-			//k4 = f(x + k3 * dt)
-			copyGrid(xtmp, x1);
-			multAddGrid(xtmp, k3, dt);
-			sim->getGeometridynamicPartials(dt, xtmp, k4);
-
-			//x = f(x + dt/6(k1 + 2 k2 + 2 k3 + k4))
-			copyGrid(*sim->geomGridWriteCurrent, x1);
-			multAddGrid(*sim->geomGridWriteCurrent, k1, dt/6.);
-			multAddGrid(*sim->geomGridWriteCurrent, k2, dt/3.);
-			multAddGrid(*sim->geomGridWriteCurrent, k3, dt/3.);
-			multAddGrid(*sim->geomGridWriteCurrent, k4, dt/6.);
-		}
-	};
+		//x = f(x + dt/6(k1 + 2 k2 + 2 k3 + k4))
+		copyGrid(*Integrator::sim->getGeomGridWriteCurrent(), *x1);
+		multAddGrid(*Integrator::sim->getGeomGridWriteCurrent(), *k1, dt/6.);
+		multAddGrid(*Integrator::sim->getGeomGridWriteCurrent(), *k2, dt/3.);
+		multAddGrid(*Integrator::sim->getGeomGridWriteCurrent(), *k3, dt/3.);
+		multAddGrid(*Integrator::sim->getGeomGridWriteCurrent(), *k4, dt/6.);
+	}
 };
 
