@@ -123,3 +123,7 @@ typename InverseClass<InputType>::OutputType inverse(const InputType &a, const t
 	return InverseClass<InputType>()(a, det);
 }
 
+template<typename InputType>
+typename InverseClass<InputType>::OutputType inverse(const InputType &a) {
+	return InverseClass<InputType>()(a, determinant(a));
+}

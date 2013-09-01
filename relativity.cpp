@@ -1,5 +1,6 @@
 #include "admformalism.h"
 #include "integrators.h"
+#include "inverse.h"
 #include "exception.h"
 
 #include <string.h>
@@ -132,31 +133,34 @@ struct Sun : public Base<dim, real, Integrator> {
 		
 		//provide initial conditions
 		cout << "providing initial conditions..." << endl;
-		for (typename ADMFormalism::GridIter iter = sim->readCells->begin(); iter != sim->readCells->end(); ++iter) {
-			typename ADMFormalism::Cell &cell = *iter;
+		for (typename ADMFormalism::GeomGrid::iterator iter = sim->geomGridReadCurrent->begin(); iter != sim->geomGridReadCurrent->end(); ++iter) {
+			typename ADMFormalism::GeomCell &geomCell = *iter;
+			typename ADMFormalism::MatterCell &matterCell = sim->matterGrid(iter.index);
+
 			vector v = sim->coordForIndex(iter.index) - center;
+			
 			real r = vector::length(v);
 			real sunMassOver2Radius = sunMassInM / (2. * r);
 			real oneMinusSunMassOver2Radius = 1. - sunMassOver2Radius;
 			real onePlusSunMassOver2Radius = 1. + sunMassOver2Radius;
 			real onePlusSunMassOver2RadiusSq = onePlusSunMassOver2Radius * onePlusSunMassOver2Radius;
 			
-			cell.alpha = oneMinusSunMassOver2Radius / onePlusSunMassOver2Radius; 
+			geomCell.alpha = oneMinusSunMassOver2Radius / onePlusSunMassOver2Radius; 
 		
 			//beta^i = 0
 
 			for (int i = 0; i < dim; ++i) {
-				cell.gamma_ll(i,i) = onePlusSunMassOver2RadiusSq * onePlusSunMassOver2RadiusSq;
+				geomCell.gamma_ll(i,i) = onePlusSunMassOver2RadiusSq * onePlusSunMassOver2RadiusSq;
 			}
 			
 			//gamma = det(gamma_ij)
 			//ln_sqrt_gamma := ln(sqrt(gamma))
-			cell.calc_ln_sqrt_gamma_from_gamma_ll();
+			geomCell.calc_ln_sqrt_gamma_from_gamma_ll();
 
 			//K_ij = K = 0
 			
 			if (r <= sunRadiusInM) {
-				cell.rho = sim->dx.volume() * sunDensityInM_2;
+				matterCell.rho = sim->dx.volume() * sunDensityInM_2;
 			}
 		}
 	}
@@ -211,8 +215,9 @@ struct KerrSchild : public Base<dim, real, Integrator> {
 		
 		cout << "providing initial conditions..." << endl;
 		vector center = (max + min) * .5;
-		for (typename ADMFormalism::GridIter iter = sim->readCells->begin(); iter != sim->readCells->end(); ++iter) {
-			typename ADMFormalism::Cell &cell = *iter;
+		for (typename ADMFormalism::GeomGrid::iterator iter = sim->geomGridReadCurrent->begin(); iter != sim->geomGridReadCurrent->end(); ++iter) {
+			typename ADMFormalism::GeomCell &geomCell = *iter;
+			
 			vector v = sim->coordForIndex(iter.index) - center;
 			real r = vector::length(v);
 			real x = v(0);
@@ -225,7 +230,7 @@ struct KerrSchild : public Base<dim, real, Integrator> {
 			if (dim > 1) l_l(1) = (r * y - a * x) / (r * r + a * a);
 			if (dim > 2) l_l(2) = z / r;
 
-			tensor_sl &gamma_ll = cell.gamma_ll;
+			tensor_sl &gamma_ll = geomCell.gamma_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					gamma_ll(i,j) = eta(i,j) + (2. - eta(i,j)) * H * l_l(i) * l_l(j);
@@ -233,20 +238,10 @@ struct KerrSchild : public Base<dim, real, Integrator> {
 			}
 		
 			//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
-			cell.calc_ln_sqrt_gamma_from_gamma_ll();
-			
-			//ln_psi := ln(psi) = 1/6 ln(sqrt(gamma))
-			//psi = exp(ln(psi))
-			cell.calc_psi_from_ln_sqrt_gamma();
-			
-			//gammaBar_ij = psi^-4 gamma_ij
-			//gammaBar^ij = inverse(gammaBar_ij)
-			cell.calc_gammaBar_uu_and_gammaBar_ll_from_psi();
-
-			//gamma^ij = psi^-4 gammaBar^ij
-			cell.calc_gamma_uu_from_gammaBar_uu_and_psi();
-
-			tensor_su &gamma_uu = cell.gamma_uu;
+			geomCell.calc_ln_sqrt_gamma_from_gamma_ll();
+		
+			tensor_su gamma_uu;
+			gamma_uu = inverse(geomCell.gamma_ll);
 
 			tensor_u l_u;
 			for (int i = 0; i < dim; ++i) {
@@ -256,27 +251,27 @@ struct KerrSchild : public Base<dim, real, Integrator> {
 				}
 			}
 
-			tensor_u &beta_u = cell.beta_u;
+			tensor_u &beta_u = geomCell.beta_u;
 			beta_u = l_u * H;
 
 			real betaNorm = 0.;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
-					betaNorm += gamma_ll(i,j) * beta_u(i) * beta_u(j);
+					betaNorm += geomCell.gamma_ll(i,j) * geomCell.beta_u(i) * geomCell.beta_u(j);
 				}
 			}
 
-			real &alpha = cell.alpha;
+			real &alpha = geomCell.alpha;
 			alpha = sqrt(1. - 2. * H - betaNorm);
 
-			tensor_sl &K_ll = cell.K_ll;
+			tensor_sl &K_ll = geomCell.K_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					K_ll(i,j) = 2. * H * a / r * (eta(i,j) - (2. + H) * l_l(i) * l_l(j));
 				}
 			}
 
-			real &K = cell.K;
+			real &K = geomCell.K;
 			K = 2 * M * alpha * alpha * alpha / (r * r) * (1. + 3. * M / r);
 		}
 	}
@@ -335,13 +330,15 @@ struct BrillLindquist : public Base<dim, real, Integrator> {
 		
 		cout << "providing initial conditions..." << endl;
 		vector center = (max + min) * .5;
-		for (typename ADMFormalism::GridIter iter = sim->readCells->begin(); iter != sim->readCells->end(); ++iter) {
-			typename ADMFormalism::Cell &cell = *iter;
+		for (typename ADMFormalism::GeomGrid::iterator iter = sim->geomGridReadCurrent->begin(); iter != sim->geomGridReadCurrent->end(); ++iter) {
+			typename ADMFormalism::GeomCell &geomCell = *iter;
+			
 			vector x = sim->coordForIndex(iter.index);
 
 			//calculate psi and gammaBar_ij
-			cell.gammaBar_ll = eta;
-			cell.psi = 1;
+			tensor_sl gammaBar_ll = eta;
+			
+			real psi = 1;
 			real oneOverAlpha = 0;
 			for (int i = 0; i < (int)blackHoleInfo.size(); ++i) {
 				real M = blackHoleInfo[i](dim);
@@ -350,7 +347,7 @@ struct BrillLindquist : public Base<dim, real, Integrator> {
 					c(j) = blackHoleInfo[i](j);
 				}
 				real r = vector::length(x - c);
-				cell.psi += .5 * M / r;
+				psi += .5 * M / r;
 				oneOverAlpha += .5 * M / r;
 			}
 
@@ -362,20 +359,20 @@ struct BrillLindquist : public Base<dim, real, Integrator> {
 			//Alcubierre calls this data "Brill-Lindquist data" and likewise doesn't mention the lapse value any more than Baumgarte & Shapiro do
 			// except for one additional statement: alpha psi = 1 - M / (2 r), which he goes on to state implies alpha = (1 - M/(2r))/(1 + M/(2r)).
 			//That and I skimmed through ch.12 to find something like this, and it's probably wrong:
-			//cell.alpha = 1. / oneOverAlpha;
-			cell.alpha = 1.;
+			//geomCell.alpha = 1. / oneOverAlpha;
+			geomCell.alpha = 1.;
 
 			//from psi we need to calculate our state values
-			real psiSquared = cell.psi * cell.psi;
+			real psiSquared = psi * psi;
 			real psiToTheFourth = psiSquared * psiSquared;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
-					cell.gamma_ll(i,j) = cell.gammaBar_ll(i,j) * psiToTheFourth;
+					geomCell.gamma_ll(i,j) = gammaBar_ll(i,j) * psiToTheFourth;
 				}
 			}
 
-			cell.gamma = psiToTheFourth * psiToTheFourth * psiToTheFourth;
-			cell.ln_sqrt_gamma = .5 * log(cell.gamma);
+			real gamma = psiToTheFourth * psiToTheFourth * psiToTheFourth;
+			geomCell.ln_sqrt_gamma = .5 * log(gamma);
 		}
 	}
 };

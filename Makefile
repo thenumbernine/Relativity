@@ -22,6 +22,19 @@ DEPS :=\
 	tensor_index.h \
 	vector.h
 
+relativity: relativity.cpp $(DEPS)
+	g++ $(CPPFLAGS) -std=c++0x relativity.cpp -o relativity
+
+test: test.cpp $(DEPS)
+	g++ $(CPPFLAGS) -std=c++0x test.cpp -o test
+
+install: relativity
+	cp relativity $(TARGETDIR) 
+
+install_test: test
+	cp test $(TARGETDIR) 
+
+
 DIM := 1
 PLOT_FIELD := K
 
@@ -43,18 +56,6 @@ run: install
 
 run_test: install_test
 	$(TARGETDIR)test
-
-install: relativity
-	cp relativity $(TARGETDIR) 
-
-install_test: test
-	cp test $(TARGETDIR) 
-
-relativity: relativity.cpp $(DEPS)
-	g++ $(CPPFLAGS) -std=c++0x relativity.cpp -o relativity
-
-test: test.cpp $(DEPS)
-	g++ $(CPPFLAGS) -std=c++0x test.cpp -o test
 
 all: relativity test
 

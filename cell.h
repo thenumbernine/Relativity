@@ -4,8 +4,113 @@
 #include "tensor.h"
 #include "inverse.h"
 
+//structure solely of integrated values
+//"GeomCell" is an incorrect name
+// if I ever write a huge implicit solver and integrate matter terms alongside geometridynamic terms, they would go here
 template<typename real_, int dim_>
-struct Cell {
+struct GeomCell {
+	typedef real_ real;
+	enum { dim = dim_ };
+
+	typedef tensor<real, upper<dim>> tensor_u;
+	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> tensor_sl;
+
+	//lapse
+	real alpha;
+
+	//shift
+	//beta_u(i) := beta^i
+	//beta^t = 0
+	tensor_u beta_u;
+
+	//spatial metric
+	//gamma_ll(i,j) := gamma_ij
+	//gamma_it = gamma_tj = 0
+	tensor_sl gamma_ll;
+
+	//extrinsic curvature
+	//K_ll(i,j) := K_ij
+	//K_it = K_tj = 0
+	tensor_sl K_ll;
+
+	//extrinsic curvature trace
+	//K := K^i_k
+	real K;
+
+	//related to the conformal factor of metric
+	//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
+	real ln_sqrt_gamma;
+
+
+	GeomCell()
+	:	alpha(real()),
+		K(real()),
+		ln_sqrt_gamma(real())
+	{}
+
+	//used during init
+	//gamma = det(gamma_ij)
+	//ln_sqrt_gamma := ln(sqrt(gamma))
+	void calc_ln_sqrt_gamma_from_gamma_ll() {
+		//gamma = det(gamma_ij)
+		real gamma = determinant(gamma_ll);
+
+		//GeomCell::ln_sqrt_gamma := ln(sqrt(gamma))
+		ln_sqrt_gamma = .5 * log(gamma);
+	}
+
+	//operators used with integration
+
+	GeomCell operator*(const real &scalar) const {
+		GeomCell result;
+		result.alpha = alpha * scalar;
+		result.beta_u = beta_u * scalar;
+		result.gamma_ll = gamma_ll * scalar;
+		result.K_ll = K_ll * scalar;
+		result.K = K * scalar;
+		result.ln_sqrt_gamma = ln_sqrt_gamma * scalar;
+		return result;
+	}
+
+	GeomCell &operator+=(const GeomCell &sourceCell) {
+		alpha = sourceCell.alpha;
+		beta_u += sourceCell.beta_u;
+		gamma_ll += sourceCell.gamma_ll;
+		K_ll += sourceCell.K_ll;
+		K += sourceCell.K;
+		ln_sqrt_gamma += sourceCell.ln_sqrt_gamma;
+		return *this;
+	}
+};
+
+template<typename real_, int dim_>
+struct MatterCell {
+	typedef real_ real;
+	enum { dim = dim_ };
+
+	typedef tensor<real, upper<dim>> tensor_u;
+	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> tensor_sl;
+
+	MatterCell()
+	:	rho(real())
+	{}
+
+	//energy density
+	//rho = n_a n_b T^ab
+	real rho;
+
+	//momentum
+	//S_u(i) := S^i = -gamma^ij * n^a T_aj
+	tensor_u S_u;
+
+	//spatial stress energy
+	//S_ll(i,j) := S_ij = gamma_ic gamma_jd T^cd
+	//					= gamma_i^c gamma_j^d T_cd
+	tensor_sl S_ll;
+};
+
+template<typename real_, int dim_>
+struct AuxCell {
 	typedef real_ real;
 	enum { dim = dim_ };
 
@@ -29,12 +134,8 @@ struct Cell {
 
 
 	//our tensors initialze to zero, so why not our reals too?
-	Cell() 
-	: 	alpha(real()),
-		K(real()),
-		ln_sqrt_gamma(real()),
-		rho(real()),
-		H(real()),
+	AuxCell() 
+	:	H(real()),
 		gamma(real()),
 		R(real()),
 		tr_K_sq(real()),
@@ -44,57 +145,6 @@ struct Cell {
 		RBar(real()),
 		tr_ABar_sq(real())
 	{}
-
-
-	//	geometridynmaic variables
-
-
-	//lapse
-	real alpha;
-
-	//shift
-	//beta_u(i) := beta^i
-	//beta^t = 0
-	tensor_u beta_u;
-
-	//spatial metric
-	//gamma_ll(i,j) := gamma_ij
-	//gamma_it = gamma_tj = 0
-	tensor_sl gamma_ll;
-	
-	//extrinsic curvature
-	//K_ll(i,j) := K_ij
-	//K_it = K_tj = 0
-	tensor_sl K_ll;
-
-
-		// extra formalism variables that are iterated
-
-
-	//extrinsic curvature trace
-	//K := K^i_k
-	real K;
-
-	//related to the conformal factor of metric
-	//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
-	real ln_sqrt_gamma;
-
-
-	//	stress-energy-derived variables
-
-
-	//energy density
-	//rho = n_a n_b T^ab
-	real rho;
-
-	//momentum
-	//S_u(i) := S^i = -gamma^ij * n^a T_aj
-	tensor_u S_u;
-
-	//spatial stress energy
-	//S_ll(i,j) := S_ij = gamma_ic gamma_jd T^cd
-	//					= gamma_i^c gamma_j^d T_cd
-	tensor_ll S_ll;
 
 
 	//	constraint variables: should always be zero
@@ -204,178 +254,5 @@ struct Cell {
 
 	//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ij
 	real tr_ABar_sq;
-
-	// calculations of aux values
-
-
-	//used during init
-	//gamma = det(gamma_ij)
-	//ln_sqrt_gamma := ln(sqrt(gamma))
-	void calc_ln_sqrt_gamma_from_gamma_ll() {
-		//gamma = det(gamma_ij)
-		gamma = determinant(gamma_ll);
-
-		//ln_sqrt_gamma := ln(sqrt(gamma))
-		ln_sqrt_gamma = .5 * log(gamma);
-	}
-
-	//ln_psi := ln(psi) = 1/6 ln(sqrt(gamma))
-	//psi = exp(ln(psi))
-	void calc_psi_from_ln_sqrt_gamma() {
-		//ln(psi) = 1/6 ln(sqrt(gamma))
-		ln_psi = ln_sqrt_gamma / 6.;
-
-		//psi = exp(ln(psi))
-		psi = exp(ln_psi);
-	}
-
-	//option-1 method
-	//gamma = det(gamma_ij)
-	//gamma^ij = ((gamma_kl)^-1)^ij
-	void calc_gamma_uu_from_gamma_ll() {
-		gamma = determinant(gamma_ll);
-		gamma_uu = inverse(gamma_ll, gamma);
-	}
-
-	//option-2 method
-	//gammaBar_ij = psi^-4 gamma_ij
-	//gammaBar^ij = inverse(gammaBar_ij)
-	//gamma = psi^12
-	void calc_gammaBar_uu_and_gammaBar_ll_from_psi() {
-		real psiSquared = psi * psi;
-		real psiToTheFourth = psiSquared * psiSquared;
-		real oneOverPsiToTheFourth = 1. / psiToTheFourth;
-
-		//either this or another exp() call
-		real psiToTheEighth = psiToTheFourth * psiToTheFourth;
-		gamma = psiToTheFourth * psiToTheEighth;
-
-		//gammaBar_ij = psi^-4 gamma_ij
-		for (int i = 0; i < dim; ++i) {
-			for (int j = 0; j <= i; ++j) {
-				gammaBar_ll(i,j) = oneOverPsiToTheFourth * gamma_ll(i,j);
-			}
-		}
-
-		//gammaBar^ij = inverse(gammaBar_ij)
-		gammaBar_uu = inverse(gammaBar_ll, 1.);
-	}
-
-	//option-2 method
-	//gamma^ij = psi^-4 gammaBar^ij
-	void calc_gamma_uu_from_gammaBar_uu_and_psi() {
-		real psiSquared = psi * psi;
-		real psiToTheFourth = psiSquared * psiSquared;
-		real oneOverPsiToTheFourth = 1. / psiToTheFourth;
-
-		//gamma^ij = psi^-4 gammaBar^ij
-		for (int i = 0; i < dim; ++i) {
-			for (int j = 0; j <= i; ++j) {
-				gamma_uu(i,j) = oneOverPsiToTheFourth * gammaBar_uu(i,j);
-			}
-		}
-	}
-
-	//K^i_j := gamma^ik K_kj
-	void calc_K_ul() {
-		for (int i = 0; i < dim; ++i) {
-			for (int j = 0; j < dim; ++j) {
-				K_ul(i,j) = 0;
-				for (int k = 0; k < dim; ++k) {
-					K_ul(i,j) += gamma_uu(i,k) * K_ll(k,j);
-				}
-			}
-		}
-	}
-	
-	//K^ij = K^i_k gamma^kj
-	void calc_K_uu() {
-		//K_uu(i,j) := K^ij = K^i_k gamma^kj
-		for (int i = 0; i  < dim; ++i) {
-			for (int j = 0; j <= i; ++j) {
-				K_uu(i,j) = 0;
-				for (int k = 0; k < dim; ++k) {
-					K_uu(i,j) += K_ul(i,k) * gamma_uu(k,j);
-				}
-			}
-		}
-	}
-	
-	//tr_K_sq := tr(K^2) = (K^2)^i_i = K^ij K_ji = K^i_j K^j_i
-	//this method uses tr(K^2) = K^ij K_ij in particular
-	void calc_tr_K_sq() {
-		tr_K_sq = 0.;
-		for (int i = 0; i < dim; ++i) {
-			for (int j = 0; j < dim; ++j) {
-				tr_K_sq += K_uu(i,j) * K_ll(i,j); 
-			}
-		}
-	}
-
-
-	//	operators for ease of use in algorithms
-
-
-	Cell operator*(const real &b) const {
-		const Cell &a = *this;
-		Cell c = a;
-		c.alpha = a.alpha * b;
-		c.beta_u = a.beta_u * b;
-		c.K_ll = a.K_ll * b;
-		c.K = a.K * b;
-		c.ln_sqrt_gamma = a.ln_sqrt_gamma * b;
-		//these should be maintained - and are probably a separate structure for that reason? 
-		c.rho = a.rho * b;
-		c.S_u = a.S_u * b;
-		c.S_ll = a.S_ll * b;
-		//the rest are computed mid-iteration.  once again, separate structure?
-		return c;
-	}
-
-	Cell operator+(const Cell &b) const {
-		const Cell &a = *this;
-		Cell c = a;
-		c.alpha = a.alpha + b.alpha;
-		c.beta_u = a.beta_u + b.beta_u;
-		c.K_ll = a.K_ll + b.K_ll;
-		c.K = a.K + b.K;
-		c.ln_sqrt_gamma = a.ln_sqrt_gamma + b.ln_sqrt_gamma;
-		//these should be maintained
-		c.rho = a.rho;
-		c.S_u = a.S_u;
-		c.S_ll = a.S_ll;
-		//the rest are computed mid-iteration
-		return c;
-	}
-
-	//I want to preserve the aux variables for debug output
-	//but I don't want to calculate them once prior to getting partials (as integrators do many times per step)
-	// and calculate them again just to output debug info
-	//solutions?
-	// - dirty bits and two calcAux() calls
-	// - copying stuff over here
-	// - separate out cells into ADM, ADMAux, StressEnergy, etc
-	//I'll do the 2nd for now...
-	Cell &operator+=(const Cell &a) {
-		real old_alpha = alpha;
-		tensor_u old_beta_u = beta_u;
-		tensor_sl old_gamma_ll = gamma_ll;
-		tensor_sl old_K_ll = K_ll;
-		real old_K = K;
-		real old_ln_sqrt_gamma = ln_sqrt_gamma;
-
-		//copy *all* over
-		(*this) = a;
-
-		//and only update these fields
-		alpha = old_alpha;
-		beta_u += old_beta_u;
-		gamma_ll += old_gamma_ll;
-		K_ll += old_K_ll;
-		K += old_K;
-		ln_sqrt_gamma += old_ln_sqrt_gamma;
-		
-		return *this;
-	}
 };
 
