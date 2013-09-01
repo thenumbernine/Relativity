@@ -89,6 +89,39 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 	GeomGrid *geomGridReadCurrent;
 	GeomGrid *geomGridWriteCurrent;
 	
+	/*
+	stencil
+	for implicit integration
+	used like so:
+
+	stencilCell(offset, offsetof(GeomCell, destField) / sizeof(real), offsetof(GeomCell, sourceField) / sizeof(real)) = coefficient
+		where destField is the field we're computing the partial derivative of wrt time
+		and sourceField is the field that is contributing to a term of destField
+
+	and for multi-rank structures:
+	stencilCell(offset, offsetof(GeomCell, destField) / sizeof(real) + GeomCell::destField::index(i,j), offsetof(GeomCell, sourceField) / sizeof(real) + GeomCell::sourceField::index(k,l)) = coefficient
+	
+	if d/dt ln_sqrt_gamma = -alpha K + partial_i beta^i + beta^i partial_i ln_sqrt_gamma
+	
+	so you would probably write 
+
+#define GEOMCELL_OFFSET(field) (offsetof(GeomCell, field)/sizeof(real))
+	stencil(center, GEOMCELL_OFFSET(ln_sqrt_gamma), GEOMCELL_OFFSET(alpha)) = -K	//or .K = -alpha or half and half
+	for (int i = 0; i < dim; ++i) {
+		for (partialIndex = 0; partialIndex < partialCoefficient.size; ++partialIndex) {
+			stencil(center + dxi(i) * partialIndex, GEOMCELL_OFFSET(ln_sqrt_gamma), GEOMCELL_OFFSET(beta_u) + i) = partialCoefficient(partialIndex)
+			stencil(center + dxi(i) * partialIndex, GEOMCELL_OFFSET(ln_sqrt_gamma), GEOMCELL_OFFSET(ln_sqrt_gamma)) += beta_u(i) * partialCoefficient(partialIndex)
+		}
+	}
+	
+	mind you solving our system as an implicit one is difficult considering how nonlinear it all is
+	options are to split up coefficients or to use a nonlinear solver
+
+	using a dense matrix, even for 1D (6 elements) is 36 components times stencil size to the dimension power ... per grid cell (too big)
+	so this will have to be a sparse matrix structure
+
+	*/
+
 	ADMFormalism(
 		const vector &min_, 
 		const vector &max_, 
@@ -221,11 +254,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 	}
 	
 	//iteration
-	virtual void getGeometridynamicPartials(
-		real dt, 
-		const GeomGrid &geomGridRead,	//read from this.  last iteration state.
-		GeomGrid &partial_t_geomGrid)			//next iteration partials
-	{
+	void calcAux(real dt, const GeomGrid &geomGridRead) {
 		typename AuxGrid::iterator iter;
 		
 		//first compute and store aux values that will be subsequently used for partial differentiation
@@ -343,7 +372,10 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 		calcConnections(&AuxCell::gammaBar_ll, &AuxCell::gammaBar_uu, &AuxCell::partial_gammaBar_lll, &AuxCell::connBar_lll, &AuxCell::connBar_ull, &AuxCell::RBar_ll, &AuxCell::RBar);
 
 #if 0	//option #1: original
+		
 		//TODO if you want to use this here and the conformal-based Hamiltonian later, you have to move a few aux field calculations out of the commented block below 
+		// you'll also have to write a better calcConnections method that runs off of two types of cells -- Aux and Geom.
+		// no going back now.
 
 		//calculates partial_gamma_lll, conn_lll, conn_ull, R_ll, R
 		// depends on gamma_ll, gamma_uu
@@ -668,9 +700,18 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			}
 #endif
 		}
+	}
 
+
+	virtual void getExplicitPartials(
+		real dt, 
+		const GeomGrid &geomGridRead,	//read from this.  last iteration state.
+		GeomGrid &partial_t_geomGrid)			//next iteration partials
+	{
+		calcAux(dt, geomGridRead);
+	
 		//calcPartial
-		for (iter = auxGrid.begin(); iter != auxGrid.end(); ++iter) {
+		for (typename AuxGrid::iterator iter = auxGrid.begin(); iter != auxGrid.end(); ++iter) {
 			AuxCell &cell = *iter;
 			const GeomCell &geomCell = geomGridRead(iter.index);
 			const MatterCell &matterCell = matterGrid(iter.index);
@@ -758,18 +799,16 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 				}
 			}
 
-			//D_beta_lu(i,j) := D_i beta^j = D_i beta^j
-			//why am I suspicious that, despite the above comment, I am doing just what the book says not to do?
-			tensor_lu D_beta_lu = covariantDerivative(geomGridRead, &GeomCell::beta_u, auxGrid, &AuxCell::conn_ull, dx, iter.index);
-
-			//trace_D_beta := D_i beta^i
-			real trace_D_beta = 0;
-			for (int i = 0; i < dim; ++i) {
-				trace_D_beta += D_beta_lu(i,i);
-			}
+			//partial_ln_sqrt_gamma_l(i) := partial_i ln(sqrt(gamma))
+			tensor_l partial_ln_sqrt_gamma_l = partialDerivative(geomGridRead, &GeomCell::ln_sqrt_gamma, dx, iter.index);
 
 			//partial_t ln_sqrt_gamma = -alpha K + D_i beta^i
-			partial_t_geomCell.ln_sqrt_gamma = -alpha * K + trace_D_beta;
+			//						  = -alpha K + partial_i beta^i + conn^i_ji beta^j
+			//						  = -alpha K + partial_i beta^i + beta^i partial_i ln_sqrt_gamma
+			partial_t_geomCell.ln_sqrt_gamma = -alpha * K;
+			for (int i = 0; i < dim; ++i) {
+				partial_t_geomCell.ln_sqrt_gamma += beta_u(i) * partial_ln_sqrt_gamma_l(i);
+			}
 
 			//D_K_l(i) := D_i K
 			tensor_l D_K_l = covariantDerivative(geomGridRead, &GeomCell::K, auxGrid, &AuxCell::conn_ull, dx, iter.index);
@@ -800,6 +839,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 	}
 
 	void outputHeaders(std::ostream &o) {
+		static_assert(dim <= 3, "don't have coordinate labels for that many dimensions");
 		static const char *coordNames[] = {"x", "y", "z"};
 		
 		o << "#";

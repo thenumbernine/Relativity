@@ -586,6 +586,7 @@ void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 
 template<int dim, typename real>
 void runSimPrecision(SimParams &params) {
+	
 	IIntegrator<real, dim> *integrator = NULL;
 	switch (params.integrator) {
 	case INTEGRATOR_EULER:

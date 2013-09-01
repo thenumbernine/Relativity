@@ -32,15 +32,15 @@ struct Integrator : public IIntegrator<real, dim> {
 	//either manually init here after the fact and switch all grids to pointers
 	//or init all the grids in ctor and implement a copy ctor in the grids
 
-	void copyGrid(GeomGrid &dst, const GeomGrid &src) {
-		for (typename GeomGrid::const_iterator iter = src.begin(); iter != src.end(); ++iter) {
-			dst(iter.index) = *iter;
+	void copyGrid(GeomGrid *dst, const GeomGrid *src) {
+		for (typename GeomGrid::const_iterator iter = src->begin(); iter != src->end(); ++iter) {
+			(*dst)(iter.index) = *iter;
 		}
 	}
 
-	void multAddGrid(GeomGrid &dst, const GeomGrid &src, real scale) {
-		for (typename GeomGrid::const_iterator iter = src.begin(); iter != src.end(); ++iter) {
-			dst(iter.index) += *iter * scale;
+	void multAddGrid(GeomGrid *dst, const GeomGrid *src, real scale) {
+		for (typename GeomGrid::const_iterator iter = src->begin(); iter != src->end(); ++iter) {
+			(*dst)(iter.index) += *iter * scale;
 		}
 	}
 };
@@ -69,11 +69,11 @@ struct EulerIntegrator : public Integrator<real, dim> {
 	virtual void update(real dt) {
 		//compute aux terms
 		//return partial cells
-		Integrator::sim->getGeometridynamicPartials(dt, *Integrator::sim->getGeomGridReadCurrent(), *partialTCells);
+		Integrator::sim->getExplicitPartials(dt, *Integrator::sim->getGeomGridReadCurrent(), *partialTCells);
 
 		//update write buffer
-		copyGrid(*Integrator::sim->getGeomGridWriteCurrent(), *Integrator::sim->getGeomGridReadCurrent());
-		multAddGrid(*Integrator::sim->getGeomGridWriteCurrent(), *partialTCells, dt);
+		copyGrid(Integrator::sim->getGeomGridWriteCurrent(), Integrator::sim->getGeomGridReadCurrent());
+		multAddGrid(Integrator::sim->getGeomGridWriteCurrent(), partialTCells, dt);
 	}
 };
 
@@ -114,29 +114,29 @@ struct RK4Integrator : public Integrator<real, dim> {
 	virtual void update(real dt) {
 		//k1 = f(x)
 		GeomGrid *x1 = Integrator::sim->getGeomGridReadCurrent();
-		Integrator::sim->getGeometridynamicPartials(dt, *x1, *k1);
+		Integrator::sim->getExplicitPartials(dt, *x1, *k1);
 		
 		//k2 = f(x + k1 * dt/2)
-		copyGrid(*xtmp, *x1);
-		multAddGrid(*xtmp, *k1, .5 * dt);
-		Integrator::sim->getGeometridynamicPartials(dt, *xtmp, *k2);
+		copyGrid(xtmp, x1);
+		multAddGrid(xtmp, k1, .5 * dt);
+		Integrator::sim->getExplicitPartials(dt, *xtmp, *k2);
 
 		//k3 = f(x + k2 * dt/2)
-		copyGrid(*xtmp, *x1);
-		multAddGrid(*xtmp, *k2, .5 * dt);
-		Integrator::sim->getGeometridynamicPartials(dt, *xtmp, *k3);
+		copyGrid(xtmp, x1);
+		multAddGrid(xtmp, k2, .5 * dt);
+		Integrator::sim->getExplicitPartials(dt, *xtmp, *k3);
 
 		//k4 = f(x + k3 * dt)
-		copyGrid(*xtmp, *x1);
-		multAddGrid(*xtmp, *k3, dt);
-		Integrator::sim->getGeometridynamicPartials(dt, *xtmp, *k4);
+		copyGrid(xtmp, x1);
+		multAddGrid(xtmp, k3, dt);
+		Integrator::sim->getExplicitPartials(dt, *xtmp, *k4);
 
 		//x = f(x + dt/6(k1 + 2 k2 + 2 k3 + k4))
-		copyGrid(*Integrator::sim->getGeomGridWriteCurrent(), *x1);
-		multAddGrid(*Integrator::sim->getGeomGridWriteCurrent(), *k1, dt/6.);
-		multAddGrid(*Integrator::sim->getGeomGridWriteCurrent(), *k2, dt/3.);
-		multAddGrid(*Integrator::sim->getGeomGridWriteCurrent(), *k3, dt/3.);
-		multAddGrid(*Integrator::sim->getGeomGridWriteCurrent(), *k4, dt/6.);
+		copyGrid(Integrator::sim->getGeomGridWriteCurrent(), x1);
+		multAddGrid(Integrator::sim->getGeomGridWriteCurrent(), k1, dt/6.);
+		multAddGrid(Integrator::sim->getGeomGridWriteCurrent(), k2, dt/3.);
+		multAddGrid(Integrator::sim->getGeomGridWriteCurrent(), k3, dt/3.);
+		multAddGrid(Integrator::sim->getGeomGridWriteCurrent(), k4, dt/6.);
 	}
 };
 

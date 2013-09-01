@@ -7,7 +7,7 @@
 //used by integrator for accessing read and write grids 
 template<typename real, int dim>
 struct IADMFormalism {
-	virtual void getGeometridynamicPartials(
+	virtual void getExplicitPartials(
 		real dt, 
 		const Grid<GeomCell<real, dim>, dim> &geomGrid, 
 		Grid<GeomCell<real, dim>, dim> &partialGrid) = 0;

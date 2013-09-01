@@ -4,9 +4,18 @@
 #include "tensor.h"
 #include "inverse.h"
 
-//structure solely of integrated values
-//"GeomCell" is an incorrect name
-// if I ever write a huge implicit solver and integrate matter terms alongside geometridynamic terms, they would go here
+/*
+structure solely of integrated values
+"GeomCell" is an incorrect name
+ if I ever write a huge implicit solver and integrate matter terms alongside geometridynamic terms, they would go here
+
+N-D case has this many elements:
+	1 + N + N(N+1)/2 + N(N+1)/2 + 1 + 1
+	3 + 2N + N^2
+1D: 6 elements
+2D: 11 elements
+3D: 18 elements
+*/
 template<typename real_, int dim_>
 struct GeomCell {
 	typedef real_ real;
@@ -41,7 +50,6 @@ struct GeomCell {
 	//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
 	real ln_sqrt_gamma;
 
-
 	GeomCell()
 	:	alpha(real()),
 		K(real()),
@@ -73,7 +81,7 @@ struct GeomCell {
 	}
 
 	GeomCell &operator+=(const GeomCell &sourceCell) {
-		alpha = sourceCell.alpha;
+		alpha += sourceCell.alpha;
 		beta_u += sourceCell.beta_u;
 		gamma_ll += sourceCell.gamma_ll;
 		K_ll += sourceCell.K_ll;
