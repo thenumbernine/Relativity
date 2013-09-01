@@ -1,5 +1,6 @@
 TARGETDIR := /data/local/bin/
 GNUPLOT := droidplot
+CPPFLAGS := -Wall -O0
 
 DEPS :=\
 	admformalism.h \
@@ -22,12 +23,6 @@ DEPS :=\
 
 run: install 
 	$(TARGETDIR)relativity
-	# 1D without history:
-	$(GNUPLOT) -e "set style data lines; set output 'multiple_black_holes.png'; set format y '%e'; plot 'multiple_black_holes.txt' using 2:18"
-	# 1D with history:
-	#$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; set format y '%e'; splot 'black_hole.txt' using 1:2:18"
-	# 2D
-	#$(GNUPLOT) -e "set style data lines; set output 'black_hole.png'; set format y '%e'; splot 'black_hole.txt' using 1:2:35"
 
 run_test: install_test
 	$(TARGETDIR)test
@@ -39,10 +34,10 @@ install_test: test
 	cp test $(TARGETDIR) 
 
 relativity: relativity.cpp $(DEPS)
-	g++ -g -std=c++0x relativity.cpp -o relativity
+	g++ $(CPPFLAGS) -std=c++0x relativity.cpp -o relativity
 
 test: test.cpp $(DEPS)
-	g++ -g -std=c++0x test.cpp -o test
+	g++ $(CPPFLAGS) -std=c++0x test.cpp -o test
 
 all: relativity test
 

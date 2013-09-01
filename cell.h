@@ -31,16 +31,18 @@ struct Cell {
 	//our tensors initialze to zero, so why not our reals too?
 	Cell() 
 	: 	alpha(real()),
+		K(real()),
+		ln_sqrt_gamma(real()),
 		rho(real()),
 		H(real()),
-		K(real()),
 		gamma(real()),
 		R(real()),
-		ln_sqrt_gamma(real()),
+		tr_K_sq(real()),
+		psi(real()),
 		ln_psi(real()),
 		DBar2_psi(real()),
 		RBar(real()),
-		tr_K_sq(real())
+		tr_ABar_sq(real())
 	{}
 
 
@@ -190,6 +192,15 @@ struct Cell {
 	//RBar = gammaBar^ij RBar_ij
 	real RBar;
 
+	//traceless part of extrinsic curvature tensor
+	//A_ll(i,j) := A_ij = K_ij - 1/3 gamma_ij K
+	tensor_sl A_ll;
+
+	//ABar_ll(i,j) := ABar_ij = psi^2 A_ij
+	tensor_sl ABar_ll;
+
+	//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ij
+	real tr_ABar_sq;
 
 	// calculations of aux values
 
@@ -271,14 +282,6 @@ struct Cell {
 					K_ul(i,j) += gamma_uu(i,k) * K_ll(k,j);
 				}
 			}
-		}
-	}
-
-	//K = K^i_i
-	void calc_K() {
-		K = 0.;
-		for (int i = 0; i < dim; ++i) {
-			K += K_ul(i,i);
 		}
 	}
 	

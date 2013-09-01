@@ -3,14 +3,15 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
 namespace Test {
 
 typedef double real;
-enum { res = 100 };
-enum { iters = 100 };
+enum { res = 10 };
+enum { iters = 10 };
 
 typedef RK4Integrator Integrator;
 
@@ -34,12 +35,23 @@ const real sunRotationInM = sunRotationInRad_S / metersPerS;
 const real sunAngularMomentumInKgM2_S = .4 * sunMassInKg * sunRadiusInM * sunRadiusInM * sunRotationInRad_S;
 const real sunAngularMomentumInM = .4 * sunMassInM * sunRadiusInM * sunRadiusInM * sunRotationInM;
 
+//N-D case splots the last slice 
 template<int dim>
-struct RunClass;
+struct RunClass {
+	void operator()(::ADMFormalism<real, dim, Integrator> *sim, ostream &f, int numIters, bool outputHistory) {
+		cout << "iterating..." << endl;
+		const real dt = .01;
+		for (int i = 0; i < numIters; ++i) {
+			sim->update(dt);
+		}
+		
+		sim->outputLine(f);
+	}
+};
 
+//1D case splot's all time slices together, or just one slice
 template<>
 struct RunClass<1> {
-	//1D case splot's all time slices together
 	void operator()(::ADMFormalism<real, 1, Integrator> *sim, ostream &f, int numIters, bool outputHistory) {
 		if (outputHistory) {
 			sim->outputLine(f);
@@ -58,20 +70,6 @@ struct RunClass<1> {
 		if (!outputHistory) {
 			sim->outputLine(f);
 		}
-	}
-};
-
-template<>
-struct RunClass<2> {
-	//2D case splots the last one
-	void operator()(::ADMFormalism<real, 2, Integrator> *sim, ostream &f, int numIters, bool outputHistory) {
-		cout << "iterating..." << endl;
-		const real dt = .01;
-		for (int i = 0; i < numIters; ++i) {
-			sim->update(dt);
-		}
-		
-		sim->outputLine(f);
 	}
 };
 
@@ -183,8 +181,8 @@ struct KerrSchild : public Base<dim> {
 	typedef typename ADMFormalism::tensor_su tensor_su;
 
 	real M;		//black hole mass <=> half the Schwarzschild radius
-	real Q;		//total charge
 	real J;		//total angular momentum
+	real Q;		//total charge
 	
 	KerrSchild(
 		real R_,	//half width of each dimension in the simulation
@@ -392,23 +390,25 @@ struct BrillLindquist : public Base<dim> {
 int main() {
 	using namespace Test;
 	
-	/* GRO J0422+32 : the smallest black hole yet found * /
-	KerrSchild<1> test(
+#if 0	// GRO J0422+32 : the smallest black hole yet found
+	enum { dim = 1 };
+	KerrSchild<dim> test(
 		4.1 * sunRadiusInM,		//simulation radius
 		4.1 * sunMassInM,		//black hole mass
 		0,						//angular momentum
 		0						//charge
 	);
-	/**/
-	/* Sagitarrius A* : The supermassive black hole in the center of the Milky Way * /
-	KerrSchild<2> test(
+#endif
+#if 1	// Sagitarrius A* : The supermassive black hole in the center of the Milky Way
+	enum { dim = 2 };
+	KerrSchild<dim> test(
 		4.1e+6 * sunRadiusInM,
 		4.1e+6 * sunMassInM,
 		0,
 		0
 	);
-	/**/
-	/* binary black hole head on collision */
+#endif
+#if 0	// binary black hole head on collision
 	enum { dim = 1 };
 	enum { numBlackHoles = 2 };
 	tensor<real, lower<numBlackHoles>, lower<dim+1>> blackHoleInfo;
@@ -417,11 +417,19 @@ int main() {
 		blackHoleInfo(i,dim) = sunMassInM;
 	}
 	BrillLindquist<dim, numBlackHoles> test(4.1 * sunRadiusInM, blackHoleInfo);
-	/**/
+#endif
 
 	test.outputHistory = false;
 	
 	test.init();
 	test.run();
+
+	//granted I could do this all in C++
+	//but string processing ...
+	ostringstream ss;
+	ss << "lua plot.lua " << test.filename() << " " << dim << " K";
+	string s = ss.str();
+	int result = system(s.c_str());
+	if (!result) cerr << "plot failed" << endl;
 }
 

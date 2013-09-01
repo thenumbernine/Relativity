@@ -20,15 +20,15 @@ struct generic_symmat : public generic_dense_matrix<type_, dim_, scalar_type_, c
 	/*
 	math-index: i is the row, j is the column
 	row-major: i is nested inner-most
-	upper triangular: i <= j
+	lower triangular: j <= i
 	*/
 	static int index(int i, int j) {
-		if (i > j) return index(j,i);
-		//j == 0: return 0
-		//j == 1: return 1 + i
-		//j == 2: return 1 + 2 + i
-		//j == j: return j * (j+1)/2 + i
-		return j * (j + 1) / 2 + i;
+		if (j > i) return index(j,i);
+		//i == 0: return 0
+		//i == 1: return 1 + j
+		//i == 2: return 1 + 2 + j
+		//i == i: return i * (i+1)/2 + j
+		return i * (i + 1) / 2 + j;
 	}
 };
 

@@ -55,16 +55,11 @@ struct ADMFormalism {
 	typedef ::tensor<real,lower,symmetric<upper,upper>> tensor_lsu;
 	typedef ::tensor<real,symmetric<lower,lower>,symmetric<lower,lower>> tensor_slsl;
 	typedef ::vector<real,dim> vector;
-
-		//integrator
 	
-	IntegratorBody integrator;
+	//what a relative notion...
+	//intended for use with output matching up iteration slices 
+	real time;
 
-		//grids
-
-	Grid cellHistory0, cellHistory1;
-	Grid *readCells, *writeCells;
-	
 	//resolution of our grids, stored here as well as in each grid for convenience
 	DerefType size;
 
@@ -80,18 +75,21 @@ struct ADMFormalism {
 	//dx = range / size
 	vector dx;
 
-	//what a relative notion...
-	//intended for use with output matching up iteration slices 
-	real time;
+	//integrator
+	IntegratorBody integrator;
 
+	//grids
+	Grid cellHistory0, cellHistory1;
+	Grid *readCells, *writeCells;
+	
 	ADMFormalism(const vector &min_, const vector &max_, const DerefType &size_)
-	:	integrator(size_),
-		time(0),
+	:	time(0),
 		size(size_),
 		min(min_),
 		max(max_),
 		range(max_ - min_),
 		dx((max_ - min_) / vector(size_)),
+		integrator(size_),
 		//need non-void constructor call, but want an array ...
 		cellHistory0(size_),
 		cellHistory1(size_),
@@ -130,7 +128,6 @@ struct ADMFormalism {
 		for (iter = cells.begin(); iter != cells.end(); ++iter) {
 			Cell &cell = *iter;
 			
-			const tensor_sl &gamma_ll = cell.*gammaField_ll;
 			const tensor_su &gamma_uu = cell.*gammaField_uu;
 		
 			//partial_gamma_lll(k,i,j) := partial_k gamma_ij
@@ -411,6 +408,55 @@ struct ADMFormalism {
 		}
 #endif
 
+		for (iter = targetReadCells.begin(); iter != targetReadCells.end(); ++iter) {
+			Cell &cell = *iter;
+	
+			const real &psi = cell.psi;
+			const real &K = cell.K;
+			const tensor_sl &gamma_ll = cell.gamma_ll;
+			const tensor_sl &K_ll = cell.K_ll;
+			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
+
+			//A_ll(i,j) := A_ij = K_ij - 1/3 gamma_ij K
+			tensor_sl &A_ll = cell.A_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					A_ll(i,j) = K_ll(i,j) - gamma_ll(i,j) * K / 3.;
+				}
+			}
+		
+			real psiSquared = psi * psi;
+
+			//ABar_ll(i,j) := ABar_ij = psi^2 A_ij
+			tensor_sl &ABar_ll = cell.ABar_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					ABar_ll(i,j) = A_ll(i,j) * psiSquared;
+				}
+			}
+
+			//ABar_ul(i,j) := ABar^ij = gammaBar^ik ABar_kj
+			tensor_ul ABar_ul;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					ABar_ul(i,j) = 0;
+					for (int k = 0; k < dim; ++k) {
+						ABar_ul(i,j) += gammaBar_uu(i,k) * ABar_ll(k,j);
+					}
+				}
+			}
+
+			//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ji = ABar^i_j ABar^j_i
+			real &tr_ABar_sq = cell.tr_ABar_sq;
+			tr_ABar_sq = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					tr_ABar_sq += ABar_ul(i,j) * ABar_ul(j,i);
+				}
+			}
+			
+		}
+
 		//K^i_j := gamma^ik K_kj
 		calcOverGrid(targetReadCells, &Cell::calc_K_ul);
 		
@@ -426,24 +472,24 @@ struct ADMFormalism {
 	
 			const real &psi = cell.psi;
 			const real &DBar2_psi = cell.DBar2_psi;
-			const real &R = cell.R;
+			const real &tr_ABar_sq = cell.tr_ABar_sq;
 			const real &RBar = cell.RBar;
 			const tensor_su &gamma_uu = cell.gamma_uu;
-			const tensor_sl &R_ll = cell.R_ll;
-			const tensor_ul &K_ul = cell.K_ul;
-			const tensor_su &K_uu = cell.K_uu;
 			const real &K = cell.K;
-			const real &tr_K_sq = cell.tr_K_sq;
 			const real &rho = cell.rho;
 			const tensor_u &S_u = cell.S_u;
 
 			//Hamiltonian constraint
 #if 0		//option #1: use original ADM method
 
+			const real &R = cell.R;
+			const real &tr_K_sq = cell.tr_K_sq;
+			
 			//H = 1/2 (R + K^2 - K^j_i K^i_j) - 8 pi rho
 			real &H = cell.H;
 			H = .5 * (R + K * K - tr_K_sq) - 8. * M_PI * rho;
-#else		//option #2: use conformal values
+#endif
+#if 0		//option #2: use conformal values
 	
 			real psiSquared = psi * psi;
 			real psiToTheFourth = psiSquared * psiSquared;
@@ -452,7 +498,19 @@ struct ADMFormalism {
 			//H = 1/2 ( -8 DBar^2 psi + psi RBar + psi^5 (K^2 - tr(K^2)) - 16 pi psi^5 rho)
 			//  = 1/2 ( -8 DBar^2 psi + psi (RBar + psi^4 (K^2 - tr(K^2) - 16 pi rho)))
 			real &H = cell.H;
-			H = .5 * (-8. * DBar2_psi + psi * (RBar * psiToTheFourth * (K * K - tr_K_sq - 16. * M_PI * rho)));
+			H = .5 * (-8. * DBar2_psi + psi * (RBar + psiToTheFourth * (K * K - tr_K_sq - 16. * M_PI * rho)));
+#endif
+#if 1		//option #3: use conformal factor and conformal traceless extrinsic curvature
+
+			real psiSquared = psi * psi;
+			real psiToTheFourth = psiSquared * psiSquared;
+			real psiToTheEighth = psiToTheFourth * psiToTheFourth;
+		
+			//"Numerical Relativity" p.65
+			//H = 1/2 (-8 DBar^2 psi + psi RBar + 2/3 psi^5 K^2 - psi^-7 tr(ABar^2) - 16 pi psi^5 rho)
+			//  = 1/2 (-8 DBar^2 psi + psi (RBar + psi^4 (2/3 K^2 - 16 pi rho) - psi^-8 tr(ABar^2)))
+			real &H = cell.H;
+			H = .5 * (-8. * DBar2_psi + psi * (RBar + psiToTheFourth * ((2./3.) * K * K - 16. * M_PI * rho) - tr_ABar_sq / psiToTheEighth));
 #endif
 
 			//diff_K_uu(k,i,j) := diff_k K^ij
@@ -485,7 +543,6 @@ struct ADMFormalism {
 			const tensor_sl &K_ll = readCell.K_ll;
 			const real &rho = readCell.rho;
 			const tensor_ll &S_ll = readCell.S_ll;
-			const tensor_l &beta_l = readCell.beta_l;
 			const tensor_usl &conn_ull = readCell.conn_ull;
 			const tensor_sl &R_ll = readCell.R_ll;
 			const tensor_su &gamma_uu = readCell.gamma_uu;

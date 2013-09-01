@@ -40,8 +40,8 @@ struct RK4Integrator {
 		
 		ADMFormalism *sim;
 
-		Grid k1, k2, k3, k4;
 		Grid xtmp;
+		Grid k1, k2, k3, k4;
 
 		Body(const DerefType &size)
 		: xtmp(size), k1(size), k2(size), k3(size), k4(size)

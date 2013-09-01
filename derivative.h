@@ -243,19 +243,19 @@ struct PartialSecondDerivativeClass<real, dim, tensor<real, symmetric<lower<dim>
 			InputPartialType partial_field_lll_wrt_xk = partialDerivativeCoordinate(cells, partialField, dx, index, k);
 			for (int l = 0; l <= k; ++l) {
 				if (k == l) {
-					/* working on subtensor dereferences * /
+#if 0				// working on subtensor dereferences
 					InputType partial2_field_ll_wrt_kk = partialSecondDerivativeCoordinate(cells, field, dx, index, k);
 					result(k,l) = partial2_field_ll_wrt_kk;
-					/**/
+#endif
 					
-					/* per-index in the mean time */
+#if 1				//per-index in the mean time
 					InputType partial2_field_ll_wrt_kk = partialSecondDerivativeCoordinate(cells, field, dx, index, k);
 					for (int i = 0; i < dim; ++i) {
 						for (int j = 0; j <= i; ++j) {
 							result(k,l,i,j) = partial2_field_ll_wrt_kk(i,j);
 						}
 					}
-					/**/
+#endif
 				} else {
 					for (int i = 0; i < dim; ++i) {
 						for (int j = 0; j <= i; ++j) {

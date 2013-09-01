@@ -7,6 +7,14 @@ for any sort of rank-2 tensor object
 
 #include "tensor.h"
 
+template<typename real>
+real det22(
+	real a00, real a01, 
+	real a10, real a11) 
+{
+	return a00 * a11 - a10 * a01;
+}
+
 //I have to specialize determinant by rank
 //which means (since rank is an enum rather than a template parameter)
 // that I might have to specialize it per-index
@@ -28,7 +36,22 @@ struct DeterminantClass<tensor<real, symmetric<lower<2>, lower<2>>>> {
 	typedef real OutputType;
 	typedef tensor<real, symmetric<lower<2>, lower<2>>> InputType;
 	OutputType operator()(const InputType &a) const { 
-		return a(0,0) * a(1,1) - a(1,0) * a(0,1);
+		return det22(a(0,0), a(0,1), a(1,0), a(1,1));
+	}
+};
+
+//this is where boost::bind would be helpful: for a generic dimension determinant function
+template<typename real>
+struct DeterminantClass<tensor<real, symmetric<lower<3>, lower<3>>>> {
+	typedef real OutputType;
+	typedef tensor<real, symmetric<lower<3>, lower<3>>> InputType;
+	OutputType operator()(const InputType &a) const { 
+		return a(0,0) * a(1,1) * a(2,2)
+			+ a(0,1) * a(1,2) * a(2,0)
+			+ a(0,2) * a(1,0) * a(2,1)
+			- a(2,0) * a(1,1) * a(0,2)
+			- a(2,1) * a(1,2) * a(0,0)
+			- a(2,2) * a(1,0) * a(0,1);
 	}
 };
 
@@ -74,6 +97,26 @@ struct InverseClass<tensor<real_, symmetric<lower<2>,lower<2>>>> {
 		return result;
 	}
 };
+
+template<typename real_>
+struct InverseClass<tensor<real_, symmetric<lower<3>,lower<3>>>> {
+	typedef real_ real;
+	typedef tensor<real, symmetric<lower<3>, lower<3>>> InputType;
+	typedef tensor<real, symmetric<upper<3>, upper<3>>> OutputType;
+	OutputType operator()(const InputType &a, const real &det) const {
+		OutputType result;
+		//symmetric, so only do lower triangular
+		result(0,0) = det22(a(1,1), a(1,2), a(2,1), a(2,2)) / det;
+		result(1,0) = det22(a(1,2), a(1,0), a(2,2), a(2,0)) / det;
+		result(1,1) = det22(a(0,0), a(0,2), a(2,0), a(2,2)) / det;
+		result(2,0) = det22(a(1,0), a(1,1), a(2,0), a(2,1)) / det;
+		result(2,1) = det22(a(0,1), a(0,0), a(2,1), a(2,0)) / det;
+		result(2,2) = det22(a(0,0), a(0,1), a(1,0), a(1,1)) / det;
+		return result;
+	}
+};
+
+
 
 template<typename InputType>
 typename InverseClass<InputType>::OutputType inverse(const InputType &a, const typename InverseClass<InputType>::real &det) {
