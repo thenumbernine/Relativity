@@ -198,6 +198,9 @@ struct Cell {
 
 	//ABar_ll(i,j) := ABar_ij = psi^2 A_ij
 	tensor_sl ABar_ll;
+	
+	//ABar_uu(i,j) := ABar^ij = psi^10 A^ij
+	tensor_su ABar_uu;
 
 	//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ij
 	real tr_ABar_sq;
@@ -318,7 +321,6 @@ struct Cell {
 		Cell c = a;
 		c.alpha = a.alpha * b;
 		c.beta_u = a.beta_u * b;
-		c.gamma_ll = a.gamma_ll * b;
 		c.K_ll = a.K_ll * b;
 		c.K = a.K * b;
 		c.ln_sqrt_gamma = a.ln_sqrt_gamma * b;
@@ -335,7 +337,6 @@ struct Cell {
 		Cell c = a;
 		c.alpha = a.alpha + b.alpha;
 		c.beta_u = a.beta_u + b.beta_u;
-		c.gamma_ll = a.gamma_ll + b.gamma_ll;
 		c.K_ll = a.K_ll + b.K_ll;
 		c.K = a.K + b.K;
 		c.ln_sqrt_gamma = a.ln_sqrt_gamma + b.ln_sqrt_gamma;

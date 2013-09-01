@@ -1,46 +1,47 @@
 #include "admformalism.h"
 #include "integrators.h"
+#include "exception.h"
+
+#include <string.h>
 
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <string>
+#include <vector>
+
+//universal constants
+const double speedOfLightInMPerS = 299792458.;
+const double gravitationalConstantInM3PerKgS2 = 6.67384e-11;
+
+//conversions to meters
+const double metersPerS = speedOfLightInMPerS;
+const double metersPerKg = gravitationalConstantInM3PerKgS2 / (metersPerS * metersPerS);
+
+//properties of the sun
+const double sunMassInKg = 1.989e+30;
+const double sunMassInM = sunMassInKg * metersPerKg;
+const double sunRadiusInM = 6.955e+8;
+const double sunVolumeInM3 = 4. / 3. * M_PI * sunRadiusInM * sunRadiusInM * sunRadiusInM;
+const double sunDensityInM_2 = sunMassInKg * metersPerKg / sunVolumeInM3;
+
+const double sunRotationInRad_S = 2.8e-6;
+const double sunRotationInM = sunRotationInRad_S / metersPerS;
+const double sunAngularMomentumInKgM2_S = .4 * sunMassInKg * sunRadiusInM * sunRadiusInM * sunRotationInRad_S;
+const double sunAngularMomentumInM = .4 * sunMassInM * sunRadiusInM * sunRadiusInM * sunRotationInM;
 
 using namespace std;
 
-namespace Test {
-
-typedef double real;
-enum { res = 10 };
-enum { iters = 10 };
-
-typedef RK4Integrator Integrator;
-
-//universal constants
-const real speedOfLightInMPerS = 299792458.;
-const real gravitationalConstantInM3PerKgS2 = 6.67384e-11;
-
-//conversions to meters
-const real metersPerS = speedOfLightInMPerS;
-const real metersPerKg = gravitationalConstantInM3PerKgS2 / (metersPerS * metersPerS);
-
-//properties of the sun
-const real sunMassInKg = 1.989e+30;
-const real sunMassInM = sunMassInKg * metersPerKg;
-const real sunRadiusInM = 6.955e+8;
-const real sunVolumeInM3 = 4. / 3. * M_PI * sunRadiusInM * sunRadiusInM * sunRadiusInM;
-const real sunDensityInM_2 = sunMassInKg * metersPerKg / sunVolumeInM3;
-
-const real sunRotationInRad_S = 2.8e-6;
-const real sunRotationInM = sunRotationInRad_S / metersPerS;
-const real sunAngularMomentumInKgM2_S = .4 * sunMassInKg * sunRadiusInM * sunRadiusInM * sunRotationInRad_S;
-const real sunAngularMomentumInM = .4 * sunMassInM * sunRadiusInM * sunRadiusInM * sunRotationInM;
+//typedef double real;
+//enum { iters = 100 };
+//typedef RK4Integrator Integrator;
 
 //N-D case splots the last slice 
-template<int dim>
+template<int dim, typename real, typename Integrator>
 struct RunClass {
 	void operator()(::ADMFormalism<real, dim, Integrator> *sim, ostream &f, int numIters, bool outputHistory) {
 		cout << "iterating..." << endl;
-		const real dt = .01;
+		const real dt = .1 * sim->dx(0);
 		for (int i = 0; i < numIters; ++i) {
 			sim->update(dt);
 		}
@@ -50,8 +51,8 @@ struct RunClass {
 };
 
 //1D case splot's all time slices together, or just one slice
-template<>
-struct RunClass<1> {
+template<typename real, typename Integrator>
+struct RunClass<1, real, Integrator> {
 	void operator()(::ADMFormalism<real, 1, Integrator> *sim, ostream &f, int numIters, bool outputHistory) {
 		if (outputHistory) {
 			sim->outputLine(f);
@@ -73,7 +74,7 @@ struct RunClass<1> {
 	}
 };
 
-template<int dim>
+template<int dim, typename real, typename Integrator>
 struct Base {
 	typedef ::vector<real, dim> vector;
 	typedef ::ADMFormalism<real, dim, Integrator> ADMFormalism;
@@ -99,34 +100,29 @@ struct Base {
 		center = (max + min) * .5;
 	}
 
-	virtual const string filename() const = 0;
-
 	virtual void init() {
 		cout << "constructing sim..." << endl;
 		sim = new ADMFormalism(min, max, res);
 	}
 
 	//update
-	virtual void run() {
-		ofstream f(filename().c_str());
+	virtual void run(ostream &f) {
 		sim->outputHeaders(f);
 
-		Test::RunClass<dim>()(sim, f, numIters, outputHistory);
+		RunClass<dim, real, Integrator>()(sim, f, numIters, outputHistory);
 		
 		cout << "done!" << endl;
 	}
 };
 
 //this is a Schwarzschild init technically, with some matter thrown in there
-template<int dim>
-struct Sun : public Base<dim> {
-	typedef Test::Base<dim> Base;
+template<int dim, typename real, typename Integrator>
+struct Sun : public Base<dim, real, Integrator> {
+	typedef ::Base<dim, real, Integrator> Base;
 	typedef typename Base::ADMFormalism ADMFormalism;
 	typedef typename Base::vector vector;
 	
-	Sun() : Base(2. * sunRadiusInM, Test::res, Test::iters) {}
-
-	virtual const string filename() const { return "sun.txt"; }
+	Sun(int res_, int iters_) : Base(2. * sunRadiusInM, res_, iters_) {}
 
 	virtual void init() {
 		Base::init();
@@ -169,9 +165,9 @@ struct Sun : public Base<dim> {
 /*
 See the Kerr-Schild section of the scratch paper in the README
 */
-template<int dim>
-struct KerrSchild : public Base<dim> {
-	typedef Test::Base<dim> Base;
+template<int dim, typename real, typename Integrator>
+struct KerrSchild : public Base<dim, real, Integrator> {
+	typedef ::Base<dim, real, Integrator> Base;
 
 	typedef typename Base::vector vector;
 	typedef typename Base::ADMFormalism ADMFormalism;
@@ -185,17 +181,17 @@ struct KerrSchild : public Base<dim> {
 	real Q;		//total charge
 	
 	KerrSchild(
+		int res_,	//resolution
+		int iters_,	//iterations
 		real R_,	//half width of each dimension in the simulation
 		real M_,	//mass of black hole
 		real J_, 	//total angular momentum of black hole
 		real Q_)	//total charge of black hole
-	: Base(R_, Test::res, Test::iters),
+	: Base(R_, res_, iters_),
 		M(M_),
 		J(J_),
 		Q(Q_)
 	{}
-
-	virtual const string filename() const { return "black_hole.txt"; }
 
 	virtual void init() {
 		Base::init();
@@ -300,9 +296,9 @@ psi = 1 + sum_a M_a / (2 r_a)
 ...and more detail can be found in chapter 13.2
 In fact, I'm stealing 1/alpha = sum_a M_a / (r c_a) from 12.51 without fully reading the rest of the chapter
 */
-template<int dim, int numBlackHoles>
-struct BrillLindquist : public Base<dim> {
-	typedef Test::Base<dim> Base;
+template<int dim, typename real, typename Integrator>
+struct BrillLindquist : public Base<dim, real, Integrator> {
+	typedef ::Base<dim, real, Integrator> Base;
 
 	typedef typename Base::vector vector;
 	typedef typename Base::ADMFormalism ADMFormalism;
@@ -312,17 +308,16 @@ struct BrillLindquist : public Base<dim> {
 	typedef typename ADMFormalism::tensor_su tensor_su;
 
 	//I should at least make this a structure or something
-	typedef tensor<real, lower<numBlackHoles>, lower<dim+1>> BlackHoleInfo;
-	BlackHoleInfo blackHoleInfo;
+	std::vector<tensor<real, lower<dim+1>>> blackHoleInfo;
 
 	BrillLindquist(
+		int res_,
+		int iters_,
 		real maxDist_,	//half width of each dimension in the simulation
-		const BlackHoleInfo &blackHoleInfo_
-	) :	Base(maxDist_, Test::res, Test::iters),
+		const std::vector<tensor<real, lower<dim+1>>> &blackHoleInfo_
+	) :	Base(maxDist_, res_, iters_),
 		blackHoleInfo(blackHoleInfo_)
 	{}
-
-	virtual const string filename() const { return "multiple_black_holes.txt"; }
 
 	virtual void init() {
 		Base::init();
@@ -348,11 +343,11 @@ struct BrillLindquist : public Base<dim> {
 			cell.gammaBar_ll = eta;
 			cell.psi = 1;
 			real oneOverAlpha = 0;
-			for (int i = 0; i < numBlackHoles; ++i) {
-				real M = blackHoleInfo(i, dim);
+			for (int i = 0; i < (int)blackHoleInfo.size(); ++i) {
+				real M = blackHoleInfo[i](dim);
 				vector c;
 				for (int j = 0; j < dim; ++j) {
-					c(j) = blackHoleInfo(i, j);
+					c(j) = blackHoleInfo[i](j);
 				}
 				real r = vector::length(x - c);
 				cell.psi += .5 * M / r;
@@ -385,51 +380,252 @@ struct BrillLindquist : public Base<dim> {
 	}
 };
 
+enum {
+	PRECISION_FLOAT,
+	PRECISION_DOUBLE,
+	NUM_PRECISIONS
+};
+
+enum {
+	INTEGRATOR_EULER,
+	INTEGRATOR_RK4,
+	NUM_INTEGRATORS
+};
+
+struct SimParams {
+	SimParams()
+	:	dim(1),
+		res(100),
+		size(1),
+		iter(100),
+		precision(PRECISION_DOUBLE),
+		integrator(INTEGRATOR_RK4),
+		history(false),
+		filename("out.txt")
+	{}
+	
+	//dim <n>	= dimension
+	int dim;	
+	
+	//res <n>	= resolution
+	int res;
+
+	//size <n>	= radial distance (in Sun radii)
+	double size;
+
+	//iter <n>	= number of iterations
+	int iter;
+
+	//precision <prec> = precision (see PRECISION_* enum) 
+	int precision;
+
+	//integrator <int>	= integrator (see INTEGRATOR_* enum)
+	int integrator;
+
+	//history	= include history in output
+	bool history;
+
+	//filename	= output filename
+	std::string filename;
+
+	//rest of args
+	std::vector<std::string> args;
+};
+
+SimParams interpretArgs(int argc, char **argv) {
+	SimParams params;
+	for (int i = 1; i < argc; ++i) {
+		//0-param vars
+		if (!strcmp(argv[i], "history")) {
+			params.history = true;
+			cerr << "using history" << endl;
+			continue;
+		//1-param vars
+		} else if (i < argc-1) {
+			if (!strcmp(argv[i], "dim")) {
+				params.dim = atoi(argv[++i]);
+				cerr << "dim " << params.dim << endl;
+				continue;
+			} else if (!strcmp(argv[i], "res")) {
+				params.res = atoi(argv[++i]);
+				cerr << "res " << params.res << endl;
+				continue;
+			} else if (!strcmp(argv[i], "size")) {
+				params.size = atof(argv[++i]);
+				cerr << "size " << params.size << endl;
+				continue;
+			} else if (!strcmp(argv[i], "iter")) {
+				params.iter = atoi(argv[++i]);
+				cerr << "iter " << params.iter << endl;
+				continue;
+			} else if (!strcmp(argv[i], "precision")) {
+				const char *precision = argv[++i];
+				if (!strcmp(precision, "float")) {
+					params.precision = PRECISION_FLOAT;
+				} else if (!strcmp(precision, "double")) {
+					params.precision = PRECISION_DOUBLE;
+				} else {
+					throw Exception() << "got an unknown precision " << precision;
+				}
+				continue;
+			} else if (!strcmp(argv[i], "integrator")) {
+				const char *integrator = argv[++i];
+				if (!strcmp(integrator, "euler")) {
+					params.integrator = INTEGRATOR_EULER;
+				} else if (!strcmp(integrator, "rk4")) {
+					params.integrator = INTEGRATOR_RK4;
+				} else {
+					throw Exception() << "got an unknown integrator " << integrator;
+				}
+				continue;
+			} else if (!strcmp(argv[i], "filename")) {
+				params.filename = argv[++i];
+				continue;
+			}
+		}
+
+		//save the rest for later
+		//note this could be abused: 
+		// arg[0] res 1 arg[1] dim 2 gets stored as arg[0] arg[1] arg[2]
+		params.args.push_back(argv[i]);
+	}
+	return params;
+}
+	
+
+//I gotta stop templating out everything
+// or at least make better use of interfaces 
+
+template<typename TestType>
+void runSimTest(const SimParams &params, TestType &test) {
+	test.outputHistory = params.history;
+	test.init();
+	
+	ofstream f(params.filename.c_str());
+	test.run(f);
 }
 
-int main() {
-	using namespace Test;
+template<int dim, typename real, typename integrator>
+void runSimIntegrator(SimParams &params) {
+	if (!params.args.size()) throw Exception() << "expected simulation arguments";
+	string simType = params.args[0];
+	params.args.erase(params.args.begin());
+
+	if (simType == "kerr-schild") {
+		if (!params.args.size()) throw Exception() << "expected simulation mass";
+		double mass = atof(params.args[0].c_str());
+		params.args.erase(params.args.begin());
 	
-#if 0	// GRO J0422+32 : the smallest black hole yet found
-	enum { dim = 1 };
-	KerrSchild<dim> test(
-		4.1 * sunRadiusInM,		//simulation radius
-		4.1 * sunMassInM,		//black hole mass
-		0,						//angular momentum
-		0						//charge
-	);
-#endif
-#if 1	// Sagitarrius A* : The supermassive black hole in the center of the Milky Way
-	enum { dim = 2 };
-	KerrSchild<dim> test(
-		4.1e+6 * sunRadiusInM,
-		4.1e+6 * sunMassInM,
-		0,
-		0
-	);
-#endif
-#if 0	// binary black hole head on collision
-	enum { dim = 1 };
-	enum { numBlackHoles = 2 };
-	tensor<real, lower<numBlackHoles>, lower<dim+1>> blackHoleInfo;
-	for (int i = 0; i < numBlackHoles; ++i) {
-		blackHoleInfo(i,0) = (i == 0 ? -1. : 1.) * 2. * sunRadiusInM;
-		blackHoleInfo(i,dim) = sunMassInM;
+		double angularMomentum = 0;
+		double charge = 0;
+		if (params.args.size()) {
+			angularMomentum = atof(params.args[0].c_str());
+			params.args.erase(params.args.begin());
+		
+			if (params.args.size()) {
+				charge = atof(params.args[0].c_str());
+				params.args.erase(params.args.begin());
+			}
+		}
+
+		cerr << "mass " << mass << endl;
+		cerr << "angular momentum " << angularMomentum << endl;
+		cerr << "charge " << charge << endl;
+
+		KerrSchild<dim, real, integrator> test(
+			params.res,
+			params.iter,
+			params.size * sunRadiusInM,
+			mass * sunMassInM,
+			angularMomentum,
+			charge
+		);
+
+		runSimTest(params, test);
+	} else if (simType == "brill-lindquist") {
+		if (!params.args.size()) throw Exception() << "expected simulation arguments";
+		int numBlackHoles = atoi(params.args[0].c_str());
+		params.args.erase(params.args.begin());
+
+		cerr << "number of black holes " << numBlackHoles << endl;
+
+		std::vector<tensor<real, lower<dim+1>>> blackHoleInfos;
+		for (int i = 0; i < numBlackHoles; ++i) {
+			tensor<real, lower<dim+1>> blackHoleInfo;
+			for (int j = 0; j < dim+1; ++j) {
+				if (!params.args.size()) throw Exception() << "expected simulation arguments";
+				blackHoleInfo(j) = atof(params.args[0].c_str());
+				params.args.erase(params.args.begin());
+			}
+			
+			cerr << "black hole position and mass " << blackHoleInfo << endl;
+			
+			for (int j = 0; j < dim; ++j) {
+				blackHoleInfo(j) *= sunRadiusInM;
+			}
+			blackHoleInfo(dim) *= sunMassInM;
+			
+			blackHoleInfos.push_back(blackHoleInfo);
+		}
+
+		BrillLindquist<dim, real, integrator> test(
+			params.res,
+			params.iter,
+			params.size * sunRadiusInM, 
+			blackHoleInfos);
+	
+		runSimTest(params, test);
+	} else {
+		throw Exception() << "got unknown simulation type " << simType;
 	}
-	BrillLindquist<dim, numBlackHoles> test(4.1 * sunRadiusInM, blackHoleInfo);
-#endif
+}
 
-	test.outputHistory = false;
-	
-	test.init();
-	test.run();
+template<int dim, typename real>
+void runSimPrecision(SimParams &params) {
+	switch (params.integrator) {
+	case INTEGRATOR_EULER:
+		runSimIntegrator<dim, real, EulerIntegrator>(params);
+		break;
+	case INTEGRATOR_RK4:
+		runSimIntegrator<dim, real, RK4Integrator>(params);
+		break;
+	default:
+		throw Exception() << "got an integrator I couldn't handle " << params.integrator;
+	}
+}
 
-	//granted I could do this all in C++
-	//but string processing ...
-	ostringstream ss;
-	ss << "lua plot.lua " << test.filename() << " " << dim << " K";
-	string s = ss.str();
-	int result = system(s.c_str());
-	if (!result) cerr << "plot failed" << endl;
+template<int dim>
+void runSimDim(SimParams &params) {
+	switch (params.precision) {
+	case PRECISION_FLOAT:
+		runSimPrecision<dim, float>(params);
+		break;
+	case PRECISION_DOUBLE:
+		runSimPrecision<dim, double>(params);
+		break;
+	default:
+		throw Exception() << "got a precision I couldn't handle " << params.precision;
+	}
+}
+
+void runSim(SimParams &params) {
+	switch (params.dim) {
+	case 1:
+		runSimDim<1>(params);
+		break;
+	case 2:
+		runSimDim<2>(params);
+		break;
+	case 3:
+		runSimDim<3>(params);
+		break;
+	default:
+		throw Exception() << "got a dimension I couldn't handle " << params.dim;
+	}
+}
+
+int main(int argc, char **argv) {
+	SimParams params = interpretArgs(argc, argv);
+	runSim(params);
 }
 

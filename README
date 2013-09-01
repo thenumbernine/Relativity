@@ -379,6 +379,34 @@ From our evolved ln(sqrt(gamma)) we get:
 gamma^(1/2) = psi^6
 ln(sqrt(gamma)) = 6 ln(psi)
 
+all in all...
+
+gammaBar_ij = psi^-4 gamma_ij
+gamma_ij = psi^4 gammaBar_ij
+gammaBar^ij = psi^4 gamma^ij
+gamma^ij = psi^-4 gammaBar^ij
 
 
 
+Conformal Traceless Extrinsic Curvature Tensor
+
+A_ij = K_ij - 1/3 gamma_ij K	
+	
+The 1/3 is only for the 3rd dimension -- just as all those ^3's are in the conformal factor.
+But I'm not going to go changing things to be dimension-invariant just yet. For now our 1D case will be just line-simulating a 3D case.
+
+ABar^ij = psi^10 A^ij	<- this is where Baumgarte & Shapiro start.  Thay say the value is arbitrary then show how 10 is a useful number.  From there ...
+A^ij = psi^-10 ABar^ij
+ABar^ij = psi^10 A^ij
+
+A_ij = gamma_ik A^kl gamma_lj
+	 = gammaBar_ik psi^4 gammaBar_ik psi^-10 ABar^kl gammaBar_lj psi^4	<- note using the gammaBar to lower the ABar
+A_ij = psi^-2 ABar_ij
+ABar_ij = psi^2 A_ij
+
+While we're here:
+ABar_ij ABar^ij = psi^2 A_ij psi^10 A^ij 
+				= psi^12 (K_ij - 1/3 gamma_ij K)(K^ij - 1/3 gamma^ij K)
+				= psi^12 (K_ij K^ij - 1/3 gamma_ij K K^ij - 1/3 gamma^ij K K_ij + 1/9 gamma_ij gamma^ij K^2)
+				= psi^12 (K_ij K^ij - 2/3 K^2 + 1/3 K^2)
+				= psi^12 (K_ij K^ij - 1/3 K^2)

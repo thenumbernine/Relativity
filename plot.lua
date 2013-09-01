@@ -1,13 +1,29 @@
 --[[
 plotting script
 
-plot.lua <filename.txt> <dim> <field>
+plot.lua <filename.txt> <dim> <field> <flags>
+
+flags:
+	history
+	log
 --]]
 
-local filename, dim, field = ...
+local args = {...}
+local filename = table.remove(args, 1)
+local dim = table.remove(args, 1)
+local field = table.remove(args, 1)
+
 dim = assert(tonumber(dim), 'expected a valid dimension')
 
 local useHistory = false
+local useLog = false
+for _,v in ipairs(args) do 
+	if v == 'history' then 
+		useHistory = true 
+	elseif v == 'log' then
+		useLog = true
+	end 
+end
 local useColor = true 
 
 local f = assert(io.open(filename, 'rb'), "failed to open file")
@@ -36,6 +52,14 @@ local rows = {}
 if useHistory then table.insert(rows, 1) end
 for i=1,dim do
 	table.insert(rows, i+1)
+end
+
+if useLog then
+	if #rows <= 1 then
+		table.insert(cmds, 1, 'set log y')
+	else
+		table.insert(cmds, 1, 'set log z')
+	end
 end
 
 local i = 1

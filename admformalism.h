@@ -435,7 +435,7 @@ struct ADMFormalism {
 				}
 			}
 
-			//ABar_ul(i,j) := ABar^ij = gammaBar^ik ABar_kj
+			//ABar_ul(i,j) := ABar^i_j = gammaBar^ik ABar_kj
 			tensor_ul ABar_ul;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
@@ -446,12 +446,23 @@ struct ADMFormalism {
 				}
 			}
 
-			//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ji = ABar^i_j ABar^j_i
+			//ABar_uu(i,j) := ABar^ij = ABar^i_k gammaBar^kj
+			tensor_su &ABar_uu = cell.ABar_uu;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					ABar_uu(i,j) = 0;
+					for (int k = 0; k < dim; ++k) {
+						ABar_uu(i,j) += ABar_ul(i,k) * gammaBar_uu(k,j);
+					}
+				}
+			}
+
+			//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ji
 			real &tr_ABar_sq = cell.tr_ABar_sq;
 			tr_ABar_sq = 0;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
-					tr_ABar_sq += ABar_ul(i,j) * ABar_ul(j,i);
+					tr_ABar_sq += ABar_ll(i,j) * ABar_uu(i,j);
 				}
 			}
 			
@@ -474,7 +485,6 @@ struct ADMFormalism {
 			const real &DBar2_psi = cell.DBar2_psi;
 			const real &tr_ABar_sq = cell.tr_ABar_sq;
 			const real &RBar = cell.RBar;
-			const tensor_su &gamma_uu = cell.gamma_uu;
 			const real &K = cell.K;
 			const real &rho = cell.rho;
 			const tensor_u &S_u = cell.S_u;
@@ -501,35 +511,67 @@ struct ADMFormalism {
 			H = .5 * (-8. * DBar2_psi + psi * (RBar + psiToTheFourth * (K * K - tr_K_sq - 16. * M_PI * rho)));
 #endif
 #if 1		//option #3: use conformal factor and conformal traceless extrinsic curvature
-
-			real psiSquared = psi * psi;
-			real psiToTheFourth = psiSquared * psiSquared;
-			real psiToTheEighth = psiToTheFourth * psiToTheFourth;
-		
-			//"Numerical Relativity" p.65
-			//H = 1/2 (-8 DBar^2 psi + psi RBar + 2/3 psi^5 K^2 - psi^-7 tr(ABar^2) - 16 pi psi^5 rho)
-			//  = 1/2 (-8 DBar^2 psi + psi (RBar + psi^4 (2/3 K^2 - 16 pi rho) - psi^-8 tr(ABar^2)))
-			real &H = cell.H;
-			H = .5 * (-8. * DBar2_psi + psi * (RBar + psiToTheFourth * ((2./3.) * K * K - 16. * M_PI * rho) - tr_ABar_sq / psiToTheEighth));
+			{
+				real psiSquared = psi * psi;
+				real psiToTheFourth = psiSquared * psiSquared;
+				real psiToTheEighth = psiToTheFourth * psiToTheFourth;
+			
+				//"Numerical Relativity" p.65
+				//H = 1/2 (-8 DBar^2 psi + psi RBar + 2/3 psi^5 K^2 - psi^-7 tr(ABar^2) - 16 pi psi^5 rho)
+				//  = 1/2 (-8 DBar^2 psi + psi (RBar + psi^4 (2/3 K^2 - 16 pi rho) - psi^-8 tr(ABar^2)))
+				real &H = cell.H;
+				H = .5 * (-8. * DBar2_psi + psi * (RBar + psiToTheFourth * ((2./3.) * K * K - 16. * M_PI * rho) - tr_ABar_sq / psiToTheEighth));
+			}
 #endif
 
-			//diff_K_uu(k,i,j) := diff_k K^ij
-			//I'm not seeing a distinction between the 4D and 3D representations of the constraints.
-			//The "Numerical Relativity" book did transition from a covariant form of the 4D constraint to a contravariant form of the 3D constraint
-			//It also added caveats on how D_i v_j = delta_i v_j only for rank-(0,2) forms and only if v was purely spatial.
-			tensor_lsu diff_K_luu = covariantDerivative(targetReadCells, &Cell::K_uu, dx, iter.index, &Cell::conn_ull);
+#if 0		//option #1: original momentum constraint
+			{
+				const tensor_su &gamma_uu = cell.gamma_uu;
+				
+				//diff_K_uu(k,i,j) := diff_k K^ij
+				//I'm not seeing a distinction between the 4D and 3D representations of the constraints.
+				//The "Numerical Relativity" book did transition from a covariant form of the 4D constraint to a contravariant form of the 3D constraint
+				//It also added caveats on how D_i v_j = delta_i v_j only for rank-(0,2) forms and only if v was purely spatial.
+				tensor_lsu diff_K_luu = covariantDerivative(targetReadCells, &Cell::K_uu, dx, iter.index, &Cell::conn_ull);
 
-			//partial_K_l(i) := partial_i K
-			tensor_l partial_K_l = partialDerivative(targetReadCells, &Cell::K, dx, iter.index);
+				//partial_K_l(i) := partial_i K
+				tensor_l partial_K_l = partialDerivative(targetReadCells, &Cell::K, dx, iter.index);
 
-			//M_u(i) := M^i = D_j (K^ij - gamma^ij K) - 8 pi S^i
-			tensor_u &M_u = cell.M_u;
-			for (int i = 0; i < dim; ++i) {
-				M_u(i) = -8. * M_PI * S_u(i);
-				for (int j = 0; j < dim; ++j) {
-					M_u(i) += diff_K_luu(j,i,j) - gamma_uu(i,j) * partial_K_l(j);
+				//M_u(i) := M^i = D_j (K^ij - gamma^ij K) - 8 pi S^i
+				tensor_u &M_u = cell.M_u;
+				for (int i = 0; i < dim; ++i) {
+					M_u(i) = -8. * M_PI * S_u(i);
+					for (int j = 0; j < dim; ++j) {
+						M_u(i) += diff_K_luu(j,i,j) - gamma_uu(i,j) * partial_K_l(j);
+					}
 				}
 			}
+#endif
+#if 1		//option #1: use conformal traceless extrinsic curvature
+			{
+				const tensor_su &gammaBar_uu = cell.gammaBar_uu;
+				
+				//DBar_K_l(i) := DBar_i K
+				tensor_l DBar_K_l = partialDerivative(targetReadCells, &Cell::K, dx, iter.index);
+
+				//DBar_ABar_luu(i,j,k) := DBar_i ABar^jk
+				tensor_lsu DBar_ABar_luu = covariantDerivative(targetReadCells, &Cell::ABar_uu, dx, iter.index, &Cell::connBar_ull);
+
+				real psiSquared = psi * psi;
+				real psiToTheFourth = psiSquared * psiSquared;
+				real psiToTheSixth = psiSquared * psiToTheFourth;
+				real psiToTheTenth = psiToTheFourth * psiToTheSixth;
+
+				//M_u(i) := M^i = DBar_j ABar^ij - 2/3 psi^6 gammaBar^ij DBar_j K - 8 pi psi^10 S^i
+				tensor_u &M_u = cell.M_u;
+				for (int i = 0; i < dim; ++i) {
+					M_u(i) = -8 * M_PI * psiToTheTenth * S_u(i);
+					for (int j = 0; j < dim; ++j) {
+						M_u(i) += DBar_ABar_luu(j,i,j) - 2./3. * psiToTheSixth * gammaBar_uu(i,j) * DBar_K_l(j);
+					}
+				}
+			}
+#endif
 		}
 
 		//calcPartial
@@ -564,8 +606,9 @@ struct ADMFormalism {
 				}
 			}
 
-			//partial_beta_ll(j,i) := partial_j beta_i
-			tensor_ll partial_beta_ll = partialDerivative(targetReadCells, &Cell::beta_l, dx, iter.index);
+			Cell &partialTCell = targetPartialTCells(iter.index);
+
+#if 0	//original ADM advects gamma_ij.  instead we are advecting the conformal factor.
 			
 			//D_beta_ll(j,i) := D_j beta_i = partial_j beta_i - conn^k_ij beta_k
 			tensor_ll D_beta_ll = covariantDerivative(targetReadCells, &Cell::beta_l, dx, iter.index, &Cell::conn_ull);
@@ -574,16 +617,14 @@ struct ADMFormalism {
 			//-- but only for lower indexes.
 			//doesn't work if either is upper (you get extra terms for the timelike component we're dropping)
 			//(see "Numerical Relativity", exercise 2.30)
-			
-			Cell &partialTCell = targetPartialTCells(iter.index);
-		
+	
 			//partial_t gamma_ij = -2 alpha K_ij + D_i beta_j + D_j beta_i
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					partialTCell.gamma_ll(i,j) = -2. * alpha * K_ll(i,j) + D_beta_ll(i,j) + D_beta_ll(j,i);
 				}
 			}
-
+#endif
 			//partial_K_lll(k,i,j) := partial_k K_ij
 			tensor_lsl partial_K_lll = partialDerivative(targetReadCells, &Cell::K_ll, dx, iter.index);
 
