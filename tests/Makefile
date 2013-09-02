@@ -1,5 +1,3 @@
-GNUPLOT := droidplot
-
 DIM := 1
 ITER := 100
 RES := 100
