@@ -7,7 +7,7 @@ default: relativity
 DIM := 1
 ITER := 1
 RES := 10
-#HISTORY := history
+HISTORY := history
 PLOT_FIELD := K
 
 # GRO J0422+32 : the smallest black hole yet found
@@ -46,9 +46,16 @@ DEPS :=\
 	generic_symmat.h \
 	generic_vector.h \
 	grid.h \
+	i_admformalism.h \
+	i_integrator.h \
+	init_bowen_york.h \
+	init_brill_lindquist.h \
+	init_kerr_schild.h \
+	init_schwarzschild.h \
 	initialdata.h \
 	integrators.h \
 	inverse.h \
+	output_table.h \
 	tensor.h \
 	tensor_index.h \
 	vector.h
@@ -72,5 +79,6 @@ clean:
 	-rm test
 
 .PHONY: default all install install_test run run_test plot clean
+
 
 

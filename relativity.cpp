@@ -16,6 +16,8 @@
 #include "init_brill_lindquist.h"
 #include "init_bowen_york.h"
 
+#include "output_table.h"
+
 //universal constants
 const double speedOfLightInMPerS = 299792458.;
 const double gravitationalConstantInM3PerKgS2 = 6.67384e-11;
@@ -42,12 +44,17 @@ using namespace std;
 template<typename real, int dim>
 struct RunClass {
 	void operator()(::ADMFormalism<real, dim> *sim, ostream &f, int numIters, bool outputHistory) {
-		cout << "iterating..." << endl;
 		const real dt = .1 * sim->dx(0);
+		
+		
+		cout << "iterating..." << endl;
 		for (int i = 0; i < numIters; ++i) {
 			sim->update(dt);
 		}
 		
+		//in case we're only outputting zero iterations
+		// or if we used a RK4 iterator whose last aux was not the last frame
+		sim->calcAux(*sim->getGeomGridReadCurrent());	
 		sim->outputLine(f);
 	}
 };
@@ -56,21 +63,25 @@ struct RunClass {
 template<typename real>
 struct RunClass<real, 1> {
 	void operator()(::ADMFormalism<real, 1> *sim, ostream &f, int numIters, bool outputHistory) {
+		const real dt = .1 * sim->dx(0);
+		
 		if (outputHistory) {
+			sim->calcAux(*sim->getGeomGridReadCurrent());	//in case we're only outputting zero iterations
 			sim->outputLine(f);
 		}
 
 		cout << "iterating..." << endl;
-		const real dt = .1 * sim->dx(0);
 		for (int i = 0; i < numIters; ++i) {
 			sim->update(dt);
 			
 			if (outputHistory) {
+				sim->calcAux(*sim->getGeomGridReadCurrent());	//in case we're only outputting zero iterations
 				sim->outputLine(f);
 			}
 		}
 
 		if (!outputHistory) {
+			sim->calcAux(*sim->getGeomGridReadCurrent());	//in case we're only outputting zero iterations
 			sim->outputLine(f);
 		}
 	}

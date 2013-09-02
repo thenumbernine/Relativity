@@ -32,6 +32,10 @@ struct GeomCell {
 	//beta^t = 0
 	tensor_u beta_u;
 
+	//related to the conformal factor of metric
+	//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
+	real ln_sqrt_gamma;
+
 	//spatial metric
 	//gamma_ll(i,j) := gamma_ij
 	//gamma_it = gamma_tj = 0
@@ -46,14 +50,10 @@ struct GeomCell {
 	//K := K^i_k
 	real K;
 
-	//related to the conformal factor of metric
-	//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
-	real ln_sqrt_gamma;
-
 	GeomCell()
 	:	alpha(real()),
-		K(real()),
-		ln_sqrt_gamma(real())
+		ln_sqrt_gamma(real()),
+		K(real())
 	{}
 
 	//used during init
@@ -271,7 +271,7 @@ struct AuxCell {
 		ln_psi = geomCell.ln_sqrt_gamma / 6.;
 		
 		//psi = exp(ln(psi))
-		psi = ln_psi;
+		psi = exp(ln_psi);
 	}
 };
 

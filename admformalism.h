@@ -254,7 +254,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 	}
 	
 	//iteration
-	void calcAux(real dt, const GeomGrid &geomGridRead) {
+	void calcAux(const GeomGrid &geomGridRead) {
 		typename AuxGrid::iterator iter;
 		
 		//first compute and store aux values that will be subsequently used for partial differentiation
@@ -704,9 +704,8 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 		const GeomGrid &geomGridRead,	//read from this.  last iteration state.
 		GeomGrid &partial_t_geomGrid)			//next iteration partials
 	{
-		calcAux(dt, geomGridRead);
+		calcAux(geomGridRead);
 	
-		//calcPartial
 		for (typename AuxGrid::iterator iter = auxGrid.begin(); iter != auxGrid.end(); ++iter) {
 			AuxCell &cell = *iter;
 			const GeomCell &geomCell = geomGridRead(iter.index);
@@ -744,8 +743,6 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 
 			GeomCell &partial_t_geomCell = partial_t_geomGrid(iter.index);
 
-#if 0	//original ADM advects gamma_ij.  instead we are advecting the conformal factor.
-			
 			//D_beta_ll(j,i) := D_j beta_i = partial_j beta_i - conn^k_ij beta_k
 			tensor_ll D_beta_ll = covariantDerivative(auxGrid, &AuxCell::beta_l, auxGrid, &AuxCell::conn_ull, dx, iter.index);
 			
@@ -760,7 +757,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 					partial_t_geomCell.gamma_ll(i,j) = -2. * alpha * K_ll(i,j) + D_beta_ll(i,j) + D_beta_ll(j,i);
 				}
 			}
-#endif
+
 			//partial_K_lll(k,i,j) := partial_k K_ij
 			tensor_lsl partial_K_lll = partialDerivative(geomGridRead, &GeomCell::K_ll, dx, iter.index);
 
@@ -860,6 +857,8 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 
 		o << "ln psi\t";
 
+		o << "gamma\t";
+
 		o << "psi\t";
 
 		for (int i = 0; i < dim; ++i) {
@@ -892,12 +891,6 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			}
 		}
 		
-		for (int i = 0; i < dim; ++i) {
-			for (int j = 0; j <= i; ++j) {
-				o << "gamma^" << coordNames[i] << coordNames[j] << "\t";
-			}
-		}
-
 		for (int i = 0; i < dim; ++i) {
 			for (int j = 0; j <= i; ++j) {
 				o << "R_" << coordNames[i] << coordNames[j] << "\t";
@@ -954,10 +947,13 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 
 			//ln(sqrt(gamma))
 			o << geomCell.ln_sqrt_gamma << "\t";
-
+			
 			//ln(psi)
 			o << cell.ln_psi << "\t";
 
+			//gamma
+			o << cell.gamma << "\t";
+			
 			//psi
 			o << cell.psi << "\t";
 
@@ -967,14 +963,14 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 					o << geomCell.gamma_ll(i,j) << "\t";
 				}
 			}
-
+			
 			//gamma^ij
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					o << cell.gamma_uu(i,j) << "\t";
 				}
 			}
-			
+				
 			//gammaBar_ij
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
@@ -993,13 +989,6 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					o << geomCell.K_ll(i,j) << "\t";
-				}
-			}
-			
-			//gamma^ij
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					o << cell.gamma_uu(i,j) << "\t";
 				}
 			}
 	
@@ -1035,4 +1024,5 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 		}
 	}
 };
+
 
