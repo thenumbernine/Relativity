@@ -1,12 +1,12 @@
 TARGETDIR := /data/local/bin/
 CPPFLAGS := -Wall -O0
 
-default: relativity
+default: test
 
-run: install
-	cd tests; lua test.lua
+test: install
+	cd test; lua test.lua
 
-DEPS := $(shell ls src/*.h)
+DEPS := $(shell find src -name "*.h")
 
 relativity: src/relativity.cpp $(DEPS)
 	g++ $(CPPFLAGS) -std=c++0x src/relativity.cpp -o relativity
@@ -19,7 +19,7 @@ all: relativity
 clean:
 	-rm relativity
 
-.PHONY: default all install run plot clean
+.PHONY: default all install test plot clean
 
 
 

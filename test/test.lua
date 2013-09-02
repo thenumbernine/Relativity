@@ -1,5 +1,6 @@
 local baselinePrefix = 'baseline_'
 local plotField = 'K'
+local diff = 'diff'
 
 -- this one needs to match the makefile variable.
 -- i might put that in a separate param file for both of these to read in
@@ -69,32 +70,39 @@ function io.fileexists(filename)
 	return true
 end
 
+local function exec(cmd)
+	print(cmd)
+	local result = os.execute(cmd)
+	if result ~= 0 then return false, 'failed with error: '..result end
+	return true
+end
+
 function runTests(args)
 	for _,test in ipairs(tests) do
 		local filename = test.name..'.txt'
 		local basefile = baselinePrefix..filename
 		if args.setbase then
-			os.execute('cp '..filename..' '..basefile)
+			assert(exec('cp '..filename..' '..basefile))
 		end
 		if args.run then
-			os.execute(installDir..'relativity integrator rk4'
+			assert(exec(installDir..'relativity integrator rk4'
 				..' filename '..filename
 				..' dim '..test.dim
 				..' iter '..test.iter
 				..' res '..test.res
 				..' size '..test.size
 				..(test.history and ' history' or '')
-				..' '..test.args)
+				..' '..test.args))
 		end
 		if args.plot then
-			os.execute('lua plot.lua '..filename
+			assert(exec('lua plot.lua '..filename
 				..' '..test.dim
 				..' '..plotField
-				..(test.history and ' history' or ''))
+				..(test.history and ' history' or '')))
 		end
 		if args.diff then
 			if io.fileexists(basefile) then
-				os.execute(diff..' '..filename..' '..basefile)
+				assert(exec(diff..' '..filename..' '..basefile))
 			else
 				io.stderr:write('baseline does not exist for '..filename..'\n')
 				io.stderr:flush()

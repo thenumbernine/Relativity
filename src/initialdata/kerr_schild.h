@@ -1,7 +1,6 @@
 #pragma once
 
-#include "admformalism.h"
-#include "vector.h"
+#include "initialdata.h"
 
 /*
 Kerr-Schild black hole

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "initialdata.h"
-#include "vector.h"
 
 //this is a Schwarzschild init, with some matter thrown in there
 //TODO use Baumgarte & Shapiro p.66 Sobelev function for matter solution 

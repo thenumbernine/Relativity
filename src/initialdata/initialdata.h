@@ -1,6 +1,6 @@
 #pragma once
 
-#include "admformalism.h"
+#include "../admformalism.h"
 
 template<typename real, int dim>
 struct InitialData {

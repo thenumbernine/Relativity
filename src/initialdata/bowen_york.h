@@ -1,6 +1,5 @@
 #pragma once
 
-#include "admformalism.h"
 #include "initialdata.h"
 
 /*

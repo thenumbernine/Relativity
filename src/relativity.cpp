@@ -11,10 +11,10 @@
 #include <string>
 #include <vector>
 
-#include "init_schwarzschild.h"
-#include "init_kerr_schild.h"
-#include "init_brill_lindquist.h"
-#include "init_bowen_york.h"
+#include "initialdata/schwarzschild.h"
+#include "initialdata/kerr_schild.h"
+#include "initialdata/brill_lindquist.h"
+#include "initialdata/bowen_york.h"
 
 #include "output_table.h"
 
