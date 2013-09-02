@@ -6,10 +6,6 @@ default: relativity
 run: install
 	cd tests; $(MAKE)
 
-#this *should* become unit tests ... but it won't, because i'm lazy.
-run_test: install_test
-	$(TARGETDIR)test
-
 DEPS :=\
 	admformalism.h \
 	cell.h \
@@ -41,22 +37,15 @@ DEPS :=\
 relativity: relativity.cpp $(DEPS)
 	g++ $(CPPFLAGS) -std=c++0x relativity.cpp -o relativity
 
-test: test.cpp $(DEPS)
-	g++ $(CPPFLAGS) -std=c++0x test.cpp -o test
-
 install: relativity
 	cp relativity $(TARGETDIR) 
 
-install_test: test
-	cp test $(TARGETDIR) 
-
-all: relativity test
+all: relativity
 
 clean:
 	-rm relativity
-	-rm test
 
-.PHONY: default all install install_test run run_test plot clean
+.PHONY: default all install run plot clean
 
 
 

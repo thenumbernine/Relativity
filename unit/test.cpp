@@ -1,7 +1,10 @@
 #include <iostream>
 using namespace std;
 
-#include "tensor.h"
+#include "../tensor.h"
+
+//I know, it's not a legitimate unit test.
+// but maybe some day it will become one ...
 
 int test_tensors() {
 	typedef double real;
