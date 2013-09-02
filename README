@@ -6,24 +6,28 @@ Sources:
 - "Introduction to 3+1 Numerical Relativity", Alcubierre. (c) 2008
 
 Starting again from scratch now that I've gone through the ADM chapter of "Gravitation" and the 3+1 decomposition chapter of "Numerical Relativity"
+I read somewhere that the other two books are the first two books published on the topic of numerical relativity ( http://adsabs.harvard.edu/abs/2011CQGra..28v9002G ).
+I've observed this as I am progressing through the two simultaneously.  It seems Baumgarte and Shapiro are better at explaining things, taking smaller steps and providing problems for the reader.
+I'm a big fan of this, seeing as I need all the help I can get.  Alcubierre, on the other hand, does a better job with the finishing details: offering in certain places more complete descriptions of solutions
+and occasionally alternative means of getting to them.  I'm only on chapter 3 of both, so maybe this will change later.
 
 TODO
 
 	algorithm:
 - initial data
-- lapse and shift functions 
-- I'm doing FTCS for my own entertainment.  I can extend this to some other better explicit method like RK45, but
-	I should switch over to a simple finite-volume method for starters.
+- lapse and shift functions
+- I hear slope limiters on derivatives are a good idea. (Alcubierre p.365)
+- currently I'm running on an explicit integrator.  need to use implicit ones.
 
 	implementation:
 - general-case covariant derivative would be nice.
-	this depends on the ability to tell whether a certain index is upper or lower, 
+	this depends on the ability to tell whether a certain index is upper or lower,
 	which is difficult now that I made templates successively nested structures (so that symmetric tensors could take advantage of size optimizations).
 - general-case second partial derivative? to construct the result as a symmetric-lower.
-- symmetric & antisymmetric indexes must be next to one another.  this is courtesy of the nested implementation of the templates.  
+- symmetric & antisymmetric indexes must be next to one another.  this is courtesy of the nested implementation of the templates.
 	tensor<lower,lower> is - from the view of the data structure - a one-form of one-forms, and tensor<upper,upper> is a vector of vectors.
 	I'm not even sure how the templates could be changed to accomodate anything more flexible: maybe put the information last in the template arguments
-		like so tensor<L,U,U,L,U, symmetric<0,1>, antisymmetric<2,3,4>>.  that might be a nightmare to implement, 
+		like so tensor<L,U,U,L,U, symmetric<0,1>, antisymmetric<2,3,4>>.  that might be a nightmare to implement,
 		and i haven't come across any situations where the current system hasn't failed me.
 - antisymmetric tensors have to be the outer-most indexes.  this is because only one half of an antisymmetric pair of elements is stored.
 	this is made compatible with read and write operations by returning a generated accessor object which does the sign-flipping when appropriate.
@@ -57,10 +61,10 @@ proj 		= projection operator ("Numerical Relativity" eqn 2.31)
 
 alpha		= lapse (distance between timeslices a coordinate is transported over dt)
 
-beta^a		= shift (distance within the 3D hypersurface a coordiate is transported over dt) 
+beta^a		= shift (distance within the 3D hypersurface a coordiate is transported over dt)
 				= (0, beta^i) 	(i.e. beta^t = 0), therefore beta^a beta_a = beta^k beta_k
 
-g_ab 		= ADM representation of 4D metric tensor 
+g_ab 		= ADM representation of 4D metric tensor
 				= gamma_ab - n_a n_b
 				= ( -alpha^2 + beta^k beta_k	,	beta_j)		<- where beta_j = gamma_ji beta^i
 				  (			beta_i				,	gamma_ij)		\ which is equivalent to beta_j = gamma_ja beta^a since beta^t = 0 after all so we just neglect the timelike component of beta and gamma
@@ -153,7 +157,7 @@ is symmetry maintained?:
 	diff_k t^ij = partial_k t^ij + t^lj conn^i_lk + t^il conn^j_lk
 	diff_k t^ji = partial_k t^ji + t^li conn^j_lk + t^jl conn^i_lk
 				= partial_k t^ij + t^lj conn^i_lk + t^il conn^j_lk
-yes if both are upper 
+yes if both are upper
 	t_ij == t_ji <=> diff_k t_ij == diff_k t_ji ?
 	diff_k t_ij = partial_k t_ij - t_lj conn^l_ik - t_il conn^l_jk
 	diff_k t_ji = partial_k t_ji - t_li conn^l_jk - t_jl conn^l_ik
@@ -232,7 +236,7 @@ S^ij = gamma^ik gamma^jl T_kl
 S^i = -gamma^ij n^a T_aj
 
 S = S^a_a
-  = g^ab S_ab 
+  = g^ab S_ab
   = g^ab gamma_a^c gamma_b^d T_cd
   = gamma^cb gamma_b^d T_cd
   = gamma^cd T_cd
@@ -255,7 +259,7 @@ Kerr-Schild coordinates in terms of lapse and shift
 I'm getting this from Alcubierre p.56 and "Numerical Relativity" p.52
 
 Boyer-Lindquist coordinates:
-ds^2 = -(1 - 2 M r / rho^2) - 4 M a r sin(theta)^2 / rho^2 dt dphi + rho^2 / delta dr^2 + rho^2 dtheta^2 + sin(theta)^2 / rho^2 ((r^2 + a^2)^2 - a^2 delta sin(theta)^2) dphi^2 
+ds^2 = -(1 - 2 M r / rho^2) - 4 M a r sin(theta)^2 / rho^2 dt dphi + rho^2 / delta dr^2 + rho^2 dtheta^2 + sin(theta)^2 / rho^2 ((r^2 + a^2)^2 - a^2 delta sin(theta)^2) dphi^2
 delta = r^2 - 2 M r + a^2
 rho^2 = r^2 + a^2 cos(theta)^2
 a = J / M
@@ -285,7 +289,7 @@ g_ij = gamma_ij
 ...so...
 
 gamma_ij = eta_ij + (2 - eta_ij) H l_i l_j
-beta_i = H l_i 
+beta_i = H l_i
 	<=> beta^i gamma_ij = H l_j
 	<=> beta^i = H l_j gamma^ji
 -alpha^2 + beta^k beta_k = g_tt = -1 + 2 H
@@ -306,7 +310,7 @@ Constraints:
 (Most this is taken from Ch.2 of "Numerical Relativity".
 I've got all the intermediate steps in a notebook, maybe someday I'll copy it all into here.  It's pretty long.)
 
-Einstein's equation: 
+Einstein's equation:
 G_ab = R4_ab - 1/2 R4 g_ab = 8 pi T_ab
 
 Gauss' equation:
@@ -353,7 +357,7 @@ psi = conformal factor
 gammaBar_ij = background metric
 gamma_ij = psi^4 gammaBar_ij
 
-gamma = det(gamma_ij)	<- by definition 
+gamma = det(gamma_ij)	<- by definition
 det(gamma_ij * s) = s^3 gamma	<- 3D determinant of scaled matrix
 1 = gamma (gamma^(-1/3))^3 = det(gamma_ij * gamma^(-1/3))
 gammaBar_ij = gamma^(-1/3) gamma_ij	<- such that det(gammaBar_ij) = 1
@@ -390,8 +394,8 @@ gamma^ij = psi^-4 gammaBar^ij
 
 Conformal Traceless Extrinsic Curvature Tensor
 
-A_ij = K_ij - 1/3 gamma_ij K	
-	
+A_ij = K_ij - 1/3 gamma_ij K
+
 The 1/3 is only for the 3rd dimension -- just as all those ^3's are in the conformal factor.
 But I'm not going to go changing things to be dimension-invariant just yet. For now our 1D case will be just line-simulating a 3D case.
 
@@ -405,7 +409,7 @@ A_ij = psi^-2 ABar_ij
 ABar_ij = psi^2 A_ij
 
 While we're here:
-ABar_ij ABar^ij = psi^2 A_ij psi^10 A^ij 
+ABar_ij ABar^ij = psi^2 A_ij psi^10 A^ij
 				= psi^12 (K_ij - 1/3 gamma_ij K)(K^ij - 1/3 gamma^ij K)
 				= psi^12 (K_ij K^ij - 1/3 gamma_ij K K^ij - 1/3 gamma^ij K K_ij + 1/9 gamma_ij gamma^ij K^2)
 				= psi^12 (K_ij K^ij - 2/3 K^2 + 1/3 K^2)
@@ -427,7 +431,7 @@ DBar_j ABarTT^ij = 0
 
 let ABarL be the longitudinal part:
 ABarL^ij = DBar^i W^j + DBar^j W^i - 2/3 gammaBar^ij DBar_k W^K
-		 
+
 Define L to be the longitudinal operator / vector gradient that produces a symmetric, traceless tensor, such that
 ABarL^ij = (LBar W)^ij
 
@@ -469,16 +473,21 @@ Lie_W(gamma^-1/3 gamma_ij) = D_i W_j + D_j W_i - 2/3 gamma_ij D_k W^k
 
 Baumgarte & Shapiro go on to instruct
 1) provide gammaBar_ij, K, and ABarTT^ij
-3) solve for psi the following: 
+2) solve for W^i using the following, which is the momentum constraint after all the conformal factor substitutions
+	(DeltaBarL W)^i = 2/3 psi^6 gammaBar^ij DBar_j K + 8 pi psi^10 S^i
+note that it is in terms of psi.
+Take the W^i, construct ABarLL^ij, combine with ABarTT^ij to get ABar^ij.
+Lower with the gammaBar_ij metric to find the ABar_ij tensor density, and then...
+3) solve for psi the following:
 	8 DBar^2 psi - psi RBar - 2/3 psi^5 K^2 + psi^-7 ABar_ij ABar^ij = -16 pi psi^5 rho
-2) solve for W^i the following: 
-	(DeltaBarL W)^i = 2/3 psi^6 gammaBar^ij DBar_j K + 8 pi psi^10 S^i		<- the momentum constraint after all the conformal factor substitutions
 
-if we're in a vaccuum -- such that K_ij = 0, K = 0, rho = 0 -- then the momentum constraint becomes 
+If we're in a vaccuum -- such that K_ij = 0, K = 0, rho = 0 -- then the momentum constraint becomes (Baumgarte & Shapiro p. 69)
 	(DeltaBarL W)^i = 0
 and if we enforce gammaBar_ij = eta_ij then we get
 	partial^j partial_j W^i + 1/3 partial^i partial_j W^j = 0
-...and solutions to these are "Bowen York" solutions.
+Likewise (Alcubierre p. 97) the Hamiltonian constraint simplifies to
+	D^2 psi = 0
+...and solutions to these are known as "Bowen York" solutions.
 
 
 One such solution, which agrees Kerr black holes (Baumgarte & Shapiro, p.71):
@@ -486,6 +495,6 @@ ABarL^ij = (LBar W)^ij = 6/r^3 l^(i eBar^j)^kl J_k l_l
 	W^i = eBar^ijk X_j J_k
 	J^i = angular momentum density
 	eBar^ijk = Levi-Civita connection in gammaBar metric
-	X^i = l^i / r^2
-	l^i = x^i/r
+	l^i = x^i / r
+	X^i = l^i / r^2 = x^i / r^3
 
