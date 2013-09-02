@@ -260,17 +260,13 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 		//first compute and store aux values that will be subsequently used for partial differentiation
 		//during this process read and write to the same cell
 		
-		//psi = exp(ln(psi))
 		for (iter = auxGrid.begin(); iter != auxGrid.end(); ++iter) {
 			AuxCell &cell = *iter;
 			const GeomCell &geomCell = geomGridRead(iter.index);
-		
-			//ln_psi := ln(psi) = 1/6 ln(sqrt(gamma))
+	
 			//ln(psi) = 1/6 ln(sqrt(gamma))
-			cell.ln_psi = geomCell.ln_sqrt_gamma / 6.;
-			
 			//psi = exp(ln(psi))
-			cell.psi = exp(cell.ln_psi);
+			cell.calc_psi_and_ln_psi_from_ln_sqrt_gamma(geomCell);
 		}
 
 #if 0	//option #1: the original ADM implementation

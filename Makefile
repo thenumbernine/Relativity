@@ -7,7 +7,7 @@ default: relativity
 DIM := 1
 ITER := 100
 RES := 100
-HISTORY := history
+#HISTORY := history
 PLOT_FIELD := K
 
 # GRO J0422+32 : the smallest black hole yet found
@@ -22,9 +22,12 @@ PLOT_FIELD := K
 RELATIVITY_ARGS := size 4.1 brill-lindquist 2 -2 1 2 1
 PLOT_FILENAME := multiple_black_holes.txt
 
+plot:
+	lua plot.lua $(PLOT_FILENAME) $(DIM) $(PLOT_FIELD) $(HISTORY)
+
 run: install 
 	$(TARGETDIR)relativity integrator rk4 filename $(PLOT_FILENAME) dim $(DIM) iter $(ITER) res $(RES) $(HISTORY) $(RELATIVITY_ARGS)
-	lua plot.lua $(PLOT_FILENAME) $(DIM) $(PLOT_FIELD) $(HISTORY)
+	$(MAKE) plot
 
 run_test: install_test
 	$(TARGETDIR)test
@@ -67,6 +70,6 @@ clean:
 	-rm relativity
 	-rm test
 
-.PHONY: default all install install_test run run_test clean
+.PHONY: default all install install_test run run_test plot clean
 
 

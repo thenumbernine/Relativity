@@ -222,6 +222,9 @@ struct KerrSchild : public Base<dim, real> {
 		for (typename ADMFormalism::GeomGrid::iterator iter = sim->geomGridReadCurrent->begin(); iter != sim->geomGridReadCurrent->end(); ++iter) {
 			typename ADMFormalism::GeomCell &geomCell = *iter;
 			
+			//we don't need this cell, just a function in the AuxCell class
+			typename ADMFormalism::AuxCell &cell = sim->auxGrid(iter.index);
+			
 			vector v = sim->coordForIndex(iter.index) - center;
 			real r = vector::length(v);
 			real x = v(0);
@@ -243,6 +246,10 @@ struct KerrSchild : public Base<dim, real> {
 		
 			//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
 			geomCell.calc_ln_sqrt_gamma_from_gamma_ll();
+			
+			//ln(psi) = 1/6 ln(sqrt(gamma))
+			//psi = exp(ln(psi))
+			cell.calc_psi_and_ln_psi_from_ln_sqrt_gamma(geomCell);
 		
 			tensor_su gamma_uu;
 			gamma_uu = inverse(geomCell.gamma_ll);
@@ -267,7 +274,11 @@ struct KerrSchild : public Base<dim, real> {
 
 			real &alpha = geomCell.alpha;
 			alpha = sqrt(1. - 2. * H - betaNorm);
+			
+			real &K = geomCell.K;
+			K = 2 * M * alpha * alpha * alpha / (r * r) * (1. + 3. * M / r);
 
+#if 0		//option #1: calculate K_ij directly
 			tensor_sl &K_ll = geomCell.K_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
@@ -275,8 +286,51 @@ struct KerrSchild : public Base<dim, real> {
 				}
 			}
 
-			real &K = geomCell.K;
-			K = 2 * M * alpha * alpha * alpha / (r * r) * (1. + 3. * M / r);
+#endif
+#if 1		//option #2: calculate longitudinal portion of conformal transverse-traceless extrinsic curvature
+			//requires a vector for the angular momentum density
+			//z-axis for now
+
+			tensor_l J_l;
+			J_l(2) = J;
+
+			tensor_sl ABarL_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					ABarL_ll(i,j) = 0;
+					for (int k = 0; k < dim; ++k) {
+						for (int l = 0; l < dim; ++l) {
+							if (k == (j+1)%dim && l == (k+1)%dim) {
+								ABarL_ll(i,j) += 3. / (r * r * r) * (l_u(i) + l_u(j)) * J_l(k) * l_l(l);
+							} else if (j == (k+1)%dim && k == (l+1)%dim) {
+								ABarL_ll(i,j) -= 3. / (r * r * r) * (l_u(i) + l_u(j)) * J_l(k) * l_l(l);
+							}
+						}
+					}
+				}
+			}
+
+			// free to specify / leave at zero
+			tensor_sl ABarTT_ll;
+
+			tensor_sl ABar_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					ABar_ll(i,j) = ABarTT_ll(i,j) + ABarL_ll(i,j);
+				}
+			}
+
+			const real psi = cell.psi;
+			real oneOverPsiSquared = 1. / (psi * psi);
+
+			//K_ll(i,j) := K_ij = A_ij - 1/3 gamma_ij K = psi^-2 ABar_ij - 1/3 gamma_ij K
+			tensor_sl &K_ll = geomCell.K_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					K_ll(i,j) = ABar_ll(i,j) * oneOverPsiSquared - 1./3. * gamma_ll(i,j) * K;
+				}
+			}
+#endif
 		}
 	}
 };

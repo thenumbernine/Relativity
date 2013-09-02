@@ -262,5 +262,16 @@ struct AuxCell {
 
 	//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ij
 	real tr_ABar_sq;
+
+		// helper functions
+
+	void calc_psi_and_ln_psi_from_ln_sqrt_gamma(const GeomCell<real, dim> &geomCell) {
+		//ln_psi := ln(psi) = 1/6 ln(sqrt(gamma))
+		//ln(psi) = 1/6 ln(sqrt(gamma))
+		ln_psi = geomCell.ln_sqrt_gamma / 6.;
+		
+		//psi = exp(ln(psi))
+		psi = ln_psi;
+	}
 };
 
