@@ -43,46 +43,50 @@ using namespace std;
 //N-D case splots the last slice 
 template<typename real, int dim>
 struct RunClass {
-	void operator()(::ADMFormalism<real, dim> *sim, ostream &f, int numIters, bool outputHistory) {
-		const real dt = .1 * sim->dx(0);
-		
-		
+	void operator()(::ADMFormalism<real, dim> &sim, ostream &f, int numIters, bool outputHistory) {
+		const real dt = .1 * sim.dx(0);
+			
 		cout << "iterating..." << endl;
 		for (int i = 0; i < numIters; ++i) {
-			sim->update(dt);
+			sim.update(dt);
 		}
 		
 		//in case we're only outputting zero iterations
 		// or if we used a RK4 iterator whose last aux was not the last frame
-		sim->calcAux(*sim->getGeomGridReadCurrent());	
-		sim->outputLine(f);
+		sim.calcAux(*sim.getGeomGridReadCurrent());	
+		//sim.outputLine(f);
+		OutputTable<real, dim>::state(f, sim);
 	}
 };
 
 //1D case splot's all time slices together, or just one slice
 template<typename real>
 struct RunClass<real, 1> {
-	void operator()(::ADMFormalism<real, 1> *sim, ostream &f, int numIters, bool outputHistory) {
-		const real dt = .1 * sim->dx(0);
+	enum { dim = 1 };
+	void operator()(::ADMFormalism<real, 1> &sim, ostream &f, int numIters, bool outputHistory) {
+		const real dt = .1 * sim.dx(0);
 		
 		if (outputHistory) {
-			sim->calcAux(*sim->getGeomGridReadCurrent());	//in case we're only outputting zero iterations
-			sim->outputLine(f);
+			sim.calcAux(*sim.getGeomGridReadCurrent());	//in case we're only outputting zero iterations
+			//sim.outputLine(f);
+			OutputTable<real, dim>::state(f, sim);
 		}
 
 		cout << "iterating..." << endl;
 		for (int i = 0; i < numIters; ++i) {
-			sim->update(dt);
+			sim.update(dt);
 			
 			if (outputHistory) {
-				sim->calcAux(*sim->getGeomGridReadCurrent());	//in case we're only outputting zero iterations
-				sim->outputLine(f);
+				sim.calcAux(*sim.getGeomGridReadCurrent());	//in case we're only outputting zero iterations
+				//sim.outputLine(f);
+				OutputTable<real, dim>::state(f, sim);
 			}
 		}
 
 		if (!outputHistory) {
-			sim->calcAux(*sim->getGeomGridReadCurrent());	//in case we're only outputting zero iterations
-			sim->outputLine(f);
+			sim.calcAux(*sim.getGeomGridReadCurrent());	//in case we're only outputting zero iterations
+			//sim.outputLine(f);
+			OutputTable<real, dim>::state(f, sim);
 		}
 	}
 };
@@ -280,10 +284,11 @@ void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 	}
 
 	ofstream f(params.filename.c_str());
+
+	OutputTable<real, dim>::header(f);
+	//sim.outputHeaders(f);
 	
-	sim.outputHeaders(f);
-	
-	RunClass<real, dim>()(&sim, f, params.iter, params.history);	
+	RunClass<real, dim>()(sim, f, params.iter, params.history);	
 	
 	cout << "done!" << endl;
 }

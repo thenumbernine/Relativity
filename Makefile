@@ -1,34 +1,12 @@
 TARGETDIR := /data/local/bin/
-GNUPLOT := droidplot
 CPPFLAGS := -Wall -O0
 
 default: relativity
 
-DIM := 1
-ITER := 1
-RES := 10
-HISTORY := history
-PLOT_FIELD := K
+run: install
+	cd tests; $(MAKE)
 
-# GRO J0422+32 : the smallest black hole yet found
-#RELATIVITY_ARGS := size 4.1 kerr-schild 4.1
-#PLOT_FILENAME := black_hole.txt
-
-# Sagitarrius A* : The supermassive black hole in the center of the Milky Way
-RELATIVITY_ARGS := size 4.1e6 kerr-schild 4.1e6
-PLOT_FILENAME := black_hole.txt
-
-# binary black hole
-#RELATIVITY_ARGS := size 4.1 brill-lindquist 2 -2 1 2 1
-#PLOT_FILENAME := multiple_black_holes.txt
-
-plot:
-	lua plot.lua $(PLOT_FILENAME) $(DIM) $(PLOT_FIELD) $(HISTORY)
-
-run: install 
-	$(TARGETDIR)relativity integrator rk4 filename $(PLOT_FILENAME) dim $(DIM) iter $(ITER) res $(RES) $(HISTORY) $(RELATIVITY_ARGS)
-	$(MAKE) plot
-
+#this *should* become unit tests ... but it won't, because i'm lazy.
 run_test: install_test
 	$(TARGETDIR)test
 

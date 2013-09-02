@@ -264,19 +264,57 @@ struct tensor {
 		i.index(rank-1) = size()(rank-1);
 		return i;
 	}
+
+	//maybe I should put this in body
+	//and then use a sort of nested iterator so it doesn't cover redundant elements in symmetric indexes 
+	struct const_iterator {
+		const tensor *parent;
+		DerefType index;
+		
+		const_iterator() : parent(NULL) {}
+		const_iterator(const tensor *parent_) : parent(parent_) {}
+		const_iterator(const const_iterator &iter) : parent(iter.parent), index(iter.index) {}
+		
+		bool operator==(const const_iterator &b) const { return index == b.index; }
+		bool operator!=(const const_iterator &b) const { return index != b.index; }
+		
+		//NOTICE this doesn't take symmetric indexes into account
+		//TODO make a separate write iterator
+		const_iterator &operator++() {
+			for (int i = 0; i < rank; ++i) {	//allow the last index to overflow for sake of comparing it to end
+				++index(i);
+				if (index(i) < parent->size()(i)) break;
+				if (i < rank-1) index(i) = 0;
+			}
+			return *this;
+		}
+
+		const type &operator*() const { return (*parent)(index); }
+	};
+
+	const_iterator begin() const {
+		const_iterator i(this);
+		return i;
+	}
+	const_iterator end() const {
+		const_iterator i(this);
+		i.index(rank-1) = size()(rank-1);
+		return i;
+	}
+
 };
 
 template<typename Type, typename... Args>
-std::ostream &operator<<(std::ostream &o, tensor<Type, Args...> &t) {
+std::ostream &operator<<(std::ostream &o, const tensor<Type, Args...> &t) {
 	
 	typedef ::tensor<Type, Args...> tensor;
-	typedef typename tensor::iterator iterator;
+	typedef typename tensor::const_iterator const_iterator;
 	enum { rank = tensor::rank };
 	typedef typename tensor::DerefType DerefType;
 	const char *empty = "";
 	const char *sep = ", ";
 	vector<const char *,rank> seps(empty);
-	for (iterator i = t.begin(); i != t.end(); ++i) {
+	for (const_iterator i = t.begin(); i != t.end(); ++i) {
 		o << seps(0);
 		for (int j = 0; j < rank; ++j) {
 			bool matches = true;
