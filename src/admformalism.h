@@ -315,7 +315,10 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			}
 #endif
 #if 1	//option #2b: tell gamma_ij what its determinant should be
-		
+		//TODO this should not go here, because geomCells should be const!
+		// maybe I should add a separate 'constrain' step?
+		//currently this would be the only thing that goes on there...
+			
 			tensor_sl &gamma_ll = geomCell.gamma_ll;
 			tensor_sl &gammaBar_ll = cell.gammaBar_ll;
 			real oldGamma = determinant(gamma_ll);
