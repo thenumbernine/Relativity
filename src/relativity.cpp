@@ -24,6 +24,7 @@ using namespace std;
 //N-D case splots the last slice 
 template<typename real, int dim>
 struct RunTest {
+#if 0
 	void operator()(
 		::ADMFormalism<real, dim> &sim, 
 		ostream &f, 
@@ -51,8 +52,9 @@ struct RunTest {
 template<typename real>
 struct RunTest<real, 1> {
 	enum { dim = 1 };
+#endif
 	void operator()(
-		::ADMFormalism<real, 1> &sim,
+		::ADMFormalism<real, dim> &sim,
 		ostream &f,
 		real cfl, 
 		int numIters, 

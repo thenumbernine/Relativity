@@ -254,7 +254,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 	}
 	
 	//iteration
-	void calcAux(/*const*/ GeomGrid &geomGridRead) {
+	void calcAux(const GeomGrid &geomGridRead) {
 		typename AuxGrid::iterator iter;
 		
 		//first compute and store aux values that will be subsequently used for partial differentiation
@@ -288,7 +288,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			
 		for (iter = auxGrid.begin(); iter != auxGrid.end(); ++iter) {
 			AuxCell &cell = *iter;
-			GeomCell &geomCell = geomGridRead(iter.index);
+			const GeomCell &geomCell = geomGridRead(iter.index);
 		
 			real psiSquared = cell.psi * cell.psi;
 			real psiToTheFourth = psiSquared * psiSquared;
@@ -303,8 +303,6 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			// but I already know who will win: ln(sqrt(gamma))
 			//Instead, how about I remove the trace from gamma_ij and re-insert ln(sqrt(gamma)) ?
 
-#if 0	//option #2a: trust gamma_ij to be correct
-			
 			real oneOverPsiToTheFourth = 1. / psiToTheFourth;
 			
 			//gammaBar_ij = psi^-4 gamma_ij
@@ -313,29 +311,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 					cell.gammaBar_ll(i,j) = oneOverPsiToTheFourth * geomCell.gamma_ll(i,j);
 				}
 			}
-#endif
-#if 1	//option #2b: tell gamma_ij what its determinant should be
-		//TODO this should not go here, because geomCells should be const!
-		// maybe I should add a separate 'constrain' step?
-		//currently this would be the only thing that goes on there...
-			
-			tensor_sl &gamma_ll = geomCell.gamma_ll;
-			tensor_sl &gammaBar_ll = cell.gammaBar_ll;
-			real oldGamma = determinant(gamma_ll);
-			real cubeRootOldGamma = pow(oldGamma, 1./3.);
-			//gammaBar_ij = gamma^-1/3 gamma_ij
-			//gamma_ij = psi^4 gammaBar_ij
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					//a) remove the old conformal component
-					gammaBar_ll(i,j) = gamma_ll(i,j) / cubeRootOldGamma; 
-					//b) reintroduce the new one.  mind you this is the only thing that is writing back to geomCell at present
-					gamma_ll(i,j) = gammaBar_ll(i,j) * psiToTheFourth;
-				}
-			}
-
-#endif
-			
+		
 			//gammaBar^ij = inverse(gammaBar_ij)
 			cell.gammaBar_uu = inverse(cell.gammaBar_ll, 1.);
 		}
@@ -731,7 +707,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 
 	virtual void getExplicitPartials(
 		real dt, 
-		/*const*/ GeomGrid &geomGridRead,	//read from this.  last iteration state.
+		const GeomGrid &geomGridRead,	//read from this.  last iteration state.
 		GeomGrid &partial_t_geomGrid)		//next iteration partials
 	{
 		calcAux(geomGridRead);
@@ -848,8 +824,85 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 		}
 	}
 
+	//no guarantees that any of the aux values are good
+	// since the last integrator calculation could have come from a tmp state
+	// rather than the read state.
+	//so everything should be recalculated here.
+	//TODO dirty bit aux, for its association with a geom cell, or something
+	void constrain(GeomGrid &geomGridRead) {
+		for (typename AuxGrid::iterator iter = auxGrid.begin(); iter != auxGrid.end(); ++iter) {
+			AuxCell &cell = *iter;
+			GeomCell &geomCell = geomGridRead(iter.index);
+
+			tensor_sl &gamma_ll = geomCell.gamma_ll;
+			tensor_sl &gammaBar_ll = cell.gammaBar_ll;
+
+			//ln(psi) = 1/6 ln(sqrt(gamma))
+			//psi = exp(ln(psi))
+			cell.calc_psi_and_ln_psi_from_ln_sqrt_gamma(geomCell);
+
+			real &psi = cell.psi;
+			real psiSquared = psi * psi;
+			real psiToTheFourth = psiSquared * psiSquared;
+
+			real oldGamma = determinant(gamma_ll);
+			real cubeRootOldGamma = cbrt(oldGamma);
+		
+			//tell gamma_ij what its determinant should be, based upon ln(sqrt(gamma))
+			//gammaBar_ij = gamma^-1/3 gamma_ij
+			//gamma_ij = psi^4 gammaBar_ij
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					//a) remove the old conformal component
+					gammaBar_ll(i,j) = gamma_ll(i,j) / cubeRootOldGamma; 
+					//b) reintroduce the new one.  mind you this is the only thing that is writing back to geomCell at present
+					gamma_ll(i,j) = gammaBar_ll(i,j) * psiToTheFourth;
+				}
+			}
+
+			//update gammaBar^ij and gamma^ij
+			tensor_su &gammaBar_uu = cell.gammaBar_uu;
+			gammaBar_uu = inverse(gammaBar_ll, 1.);
+			
+			tensor_su &gamma_uu = cell.gamma_uu;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					gamma_uu(i,j) = gammaBar_uu(i,j) / psiToTheFourth;
+				}
+			}
+			
+			//same deal with K?
+			//K = K^i_i = gamma^ij K_ij
+			//A_ij = K_ij - 1/3 gamma_ij K is 'traceless'
+			
+			tensor_sl &K_ll = geomCell.K_ll;
+
+			real oldK = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					oldK += K_ll(i,j) * gamma_uu(i,j);
+				}
+			}
+
+			real &K = geomCell.K;
+			tensor_sl &A_ll = cell.A_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					//remove old trace component
+					A_ll(i,j) = K_ll(i,j) - (1./3.) * gamma_ll(i,j) * oldK;
+					//add new trace component
+					K_ll(i,j) = A_ll(i,j) + (1./3.) * A_ll(i,j) * K;
+				}
+			}
+		}
+
+	}
+
+
 	void update(real dt) {
 		integrator->update(dt);
+
+		constrain(*geomGridWriteCurrent);
 
 		time += dt;
 

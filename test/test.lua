@@ -84,9 +84,10 @@ local tests = {
 	{
 		name = 'sagitarrius_a_star_bowen-york_2d',
 		dim = 2,
-		iter = 100,
-		res = 100,
+		iter = 1,
+		res = 10,
 		size = 4.1,
+		history = true,
 		args = 'bowen-york 4.1e6 0 0 4.1e6',
 		excludeFromAll = true,	-- exclude from running 'all' tests
 	},
@@ -136,20 +137,21 @@ local function runCmd(targetTestName, cmd)
 			but plots need more
 			--]]
 			if cmd == 'plot' then
-				assert(exec('lua plot.lua '..filename
+				-- don't assert because gnuplot errors if the data is all zeroes
+				exec('lua plot.lua '..filename
 					..' '..(filename:match('(.*)%.txt'))..'.png'
 					..' '..test.dim
 					..' '..plotColumn
 					..(plotLog and ' log' or '')
-				))
+				)
 				if plotHistory then
-					assert(exec('lua plot.lua '..filename
+					exec('lua plot.lua '..filename
 						..' '..(filename:match('(.*)%.txt'))..'_history.png'
 						..' '..test.dim
 						..' '..plotColumn
 						..(plotLog and ' log' or '')
 						..' history'
-					))
+					)
 				end
 			end
 			if cmd == 'diff' then

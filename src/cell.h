@@ -47,7 +47,7 @@ struct GeomCell {
 	tensor_sl K_ll;
 
 	//extrinsic curvature trace
-	//K := K^i_k
+	//K := K^i_i
 	real K;
 
 	GeomCell()
