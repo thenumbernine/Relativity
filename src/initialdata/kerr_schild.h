@@ -1,6 +1,10 @@
 #pragma once
 
 #include "initialdata.h"
+#include "../constants.h"
+#include "../exception.h"
+
+#include <iostream>
 
 /*
 Kerr-Schild black hole
@@ -8,6 +12,8 @@ See Alcubierre p.56 and Baumgarte & Shapiro p.52
 */
 template<typename real, int dim>
 struct KerrSchild : public InitialData<real, dim> {
+	virtual const char *name() { return "kerr-schild"; }
+
 	typedef ::vector<real, dim> vector;
 	typedef ::InitialData<real, dim> InitialData;
 	typedef typename InitialData::ADMFormalism ADMFormalism;
@@ -20,16 +26,31 @@ struct KerrSchild : public InitialData<real, dim> {
 	real J;		//total angular momentum
 	real Q;		//total charge
 	
-	KerrSchild(
-		real M_,	//mass of black hole
-		real J_, 	//total angular momentum of black hole
-		real Q_)	//total charge of black hole
-	: 	M(M_),
-		J(J_),
-		Q(Q_)
-	{}
+	KerrSchild() : M(0), J(0), Q(0) {}
 
-	virtual void init(ADMFormalism &sim) {
+	virtual void init(ADMFormalism &sim, std::vector<std::string> &args) {
+	
+		if (!args.size()) throw Exception() << "expected mass";
+		M = atof(args[0].c_str());
+		args.erase(args.begin());
+	
+		J = 0;
+		Q = 0;
+		if (args.size()) {
+			J = atof(args[0].c_str());
+			args.erase(args.begin());
+		
+			if (args.size()) {
+				Q = atof(args[0].c_str());
+				args.erase(args.begin());
+			}
+		}
+
+		std::cout << "mass " << M << " solar masses" << std::endl;
+		std::cout << "angular momentum " << J << std::endl;
+		std::cout << "charge " << Q << std::endl;
+
+		M *= sunMassInM;
 		
 		real a = J / M;	//angular momentum density
 		
@@ -44,6 +65,7 @@ struct KerrSchild : public InitialData<real, dim> {
 		//provide initial conditions
 		
 		vector center = (max + min) * .5;
+		std::cout << "providing initial conditions..." << std::endl;
 		for (typename ADMFormalism::GeomGrid::iterator iter = sim.geomGridReadCurrent->begin(); iter != sim.geomGridReadCurrent->end(); ++iter) {
 			typename ADMFormalism::GeomCell &geomCell = *iter;
 				

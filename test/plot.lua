@@ -1,7 +1,7 @@
 --[[
 plotting script
 
-plot.lua <filename.txt> <dim> <field> <flags>
+plot.lua <filename.txt> <outfilename.png> <dim> <field> <flags>
 
 flags:
 	history
@@ -10,6 +10,7 @@ flags:
 
 local args = {...}
 local filename = table.remove(args, 1)
+local outfilename = table.remove(args, 1)
 local dim = table.remove(args, 1)
 local field = table.remove(args, 1)
 
@@ -32,8 +33,6 @@ f:close()
 
 assert(l:sub(1,1) == '#', "expected a comment on the first line")
 l = l:sub(2)
-
-local outfilename = filename:match('(.*)%.txt')..'.png'
 
 local datatype = 'lines'
 -- points for higher dimensions

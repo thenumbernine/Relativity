@@ -9,7 +9,7 @@ template<typename real, int dim>
 struct IADMFormalism {
 	virtual void getExplicitPartials(
 		real dt, 
-		const Grid<GeomCell<real, dim>, dim> &geomGrid, 
+		/*const*/ Grid<GeomCell<real, dim>, dim> &geomGrid, 
 		Grid<GeomCell<real, dim>, dim> &partialGrid) = 0;
 
 	virtual Grid<GeomCell<real, dim>, dim> *getGeomGridReadCurrent() = 0;

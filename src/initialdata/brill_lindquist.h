@@ -1,6 +1,10 @@
 #pragma once
 
 #include "initialdata.h"
+#include "../constants.h"
+#include "../exception.h"
+
+#include <iostream>
 
 /*
 This one's coming from "Numerical Relativity" p.61:
@@ -17,6 +21,8 @@ In fact, I'm stealing 1/alpha = sum_a M_a / (r c_a) from 12.51 without fully rea
 */
 template<typename real, int dim>
 struct BrillLindquist : public InitialData<real, dim> {
+	virtual const char *name() { return "brill-lindquist"; }
+
 	typedef ::vector<real, dim> vector;
 	typedef ::InitialData<real, dim> InitialData;
 	typedef typename InitialData::ADMFormalism ADMFormalism;
@@ -28,11 +34,30 @@ struct BrillLindquist : public InitialData<real, dim> {
 	//I should at least make this a structure or something
 	std::vector<tensor<real, lower<dim+1>>> blackHoleInfo;
 
-	BrillLindquist(const std::vector<tensor<real, lower<dim+1>>> &blackHoleInfo_)
-	:	blackHoleInfo(blackHoleInfo_)
-	{}
+	virtual void init(ADMFormalism &sim, std::vector<std::string> &args) {
+		if (!args.size()) throw Exception() << "expected simulation arguments";
+		int numBlackHoles = atoi(args[0].c_str());
+		args.erase(args.begin());
 
-	virtual void init(ADMFormalism &sim) {
+		std::cout << "number of black holes " << numBlackHoles << std::endl;
+
+		for (int i = 0; i < numBlackHoles; ++i) {
+			tensor<real, lower<dim+1>> blackHole;
+			for (int j = 0; j < dim+1; ++j) {
+				if (!args.size()) throw Exception() << "expected simulation arguments";
+				blackHole(j) = atof(args[0].c_str());
+				args.erase(args.begin());
+			}
+			
+			std::cout << "black hole position and mass " << blackHole << std::endl;
+			
+			for (int j = 0; j < dim; ++j) {
+				blackHole(j) *= sunRadiusInM;
+			}
+			blackHole(dim) *= sunMassInM;
+			
+			blackHoleInfo.push_back(blackHole);
+		}
 		
 		tensor_sl eta;
 		for (int i = 0; i < dim; ++i) {
@@ -45,6 +70,7 @@ struct BrillLindquist : public InitialData<real, dim> {
 		//provide initial conditions
 		
 		vector center = (max + min) * .5;
+		std::cout << "providing initial conditions..." << std::endl;
 		for (typename ADMFormalism::GeomGrid::iterator iter = sim.geomGridReadCurrent->begin(); iter != sim.geomGridReadCurrent->end(); ++iter) {
 			typename ADMFormalism::GeomCell &geomCell = *iter;
 			

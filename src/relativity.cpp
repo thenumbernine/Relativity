@@ -11,40 +11,28 @@
 #include <string>
 #include <vector>
 
-#include "initialdata/schwarzschild.h"
-#include "initialdata/kerr_schild.h"
-#include "initialdata/brill_lindquist.h"
+#include "constants.h"
 #include "initialdata/bowen_york.h"
+#include "initialdata/brill_lindquist.h"
+#include "initialdata/kerr_schild.h"
+#include "initialdata/schwarzschild.h"
 
 #include "output_table.h"
-
-//universal constants
-const double speedOfLightInMPerS = 299792458.;
-const double gravitationalConstantInM3PerKgS2 = 6.67384e-11;
-
-//conversions to meters
-const double metersPerS = speedOfLightInMPerS;
-const double metersPerKg = gravitationalConstantInM3PerKgS2 / (metersPerS * metersPerS);
-
-//properties of the sun
-const double sunMassInKg = 1.989e+30;
-const double sunMassInM = sunMassInKg * metersPerKg;
-const double sunRadiusInM = 6.955e+8;
-const double sunVolumeInM3 = 4. / 3. * M_PI * sunRadiusInM * sunRadiusInM * sunRadiusInM;
-const double sunDensityInM_2 = sunMassInKg * metersPerKg / sunVolumeInM3;
-
-const double sunRotationInRad_S = 2.8e-6;
-const double sunRotationInM = sunRotationInRad_S / metersPerS;
-const double sunAngularMomentumInKgM2_S = .4 * sunMassInKg * sunRadiusInM * sunRadiusInM * sunRotationInRad_S;
-const double sunAngularMomentumInM = .4 * sunMassInM * sunRadiusInM * sunRadiusInM * sunRotationInM;
 
 using namespace std;
 
 //N-D case splots the last slice 
 template<typename real, int dim>
-struct RunClass {
-	void operator()(::ADMFormalism<real, dim> &sim, ostream &f, int numIters, bool outputHistory) {
-		const real dt = .1 * sim.dx(0);
+struct RunTest {
+	void operator()(
+		::ADMFormalism<real, dim> &sim, 
+		ostream &f, 
+		real cfl, 
+		int numIters, 
+		bool outputHistory,
+		std::vector<bool> &cols)
+	{
+		const real dt = cfl * sim.dx(0);
 			
 		cout << "iterating..." << endl;
 		for (int i = 0; i < numIters; ++i) {
@@ -55,21 +43,28 @@ struct RunClass {
 		// or if we used a RK4 iterator whose last aux was not the last frame
 		sim.calcAux(*sim.getGeomGridReadCurrent());	
 		//sim.outputLine(f);
-		OutputTable<real, dim>::state(f, sim);
+		OutputTable<real, dim>::state(f, sim, cols);
 	}
 };
 
 //1D case splot's all time slices together, or just one slice
 template<typename real>
-struct RunClass<real, 1> {
+struct RunTest<real, 1> {
 	enum { dim = 1 };
-	void operator()(::ADMFormalism<real, 1> &sim, ostream &f, int numIters, bool outputHistory) {
-		const real dt = .1 * sim.dx(0);
+	void operator()(
+		::ADMFormalism<real, 1> &sim,
+		ostream &f,
+		real cfl, 
+		int numIters, 
+		bool outputHistory, 
+		std::vector<bool> &cols)
+	{
+		const real dt = cfl * sim.dx(0);
 		
 		if (outputHistory) {
 			sim.calcAux(*sim.getGeomGridReadCurrent());	//in case we're only outputting zero iterations
 			//sim.outputLine(f);
-			OutputTable<real, dim>::state(f, sim);
+			OutputTable<real, dim>::state(f, sim, cols);
 		}
 
 		cout << "iterating..." << endl;
@@ -79,18 +74,45 @@ struct RunClass<real, 1> {
 			if (outputHistory) {
 				sim.calcAux(*sim.getGeomGridReadCurrent());	//in case we're only outputting zero iterations
 				//sim.outputLine(f);
-				OutputTable<real, dim>::state(f, sim);
+				OutputTable<real, dim>::state(f, sim, cols);
 			}
 		}
 
 		if (!outputHistory) {
 			sim.calcAux(*sim.getGeomGridReadCurrent());	//in case we're only outputting zero iterations
 			//sim.outputLine(f);
-			OutputTable<real, dim>::state(f, sim);
+			OutputTable<real, dim>::state(f, sim, cols);
 		}
 	}
 };
 
+template<typename real, int dim, typename... InitialDataTypes>
+struct InitTest;
+
+template<typename real, int dim, typename InitialDataType, typename... InitialDataTypes>
+struct InitTest<real, dim, InitialDataType, InitialDataTypes...> {
+	typedef InitTest<real, dim, InitialDataTypes...> NextType;
+	static void init(const std::string &simType, std::vector<std::string> &args, ADMFormalism<real, dim> &sim) {
+		InitialDataType init;
+		if (simType == init.name()) {
+			init.init(sim, args);
+		} else {
+			NextType::init(simType, args, sim);
+		}
+	}
+};
+
+template<typename real, int dim, typename InitialDataType>
+struct InitTest<real, dim, InitialDataType>{
+	static void init(const std::string &simType, std::vector<std::string> &args, ADMFormalism<real, dim> &sim) {
+		InitialDataType init;
+		if (simType == init.name()) {
+			init.init(sim, args);
+		} else {
+			throw Exception() << "got unknown simulation type " << simType;
+		}
+	}
+};
 
 enum {
 	PRECISION_FLOAT,
@@ -110,12 +132,13 @@ struct SimParams {
 		res(100),
 		size(1),
 		iter(100),
+		cfl(.1),
 		precision(PRECISION_DOUBLE),
 		integrator(INTEGRATOR_RK4),
 		history(false),
 		filename("out.txt")
 	{}
-	
+
 	//dim <n>	= dimension
 	int dim;	
 	
@@ -127,6 +150,9 @@ struct SimParams {
 
 	//iter <n>	= number of iterations
 	int iter;
+
+	//cfl <n>	= CFL
+	double cfl;
 
 	//precision <prec> = precision (see PRECISION_* enum) 
 	int precision;
@@ -140,6 +166,9 @@ struct SimParams {
 	//filename	= output filename
 	std::string filename;
 
+	//desired columns
+	std::string columnNames;
+
 	//rest of args
 	std::vector<std::string> args;
 };
@@ -150,25 +179,32 @@ SimParams interpretArgs(int argc, char **argv) {
 		//0-param vars
 		if (!strcmp(argv[i], "history")) {
 			params.history = true;
-			cerr << "using history" << endl;
+			cout << "using history" << endl;
+			continue;
+		} else if (!strcmp(argv[i], "allcols")) {
+			params.columnNames = "*all*";
 			continue;
 		//1-param vars
 		} else if (i < argc-1) {
 			if (!strcmp(argv[i], "dim")) {
 				params.dim = atoi(argv[++i]);
-				cerr << "dim " << params.dim << endl;
+				cout << "dim " << params.dim << endl;
 				continue;
 			} else if (!strcmp(argv[i], "res")) {
 				params.res = atoi(argv[++i]);
-				cerr << "res " << params.res << endl;
+				cout << "res " << params.res << endl;
 				continue;
 			} else if (!strcmp(argv[i], "size")) {
 				params.size = atof(argv[++i]);
-				cerr << "size " << params.size << endl;
+				cout << "size " << params.size << endl;
 				continue;
 			} else if (!strcmp(argv[i], "iter")) {
 				params.iter = atoi(argv[++i]);
-				cerr << "iter " << params.iter << endl;
+				cout << "iter " << params.iter << endl;
+				continue;
+			} else if (!strcmp(argv[i], "cfl")) {
+				params.cfl = atof(argv[++i]);
+				cout << "cfl " << params.cfl << endl;
 				continue;
 			} else if (!strcmp(argv[i], "precision")) {
 				const char *precision = argv[++i];
@@ -193,6 +229,9 @@ SimParams interpretArgs(int argc, char **argv) {
 			} else if (!strcmp(argv[i], "filename")) {
 				params.filename = argv[++i];
 				continue;
+			} else if (!strcmp(argv[i], "cols")) {
+				params.columnNames = argv[++i];
+				continue;
 			}
 		}
 
@@ -211,6 +250,38 @@ SimParams interpretArgs(int argc, char **argv) {
 template<typename real, int dim>
 void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 
+	std::vector<bool> cols(OutputTable<real, dim>::getNumColumns());
+	//determine columns to output
+
+	if (params.columnNames == "*all*") {
+		for (int i = 0; i < (int)cols.size(); ++i) {
+			cols[i] = true;
+		}
+	} else {
+		std::string restOfColumnNames = params.columnNames;
+		bool anyFound = false;
+		while (restOfColumnNames.length() > 0) {
+			std::cout << "rest of names " << restOfColumnNames << std::endl;
+			size_t delimPos = restOfColumnNames.find(",");
+			std::cout << "delim pos " << delimPos << std::endl;
+			std::string colName;
+			if (delimPos == std::string::npos) {
+				colName = restOfColumnNames;
+				restOfColumnNames = "";
+			} else {
+				colName = restOfColumnNames.substr(0, delimPos);
+				restOfColumnNames = restOfColumnNames.substr(delimPos + 1);
+			}
+			std::cout << "col name " << colName << std::endl;
+			if (colName.length()) {
+				anyFound = true;
+				cols[OutputTable<real, dim>::getColumnIndex(colName)] = true;
+			}
+		}
+		if (!anyFound) throw Exception() << "you forgot to provide any columns to output";
+	}
+
+
 	cout << "constructing sim..." << endl;
 	
 	real maxDist = params.size * sunRadiusInM;
@@ -224,71 +295,20 @@ void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 		string simType = params.args[0];
 		params.args.erase(params.args.begin());
 
-		if (simType == "kerr-schild") {
-			if (!params.args.size()) throw Exception() << "expected simulation mass";
-			double mass = atof(params.args[0].c_str());
-			params.args.erase(params.args.begin());
-		
-			double angularMomentum = 0;
-			double charge = 0;
-			if (params.args.size()) {
-				angularMomentum = atof(params.args[0].c_str());
-				params.args.erase(params.args.begin());
-			
-				if (params.args.size()) {
-					charge = atof(params.args[0].c_str());
-					params.args.erase(params.args.begin());
-				}
-			}
-
-			cerr << "mass " << mass << endl;
-			cerr << "angular momentum " << angularMomentum << endl;
-			cerr << "charge " << charge << endl;
-
-			KerrSchild<real, dim> test(mass * sunMassInM, angularMomentum, charge);
-			cout << "providing initial conditions..." << endl;
-			test.init(sim);
-
-		} else if (simType == "brill-lindquist") {
-			if (!params.args.size()) throw Exception() << "expected simulation arguments";
-			int numBlackHoles = atoi(params.args[0].c_str());
-			params.args.erase(params.args.begin());
-
-			cerr << "number of black holes " << numBlackHoles << endl;
-
-			std::vector<tensor<real, lower<dim+1>>> blackHoleInfos;
-			for (int i = 0; i < numBlackHoles; ++i) {
-				tensor<real, lower<dim+1>> blackHoleInfo;
-				for (int j = 0; j < dim+1; ++j) {
-					if (!params.args.size()) throw Exception() << "expected simulation arguments";
-					blackHoleInfo(j) = atof(params.args[0].c_str());
-					params.args.erase(params.args.begin());
-				}
-				
-				cerr << "black hole position and mass " << blackHoleInfo << endl;
-				
-				for (int j = 0; j < dim; ++j) {
-					blackHoleInfo(j) *= sunRadiusInM;
-				}
-				blackHoleInfo(dim) *= sunMassInM;
-				
-				blackHoleInfos.push_back(blackHoleInfo);
-			}
-
-			BrillLindquist<real, dim> test(blackHoleInfos);
-			cout << "providing initial conditions..." << endl;
-			test.init(sim);
-		} else {
-			throw Exception() << "got unknown simulation type " << simType;
-		}
+		InitTest<real, dim,
+			BowenYork<real, dim>,
+			BrillLindquist<real, dim>,
+			KerrSchild<real, dim>,
+			Schwarzschild<real, dim>
+		>::init(simType, params.args, sim);
 	}
 
 	ofstream f(params.filename.c_str());
 
-	OutputTable<real, dim>::header(f);
+	OutputTable<real, dim>::header(f, cols);
 	//sim.outputHeaders(f);
 	
-	RunClass<real, dim>()(sim, f, params.iter, params.history);	
+	RunTest<real, dim>()(sim, f, params.cfl, params.iter, params.history, cols);
 	
 	cout << "done!" << endl;
 }

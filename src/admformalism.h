@@ -254,7 +254,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 	}
 	
 	//iteration
-	void calcAux(const GeomGrid &geomGridRead) {
+	void calcAux(/*const*/ GeomGrid &geomGridRead) {
 		typename AuxGrid::iterator iter;
 		
 		//first compute and store aux values that will be subsequently used for partial differentiation
@@ -288,24 +288,51 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			
 		for (iter = auxGrid.begin(); iter != auxGrid.end(); ++iter) {
 			AuxCell &cell = *iter;
-			const GeomCell &geomCell = geomGridRead(iter.index);
+			GeomCell &geomCell = geomGridRead(iter.index);
 		
 			real psiSquared = cell.psi * cell.psi;
 			real psiToTheFourth = psiSquared * psiSquared;
-			real oneOverPsiToTheFourth = 1. / psiToTheFourth;
 
 			//gamma = psi^12
 			//either this or another exp() call
 			real psiToTheEighth = psiToTheFourth * psiToTheFourth;
 			cell.gamma = psiToTheFourth * psiToTheEighth;
 
+			//at the moment I'm iterating ln(sqrt(gamma)) and gamma_ij separately
+			//I could compare ln(sqrt(gamma)) versus det(gamma_ij) to see how accurate my integrator is
+			// but I already know who will win: ln(sqrt(gamma))
+			//Instead, how about I remove the trace from gamma_ij and re-insert ln(sqrt(gamma)) ?
+
+#if 0	//option #2a: trust gamma_ij to be correct
+			
+			real oneOverPsiToTheFourth = 1. / psiToTheFourth;
+			
 			//gammaBar_ij = psi^-4 gamma_ij
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					cell.gammaBar_ll(i,j) = oneOverPsiToTheFourth * geomCell.gamma_ll(i,j);
 				}
 			}
+#endif
+#if 1	//option #2b: tell gamma_ij what its determinant should be
+		
+			tensor_sl &gamma_ll = geomCell.gamma_ll;
+			tensor_sl &gammaBar_ll = cell.gammaBar_ll;
+			real oldGamma = determinant(gamma_ll);
+			real cubeRootOldGamma = pow(oldGamma, 1./3.);
+			//gammaBar_ij = gamma^-1/3 gamma_ij
+			//gamma_ij = psi^4 gammaBar_ij
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					//a) remove the old conformal component
+					gammaBar_ll(i,j) = gamma_ll(i,j) / cubeRootOldGamma; 
+					//b) reintroduce the new one.  mind you this is the only thing that is writing back to geomCell at present
+					gamma_ll(i,j) = gammaBar_ll(i,j) * psiToTheFourth;
+				}
+			}
 
+#endif
+			
 			//gammaBar^ij = inverse(gammaBar_ij)
 			cell.gammaBar_uu = inverse(cell.gammaBar_ll, 1.);
 		}
@@ -701,8 +728,8 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 
 	virtual void getExplicitPartials(
 		real dt, 
-		const GeomGrid &geomGridRead,	//read from this.  last iteration state.
-		GeomGrid &partial_t_geomGrid)			//next iteration partials
+		/*const*/ GeomGrid &geomGridRead,	//read from this.  last iteration state.
+		GeomGrid &partial_t_geomGrid)		//next iteration partials
 	{
 		calcAux(geomGridRead);
 	
