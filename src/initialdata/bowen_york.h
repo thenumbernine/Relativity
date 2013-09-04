@@ -151,18 +151,9 @@ struct BowenYork : public InitialData<real, dim> {
 			phi = log(psi);
 
 			//gammaBar_ij = eta_ij
-			tensor_sl &gammaBar_ll = cell.gammaBar_ll;
+			tensor_sl &gammaBar_ll = geomCell.gammaBar_ll;
 			gammaBar_ll = eta;;
 			
-			//reconstruct our state metric variable
-			//gamma_ij = psi^4 gammaBar_ij
-			tensor_sl &gamma_ll = geomCell.gamma_ll;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					gamma_ll(i,j) = psiToTheFourth * gammaBar_ll(i,j);
-				}
-			}
-
 			//l_i = gamma_ij l^j
 			// since I'm forcing angular momentum to be 3D (so I can get angular momentum in my 2D cases)
 			// and both l and J go into ABarL, so this has to be 3D as well
@@ -232,11 +223,14 @@ struct BowenYork : public InitialData<real, dim> {
 
 			real oneOverPsiSquared = 1. / psiSquared;
 
-			//K_ll(i,j) := K_ij = A_ij - 1/3 gamma_ij K = psi^-2 ABar_ij - 1/3 gamma_ij K
+			//K_ll(i,j) := K_ij 
+			//			= A_ij - 1/3 gamma_ij K 
+			//			= psi^-2 ABar_ij - 1/3 gamma_ij K
+			//			= psi^-2 ABar_ij - 1/3 psi^4 gammaBar_ij K
 			tensor_sl &K_ll = geomCell.K_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
-					K_ll(i,j) = ABar_ll(i,j) * oneOverPsiSquared - 1./3. * gamma_ll(i,j) * K;
+					K_ll(i,j) = ABar_ll(i,j) * oneOverPsiSquared - 1./3. * psiToTheFourth * gammaBar_ll(i,j) * K;
 				}
 			}
 		}

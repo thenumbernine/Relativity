@@ -183,7 +183,7 @@ struct PartialSecondDerivativeClass<real, dim, CellType, PartialCellType, real> 
 	typedef const PartialInputType PartialCellType::*CellPartialFieldType;
 	OutputType operator()(const Grid &grid, CellFieldType field, const PartialGrid &partialGrid, CellPartialFieldType partialField, const vector<real, dim> &dx, const vector<int, dim> &index) {
 		OutputType result;
-			
+				
 		//partial2_field_ll(i,j) = partial_i partial_j field
 		for (int i = 0; i < dim; ++i) {
 			PartialInputType partial_field_l_wrt_xi = partialDerivativeCoordinate<real, dim, PartialCellType, PartialInputType, 8>(partialGrid, partialField, dx, index, i);
@@ -208,7 +208,7 @@ struct PartialSecondDerivativeClass<real, dim, CellType, PartialCellType, tensor
 	typedef ::Grid<CellType, dim> Grid;
 	typedef ::Grid<PartialCellType, dim> PartialGrid;
 	typedef const InputType CellType::*CellFieldType;
-	typedef const PartialInputType CellType::*CellPartialFieldType;
+	typedef const PartialInputType PartialCellType::*CellPartialFieldType;
 	OutputType operator()(const Grid &grid, CellFieldType field, const PartialGrid &partialGrid, CellPartialFieldType partialField, const vector<real, dim> &dx, const vector<int, dim> &index) {
 		OutputType result;
 			

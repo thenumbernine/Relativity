@@ -81,7 +81,7 @@ struct KerrSchild : public InitialData<real, dim> {
 			if (dim > 1) l_l(1) = (r * y - a * x) / (r * r + a * a);
 			if (dim > 2) l_l(2) = z / r;
 
-			tensor_sl &gamma_ll = geomCell.gamma_ll;
+			tensor_sl gamma_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					gamma_ll(i,j) = eta(i,j) + (2. - eta(i,j)) * H * l_l(i) * l_l(j);
@@ -94,9 +94,19 @@ struct KerrSchild : public InitialData<real, dim> {
 			//phi = log(gamma) / 12
 			real &phi = geomCell.phi;
 			phi = log(gamma) / 12.;
-				
-			tensor_su gamma_uu;
-			gamma_uu = inverse(geomCell.gamma_ll, gamma);
+			
+			real expMinusFourPhi = exp(-4. * phi);
+			//gammaBar_ll(i,j) := gammaBar_ij
+			//					= psi^-4 gamma_ij 
+			//					= exp(-4phi) gamma_ij
+			tensor_sl &gammaBar_ll = geomCell.gammaBar_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					gammaBar_ll(i,j) = expMinusFourPhi * gamma_ll(i,j);
+				}
+			}
+			
+			tensor_su gamma_uu = inverse(gamma_ll, gamma);
 
 			tensor_u l_u;
 			for (int i = 0; i < dim; ++i) {
@@ -112,7 +122,7 @@ struct KerrSchild : public InitialData<real, dim> {
 			real betaNorm = 0.;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
-					betaNorm += geomCell.gamma_ll(i,j) * geomCell.beta_u(i) * geomCell.beta_u(j);
+					betaNorm += gamma_ll(i,j) * geomCell.beta_u(i) * geomCell.beta_u(j);
 				}
 			}
 

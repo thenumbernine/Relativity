@@ -37,10 +37,13 @@ struct GeomCell {
 	//psi^12 = gamma
 	real phi;
 
-	//spatial metric
-	//gamma_ll(i,j) := gamma_ij
-	//gamma_it = gamma_tj = 0
-	tensor_sl gamma_ll;
+	//conformal spatial metric
+	//gammaBar_ll(i,j) := gammaBar_ij = gamma^-1/3 gamma_ij = psi^-4 gamma_ij
+	//such that det(gammaBar_ij) = det(gamma^-1/3 gamma_ij) = (gamma^-1/3)^3 det(gamma_ij) = gamma^-1 gamma = 1
+	// makes me wonder, for our toy 2+1 and 1+1 sims, should we be lowering the conformal / traceless fraction from 1/3 to 1/N?
+	//  and off of that, should we be lowering the EFE trace-reversed Ricci tensor from 2/4 to 2/N?
+	//  probably not.
+	tensor_sl gammaBar_ll;
 
 	//extrinsic curvature
 	//K_ll(i,j) := K_ij
@@ -63,7 +66,7 @@ struct GeomCell {
 		GeomCell result;
 		result.alpha = alpha * scalar;
 		result.beta_u = beta_u * scalar;
-		result.gamma_ll = gamma_ll * scalar;
+		result.gammaBar_ll = gammaBar_ll * scalar;
 		result.K_ll = K_ll * scalar;
 		result.K = K * scalar;
 		result.phi = phi * scalar;
@@ -73,7 +76,7 @@ struct GeomCell {
 	GeomCell &operator+=(const GeomCell &sourceCell) {
 		alpha += sourceCell.alpha;
 		beta_u += sourceCell.beta_u;
-		gamma_ll += sourceCell.gamma_ll;
+		gammaBar_ll += sourceCell.gammaBar_ll;
 		K_ll += sourceCell.K_ll;
 		K += sourceCell.K;
 		phi += sourceCell.phi;
@@ -136,15 +139,15 @@ struct AuxCell {
 	:	H(real()),
 		gamma(real()),
 		R(real()),
-		tr_K_sq(real()),
 		psi(real()),
 		DBar2_psi(real()),
 		RBar(real()),
+		tr_K_sq(real()),
 		tr_ABar_sq(real())
 	{}
 
 
-	//	constraint variables: should always be zero
+		//constraint variables: should always be zero
 
 
 	//hamiltonian constraint
@@ -154,7 +157,7 @@ struct AuxCell {
 	tensor_u M_u;
 
 
-	//	aux values computed and stored for partials
+		//lapse and shift related
 
 
 	//D_alpha_l(i) := D_i alpha
@@ -163,6 +166,13 @@ struct AuxCell {
 	//beta_l(i) := beta_i
 	//beta_t = beta^k beta_k
 	tensor_l beta_l;
+
+		//metric related
+
+	//spatial metric
+	//gamma_ll(i,j) := gamma_ij
+	//gamma_it = gamma_tj = 0
+	tensor_sl gamma_ll;
 
 	//partial_gamma_lll(k,i,j) := partial_k gamma_ij
 	tensor_lsl partial_gamma_lll;
@@ -186,18 +196,7 @@ struct AuxCell {
 	//R = R^i_i
 	real R;
 
-		//curvature aux variables
-
-	//K_ul(i,j) := K^i_j
-	tensor_ul K_ul;
-
-	//K_uu(i,j) := K^ij
-	tensor_su K_uu;
-
-	//tr_K_sq := (K^2)^i_i = K^ij K_ji
-	real tr_K_sq;
-
-		//conformal factor aux variables
+		//conformal factor / metric
 
 	//conformal factor 
 	//currently derived from the iterated ln(sqrt(gamma))	
@@ -212,9 +211,6 @@ struct AuxCell {
 	//DBar2_psi := gammaBar^ij DBar_i DBar_j psi
 	real DBar2_psi;
 	
-	//gammaBar_ll(i,j) := gammaBar_ij = psi^-4 gamma_ij
-	tensor_sl gammaBar_ll;
-
 	//gammaBar_uu(i,j) := gammaBar^ij = psi^4 gamma^ij
 	tensor_su gammaBar_uu;
 
@@ -232,11 +228,25 @@ struct AuxCell {
 	
 	//RBar = gammaBar^ij RBar_ij
 	real RBar;
+		
+		//extrinsic curvature
+
+	//K_ul(i,j) := K^i_j
+	tensor_ul K_ul;
+
+	//K_uu(i,j) := K^ij
+	tensor_su K_uu;
+
+	//tr_K_sq := (K^2)^i_i = K^ij K_ji
+	real tr_K_sq;
+
+		//conformal extrinsic curvature
 
 	//traceless part of extrinsic curvature tensor
 	//A_ll(i,j) := A_ij = K_ij - 1/3 gamma_ij K
 	tensor_sl A_ll;
 
+	//"natural" conformal extrinsic curvature
 	//ABar_ll(i,j) := ABar_ij = psi^2 A_ij
 	tensor_sl ABar_ll;
 	
@@ -245,5 +255,9 @@ struct AuxCell {
 
 	//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ij
 	real tr_ABar_sq;
+
+	//minimal distortion conformal extrinsic curvature
+	//ATilde_ll(i,j) := ATilde_ij = psi^-4 A_ij
+	tensor_sl ATilde_ll;
 };
 

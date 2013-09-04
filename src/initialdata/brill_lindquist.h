@@ -76,9 +76,10 @@ struct BrillLindquist : public InitialData<real, dim> {
 			
 			vector x = sim.coordForIndex(iter.index);
 
-			//calculate psi and gammaBar_ij
-			tensor_sl gammaBar_ll = eta;
+			//calculate gammaBar_ij
+			geomCell.gammaBar_ll = eta;
 			
+			//calculate psi
 			real psi = 1;
 			real oneOverAlpha = 0;
 			for (int i = 0; i < (int)blackHoleInfo.size(); ++i) {
@@ -102,16 +103,6 @@ struct BrillLindquist : public InitialData<real, dim> {
 			//That and I skimmed through ch.12 to find something like this, and it's probably wrong:
 			//geomCell.alpha = 1. / oneOverAlpha;
 			geomCell.alpha = 1.;
-
-			//from psi we need to calculate our state values
-			real psiSquared = psi * psi;
-			real psiToTheFourth = psiSquared * psiSquared;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					geomCell.gamma_ll(i,j) = gammaBar_ll(i,j) * psiToTheFourth;
-				}
-			}
-
 			geomCell.phi = log(psi);
 		}
 	}

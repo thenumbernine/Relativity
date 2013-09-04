@@ -17,6 +17,7 @@ struct Schwarzschild : public InitialData<real, dim> {
 	typedef ::vector<real, dim> vector;
 	typedef ::InitialData<real, dim> InitialData;
 	typedef typename InitialData::ADMFormalism ADMFormalism;
+	typedef typename ADMFormalism::tensor_sl tensor_sl;
 
 	real M;		//total mass, in meters
 	real R;		//radius, in meters
@@ -65,15 +66,26 @@ struct Schwarzschild : public InitialData<real, dim> {
 		
 			//beta^i = 0
 
+			tensor_sl gamma_ll;
 			for (int i = 0; i < dim; ++i) {
-				geomCell.gamma_ll(i,i) = onePlusMOverTwoR_Squared * onePlusMOverTwoR_Squared;
+				gamma_ll(i,i) = onePlusMOverTwoR_Squared * onePlusMOverTwoR_Squared;
 			}
 			
 			//gamma = det(gamma_ij)
-			real gamma = determinant(geomCell.gamma_ll);
-
+			real gamma = determinant(gamma_ll);
+			
+			//phi = log(gamma) / 12
 			real &phi = geomCell.phi;
 			phi = log(gamma) / 12.;
+
+			real expMinusFourPhi = exp(-4. * phi);
+			//gammaBar_ll(i,j) := gamma^-1/3 gamma_ij
+			tensor_sl &gammaBar_ll = geomCell.gammaBar_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					gammaBar_ll(i,j) = expMinusFourPhi * gamma_ll(i,j);
+				}
+			}
 
 			//K_ij = K = 0
 			

@@ -499,6 +499,9 @@ ABarL^ij = (LBar W)^ij = 6/r^3 l^(i eBar^j)^kl J_k l_l
 	X^i = l^i / r^2 = x^i / r^3
 
 
+
+
+
 I'm going to skip ahead in Baumgarte & Shapiro to p.390 / ch.11 to the BSSN chapter.
 Alcubierre has this back at p.94 which I skipped over.
 
@@ -513,4 +516,38 @@ gamma = psi^12
 ln(gamma) = 12 ln(psi)
 ln(sqrt(gamma)) = 6 ln(psi) = 6 phi	<- converting from old to new time-derivative code
 phi = ln(sqrt(gamma)) / 6 = ln(gamma) / 12
+
+phi replaces ln(psi), check.
+
+
+next we have 
+K_ij = exp(4phi) ATilde_ij + 1/3 gamma_ij K
+which comes from
+A_ij = K_ij - 1/3 gamma_ij K	<- conformal transverse-traceless
+K_ij = A_ij + 1/3 gamma_ij K
+so 
+A_ij = exp(4phi) ATilde_ij
+replacing exp(phi) = psi
+
+From there (Baumgarte & Shapiro p.64) we scale by an arbitrary power of psi:
+A^ij = psi^alpha ABar^ij
+
+A_ij = psi^4 ATilde_ij
+this is the alternative of our original choice for alpha back at Baumgarte & Shapiro p.64 which said
+ABar^ij = psi^10 A^ij
+i.e. 
+ABar^ij = exp(10phi) A^ij
+and subsequently by lowering via gammaBar_ij = psi^-4 gamma_ij
+ABar_ij = gammaBar_ik ABar^kl gammaBar_lj = psi^10 psi^-4 gamma_ik A^kl psi^-4 gamma_lj
+ABar_ij = psi^2 A_ij
+
+the other (which Baumgarte & Shapiro introduce on page 120) is
+ATilde^ij = psi^4 A^ij
+i.e.
+ATilde^ij = exp(4phi) A^ij
+and is lowered via gammaBar, the conformal metric.  the only difference with ABar is that it is based on the solution alpha = 4 rather than alpha = 10
+ATilde_ij = gammaBar_ik ATilde^kl gammaBar_lj = psi^4 psi^-4 gamma_ik A^kl psi^-4 gamma_lj
+ATilde_ij = psi^-4 A_ij
+ATilde_ij = exp(-4phi) A_ij
+No mention of ATilde being raised or lowered by a metric other than the conformal metric anywhere, and Alcubierre p.83 affirms my lowered ATilde identity.
 
