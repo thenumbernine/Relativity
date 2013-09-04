@@ -73,13 +73,21 @@ local tests = {
 		size = 4.1,
 		args = 'bowen-york 4.1 4.1',
 	},
-	{
+	{	-- spinning test
 		name = 'sagitarrius_a_star_bowen-york',
 		dim = 1,
 		iter = 100,
 		res = 100,
 		size = 4.1e6,
 		args = 'bowen-york 4.1e6 0 0 4.1e6',
+	},
+	{	-- boosted test
+		name = 'sagitarrius_a_star_bowen-york_boosted',
+		dim = 1,
+		iter = 100,
+		res = 100,
+		size = 4.1e6,
+		args = 'bowen-york 4.1e6 0 0 4.1e6 4.1e6 0 0',
 	},
 	{
 		name = 'sagitarrius_a_star_bowen-york_2d',

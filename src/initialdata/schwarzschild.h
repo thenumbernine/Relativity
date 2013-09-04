@@ -70,8 +70,10 @@ struct Schwarzschild : public InitialData<real, dim> {
 			}
 			
 			//gamma = det(gamma_ij)
-			//ln_sqrt_gamma := ln(sqrt(gamma))
-			geomCell.calc_ln_sqrt_gamma_from_gamma_ll();
+			real gamma = determinant(geomCell.gamma_ll);
+
+			real &phi = geomCell.phi;
+			phi = log(gamma) / 12.;
 
 			//K_ij = K = 0
 			

@@ -32,10 +32,14 @@ function ErrorColumn:printStats(name)
 	io.stderr:write(name..'\n')
 	local absARange = self.absARange[2] - self.absARange[1]
 	local absBRange = self.absBRange[2] - self.absBRange[1]
-	local rangeRelErr = math.abs(absBRange - absARange) / math.abs(absARange)
+	local relMinErr = math.abs(self.absBRange[1] - self.absARange[1]) / math.abs(self.absARange[1])
+	local relMaxErr = math.abs(self.absBRange[2] - self.absARange[2]) / math.abs(self.absARange[2])
+	local relRangeErr = math.abs(absBRange - absARange) / math.abs(absARange)
 	io.stderr:write('\tabs range in file A: '..self.absARange[1]..' to '..self.absARange[2]..'\n')
 	io.stderr:write('\tabs range in file B: '..self.absBRange[1]..' to '..self.absBRange[2]..'\n')
-	io.stderr:write('\trange relative error: '..rangeRelErr..'\n')
+	io.stderr:write('\trelative min error: '..relMinErr..'\n')
+	io.stderr:write('\trelative max error: '..relMinErr..'\n')
+	io.stderr:write('\trelative range error: '..relRangeErr..'\n')
 end
 
 -- 1) make sure columns match
@@ -55,7 +59,9 @@ end
 local headersA, headersB = nextLines()
 
 if headersA ~= headersB then
-	errorLines(headersA, headersB, "headers do not match!")
+	print("column names do not match!")
+	io.stderr:write(filenameA..': '..headersA..'\n')
+	io.stderr:write(filenameB..': '..headersB..'\n')
 end
 
 local function getColumns(line)
@@ -71,7 +77,45 @@ local function getColumnNames(header)
 	return getColumns(header:sub(2))
 end
 
-local headers = getColumnNames(headersA)	-- pick one, they're both the same
+local colNamesA = getColumnNames(headersA)
+local colNamesB = getColumnNames(headersB)
+
+local colIndexForNameA = {}
+local colIndexForNameB = {}
+for i,name in ipairs(colNamesA) do colIndexForNameA[name] = i end
+for i,name in ipairs(colNamesB) do colIndexForNameB[name] = i end
+
+-- get common subset
+local function getAllColNames(colNamesA, colNamesB)
+	-- store as keys / set
+	local allColNameKeys = {}
+	for i,name in ipairs(colNamesA) do allColNameKeys[name] = allColNameKeys[name] and (allColNameKeys[name] + i) / 2 or i end
+	for i,name in ipairs(colNamesB) do allColNameKeys[name] = allColNameKeys[name] and (allColNameKeys[name] + i) / 2 or i end
+	-- convert to values / array
+	-- maintain their index in the original so we can sort by that and somewhat preserve location (I'm sure there's a better way)
+	local allColNames = {}
+	for name,avgIndex in pairs(allColNameKeys) do
+		table.insert(allColNames, {name=name, avgIndex=avgIndex})
+	end
+	-- sort by avg index
+	table.sort(allColNames, function(a,b)
+		return a.avgIndex < b.avgIndex
+	end)
+	-- extract names
+	for i=1,#allColNames do allColNames[i] = allColNames[i].name end
+
+	return allColNames
+end
+local allColNames = getAllColNames(colNamesA, colNamesB)
+-- report any columns missing in any of the files
+for _,name in ipairs(allColNames) do
+	if not colIndexForNameA[name] then
+		io.stderr:write("file A does not have column "..name.."\n")
+	end
+	if not colIndexForNameB[name] then
+		io.stderr:write("file B does not have column "..name.."\n")
+	end
+end
 
 local errorColumns = {}
 while true do
@@ -83,26 +127,23 @@ while true do
 		local colsA = getColumns(lineA)
 		local colsB = getColumns(lineB)
 
-		if #colsA ~= #headers then 
-			errorLines(lineA, lineB, "column in file A has different number of elements than the header") 
-		end
-		if #colsB ~= #headers then 
-			errorLines(lineA, lineB, "column in file B has different number of elements than the header") 
-		end
-	
-		for i=1,#headers do
-			if colsA[i] ~= colsB[i] then
-				-- found a different element -- keep track of it
-				-- keep track of ...
-				-- 	range of relative error
-				--  range of absolute error
-				-- 	range of both values?
-				--  coordinates of greatest relative error?
-				local na = tonumber(colsA[i])
-				local nb = tonumber(colsB[i])
-				
-				if not errorColumns[i] then errorColumns[i] = ErrorColumn() end
-				errorColumns[i]:process(na, nb)
+		for i,colName in ipairs(allColNames) do
+			local indexA = colIndexForNameA[colName]
+			local indexB = colIndexForNameB[colName]
+			if indexA and indexB then
+				if colsA[indexA] ~= colsB[indexB] then
+					-- found a different element -- keep track of it
+					-- keep track of ...
+					-- 	range of relative error
+					--  range of absolute error
+					-- 	range of both values?
+					--  coordinates of greatest relative error?
+					local na = tonumber(colsA[indexA])
+					local nb = tonumber(colsB[indexB])
+					
+					if not errorColumns[i] then errorColumns[i] = ErrorColumn() end
+					errorColumns[i]:process(na, nb)
+				end
 			end
 		end
 	end
@@ -115,9 +156,9 @@ if fileB:read(0) then
 	io.stderr:write(filenameB..' has extra lines\n')
 end
 
-for i,header in ipairs(headers) do
+for i,colName in ipairs(allColNames) do
 	local errorColumn = errorColumns[i]
 	if errorColumn then
-		errorColumn:printStats(headers[i])
+		errorColumn:printStats(allColNames[i])
 	end
 end

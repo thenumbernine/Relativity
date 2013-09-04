@@ -32,9 +32,10 @@ struct GeomCell {
 	//beta^t = 0
 	tensor_u beta_u;
 
-	//related to the conformal factor of metric
-	//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
-	real ln_sqrt_gamma;
+	//log of the conformal factor (to the arbitrary root ...)
+	//exp(phi) = psi
+	//psi^12 = gamma
+	real phi;
 
 	//spatial metric
 	//gamma_ll(i,j) := gamma_ij
@@ -52,20 +53,9 @@ struct GeomCell {
 
 	GeomCell()
 	:	alpha(real()),
-		ln_sqrt_gamma(real()),
+		phi(real()),
 		K(real())
 	{}
-
-	//used during init
-	//gamma = det(gamma_ij)
-	//ln_sqrt_gamma := ln(sqrt(gamma))
-	void calc_ln_sqrt_gamma_from_gamma_ll() {
-		//gamma = det(gamma_ij)
-		real gamma = determinant(gamma_ll);
-
-		//GeomCell::ln_sqrt_gamma := ln(sqrt(gamma))
-		ln_sqrt_gamma = .5 * log(gamma);
-	}
 
 	//operators used with integration
 
@@ -76,7 +66,7 @@ struct GeomCell {
 		result.gamma_ll = gamma_ll * scalar;
 		result.K_ll = K_ll * scalar;
 		result.K = K * scalar;
-		result.ln_sqrt_gamma = ln_sqrt_gamma * scalar;
+		result.phi = phi * scalar;
 		return result;
 	}
 
@@ -86,7 +76,7 @@ struct GeomCell {
 		gamma_ll += sourceCell.gamma_ll;
 		K_ll += sourceCell.K_ll;
 		K += sourceCell.K;
-		ln_sqrt_gamma += sourceCell.ln_sqrt_gamma;
+		phi += sourceCell.phi;
 		return *this;
 	}
 };
@@ -148,7 +138,6 @@ struct AuxCell {
 		R(real()),
 		tr_K_sq(real()),
 		psi(real()),
-		ln_psi(real()),
 		DBar2_psi(real()),
 		RBar(real()),
 		tr_ABar_sq(real())
@@ -214,17 +203,11 @@ struct AuxCell {
 	//currently derived from the iterated ln(sqrt(gamma))	
 	real psi;
 
-	//log of conformal factor
-	//stored separately because it's used often enough
-	//psi = gamma^(1/12)
-	//ln psi = 1/12 ln gamma = 1/6 ln(sqrt(gamma))
-	real ln_psi;
-
 	//DBar_psi_l(i) := DBar_i psi
 	tensor_l DBar_psi_l;
 
-	//DBar_ln_psi_l(i) := DBar_i ln(psi)
-	tensor_l DBar_ln_psi_l;
+	//DBar_phi_l(i) := DBar_i ln(psi)
+	tensor_l DBar_phi_l;
 
 	//DBar2_psi := gammaBar^ij DBar_i DBar_j psi
 	real DBar2_psi;
@@ -262,16 +245,5 @@ struct AuxCell {
 
 	//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ij
 	real tr_ABar_sq;
-
-		// helper functions
-
-	void calc_psi_and_ln_psi_from_ln_sqrt_gamma(const GeomCell<real, dim> &geomCell) {
-		//ln_psi := ln(psi) = 1/6 ln(sqrt(gamma))
-		//ln(psi) = 1/6 ln(sqrt(gamma))
-		ln_psi = geomCell.ln_sqrt_gamma / 6.;
-		
-		//psi = exp(ln(psi))
-		psi = exp(ln_psi);
-	}
 };
 

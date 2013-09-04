@@ -87,12 +87,16 @@ struct KerrSchild : public InitialData<real, dim> {
 					gamma_ll(i,j) = eta(i,j) + (2. - eta(i,j)) * H * l_l(i) * l_l(j);
 				}
 			}
-		
-			//ln_sqrt_gamma := ln(sqrt(det(gamma_ij)))
-			geomCell.calc_ln_sqrt_gamma_from_gamma_ll();
+	
+			//gamma = det(gamma_ij)
+			real gamma = determinant(gamma_ll);
+			
+			//phi = log(gamma) / 12
+			real &phi = geomCell.phi;
+			phi = log(gamma) / 12.;
 				
 			tensor_su gamma_uu;
-			gamma_uu = inverse(geomCell.gamma_ll);
+			gamma_uu = inverse(geomCell.gamma_ll, gamma);
 
 			tensor_u l_u;
 			for (int i = 0; i < dim; ++i) {

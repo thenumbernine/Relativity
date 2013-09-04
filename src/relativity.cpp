@@ -21,38 +21,8 @@
 
 using namespace std;
 
-//N-D case splots the last slice 
 template<typename real, int dim>
 struct RunTest {
-#if 0
-	void operator()(
-		::ADMFormalism<real, dim> &sim, 
-		ostream &f, 
-		real cfl, 
-		int numIters, 
-		bool outputHistory,
-		std::vector<bool> &cols)
-	{
-		const real dt = cfl * sim.dx(0);
-			
-		cout << "iterating..." << endl;
-		for (int i = 0; i < numIters; ++i) {
-			sim.update(dt);
-		}
-		
-		//in case we're only outputting zero iterations
-		// or if we used a RK4 iterator whose last aux was not the last frame
-		sim.calcAux(*sim.getGeomGridReadCurrent());	
-		//sim.outputLine(f);
-		OutputTable<real, dim>::state(f, sim, cols);
-	}
-};
-
-//1D case splot's all time slices together, or just one slice
-template<typename real>
-struct RunTest<real, 1> {
-	enum { dim = 1 };
-#endif
 	void operator()(
 		::ADMFormalism<real, dim> &sim,
 		ostream &f,

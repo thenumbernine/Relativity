@@ -8,11 +8,14 @@
 
 
 /*
-Bowen-York spinning black hole
+Bowen-York black hole
 See Baumgarte & Shapiro p.70 and Alcubierre p.109
 
 Supposed to be cooler than Kerr-Schild black holes in that they give off a burst of gravitational radiation before settling (p.72).
 Funny how, when Baumgarte & Shapiro say "settling" on page 72, I am guessing they really mean "settling when you use our invented algorithm we don't teach you in this book until page 400".
+
+Alcubierre gives the whole solution to spinning + boosting up front.  Baumgarte & Shapiro give you each separately.
+But Baumgarte & Shapiro give you solutions to psi (in addition to the original Kerr-Schild solution), and Alcubierre only seems to give the Kerr-Schild 1 + M/2r
 */
 template<typename real, int dim>
 struct BowenYork : public InitialData<real, dim> {
@@ -32,6 +35,7 @@ struct BowenYork : public InitialData<real, dim> {
 	
 	real M;						//black hole mass <=> half the Schwarzschild radius
 	tensor_l3 J_l;	//angular momentum. technically only has to be a divergence-free field.
+	tensor_u3 P_u;	//linear momentum. V_i = -2 P_i / r for V_i,j^j = 0, U_,j^j = 0, W_i = 7/8 V_i - 1/8 (U_,i + x^k  V_k,i)
 
 	BowenYork() : M(0) {}
 
@@ -46,13 +50,23 @@ struct BowenYork : public InitialData<real, dim> {
 			args.erase(args.begin());
 		}
 
+		for (int i = 0; i < dim3; ++i) {
+			if (!args.size()) break;
+			P_u(i) = atof(args[0].c_str());
+			args.erase(args.begin());
+		}
+
 		std::cout << "mass " << M << " solar masses" << std::endl;
 		std::cout << "angular momentum " << J_l << std::endl;
+		std::cout << "linear momentum " << P_u << std::endl;
 
 		M *= sunMassInM;
 		
-		//J = |J^i|
+		//if we need J to calculate psi and we need psi to calculate gamma and we need gamma to calculate J (norm wrt metric) ... then we have a separate system to solve?
+		//so until then I'm using the "approximation" J = |J^i|
 		real J = tensor_l3::BodyType::length(J_l.body);
+		//same deal with P?
+		real P = tensor_l3::BodyType::length(P_u.body);
 	
 		tensor_sl eta;
 		for (int i = 0; i < dim; ++i) {
@@ -68,7 +82,7 @@ struct BowenYork : public InitialData<real, dim> {
 		std::cout << "providing initial conditions..." << std::endl;
 		for (typename ADMFormalism::GeomGrid::iterator iter = sim.geomGridReadCurrent->begin(); iter != sim.geomGridReadCurrent->end(); ++iter) {
 			typename ADMFormalism::GeomCell &geomCell = *iter;
-			//we don't need this cell, just a function in the AuxCell class for computing psi from ln_sqrt_gamma
+			//we don't need this cell, just a function in the AuxCell class for computing psi from phi 
 			typename ADMFormalism::AuxCell &cell = sim.auxGrid(iter.index);
 				
 			vector x = sim.coordForIndex(iter.index) - center;
@@ -93,25 +107,48 @@ struct BowenYork : public InitialData<real, dim> {
 			real psi0Cubed = psi0 * psi0Squared;
 			real psi0ToTheFifth = psi0Squared * psi0Cubed;
 
-			//psi20 = -(1 + M/(2r))^-5 M/(5r) (5(M/(2r))^3 + 4(M/(2r))^4 + (M/(2r))^5)
-			real psi20 = -(M / (5. * r)) * (MOverTwoR * MOverTwoR * MOverTwoR * (5. + MOverTwoR * (4. + MOverTwoR))) / psi0ToTheFifth;
+			//psi20J = -(1 + M/(2r))^-5 M/(5r) (5(M/(2r))^3 + 4(M/(2r))^4 + (M/(2r))^5)
+			real psi20J = -(M / (5. * r)) * (MOverTwoR * MOverTwoR * MOverTwoR * (5. + MOverTwoR * (4. + MOverTwoR))) / psi0ToTheFifth;
 
-			//psi22 = -1/10 (1 + M/2r)^-5 (M/r)^3
-			real psi22 = -(M * M * M) / (10. * rCubed * psi0ToTheFifth);
+			//psi22J = -1/10 (1 + M/2r)^-5 (M/r)^3
+			real psi22J = -(M * M * M) / (10. * rCubed * psi0ToTheFifth);
+		
+			//psi20P
+			real psi20P = -M / (16. * r) * (5 + MOverTwoR * (10 + MOverTwoR * (10 + MOverTwoR * (5 + MOverTwoR)))) / psi0ToTheFifth;
+			
+			//psi22P
+			real psi22P = MOverTwoR * MOverTwoR * (15 + MOverTwoR * (192 + MOverTwoR * (539 + MOverTwoR * (658 + MOverTwoR * (378 + MOverTwoR * 84))))) / (20. * psi0ToTheFifth)
+						+ 21. / 5. * MOverTwoR * MOverTwoR * MOverTwoR * log(MOverTwoR / (1. + MOverTwoR));
 
-			//psi2 = psi20 P0(cos(theta)) + psi22 P2(cos(theta))
-			//	P0 = 1, P2(cos(theta) = (3 * cos(theta)^2 - 1) / 2
 			real cosTheta = l_u(0);
-			real psi2 = psi20 + psi22 * (3. * cosTheta * cosTheta - 1.) / 2.;
 
-			//psi = psi0 + psi2 J^2 / M^4 + O(J^4)
+			//P0(cos(theta)) = 1
+			real P0CosTheta = 1;
+
+			//P2(cos(theta)) = (3 cos(theta)^2 - 1) / 2
+			real P2CosTheta = (3. * cosTheta * cosTheta - 1.) / 2.;
+
+			//psi2J = psi20J P0(cos(theta)) + psi22J P2(cos(theta))
+			real psi2J = P0CosTheta * psi20J + P2CosTheta * psi22J;
+
+			//psi2P = psi20P P0(cos(theta)) + psi22P P2(cos(theta));
+			real psi2P = P0CosTheta * psi20P + P2CosTheta * psi22P;
+	
+			//spinning:
+			//psi = psi0 + psi2J J^2 / M^4 + O(J^4)
+			//boosted:
+			//psi = psi0 + psi2P P^2 / M^2 psi2P + O(P^4)
+			//combined?
+			//psi = psi0 + psi2J J^2 / M^4 + psi2P P^2 / M^2 + O(J^4) + O(P^4)
 			real &psi = cell.psi;
-			psi = psi0 + psi2 * (J * J) / (M * M * M * M);
+			psi = psi0 + psi2J * J * J / (M * M * M * M) + psi2P * P * P / (M * M);
+			
 			real psiSquared = psi * psi;
 			real psiToTheFourth = psiSquared * psiSquared;
-			//extract our state conformal factor variable
-			cell.ln_psi = log(cell.psi);
-			geomCell.ln_sqrt_gamma = 6. * cell.ln_psi;
+			
+			//phi = log(psi)
+			real &phi = geomCell.phi;
+			phi = log(psi);
 
 			//gammaBar_ij = eta_ij
 			tensor_sl &gammaBar_ll = cell.gammaBar_ll;
@@ -151,8 +188,9 @@ struct BowenYork : public InitialData<real, dim> {
 			tensor_su ABarL_uu;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
-					ABarL_uu(i,j) = 0;
+					ABarL_uu(i,j) = 3. / (2. * r * r) * (P_u(i) * l_u(j) + P_u(j) * l_u(i));
 					for (int k = 0; k < dim3; ++k) {
+						ABarL_uu(i,j) += 3. / (2. * r * r) * (-(eta(i,j) - l_u(i) * l_u(j))) * l_l(k) * P_u(k);
 						for (int l = 0; l < dim3; ++l) {
 							if (k == (j+1)%dim3 && l == (k+1)%dim3) {
 								ABarL_uu(i,j) += 3. / rCubed * l_u(i) * J_l(k) * l_l(l);

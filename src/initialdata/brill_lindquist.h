@@ -112,8 +112,7 @@ struct BrillLindquist : public InitialData<real, dim> {
 				}
 			}
 
-			real gamma = psiToTheFourth * psiToTheFourth * psiToTheFourth;
-			geomCell.ln_sqrt_gamma = .5 * log(gamma);
+			geomCell.phi = log(psi);
 		}
 	}
 };
