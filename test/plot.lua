@@ -31,6 +31,7 @@ do
 		elseif v == 'plotargs' then
 			plotargs = table.remove(args, i+1)
 		end 
+		i = i + 1
 	end
 end
 local useColor = true 

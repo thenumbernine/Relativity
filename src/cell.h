@@ -15,6 +15,10 @@ N-D case has this many elements:
 1D: 6 elements
 2D: 11 elements
 3D: 18 elements
+
+looks like a dense system could get big for submatrixes (18^18 = 324 elements for 3D)
+	so if I do make it to implicit I might do a single sparse matrix for it all
+	...or a sparse block matrix of sparse matrixes
 */
 template<typename real_, int dim_>
 struct GeomCell {
@@ -38,18 +42,14 @@ struct GeomCell {
 	real phi;
 
 	//conformal spatial metric
-	//gammaBar_ll(i,j) := gammaBar_ij = gamma^-1/3 gamma_ij = psi^-4 gamma_ij
-	//such that det(gammaBar_ij) = det(gamma^-1/3 gamma_ij) = (gamma^-1/3)^3 det(gamma_ij) = gamma^-1 gamma = 1
-	// makes me wonder, for our toy 2+1 and 1+1 sims, should we be lowering the conformal / traceless fraction from 1/3 to 1/N?
-	//  and off of that, should we be lowering the EFE trace-reversed Ricci tensor from 2/4 to 2/N?
-	//  probably not.
+	//gammaBar_ll(i,j) := gammaBar_ij = exp(-4phi) gamma_ij
+	// such that det(gammaBar_ij) = 1
 	tensor_sl gammaBar_ll;
 
-	//extrinsic curvature
-	//K_ll(i,j) := K_ij
-	//K_it = K_tj = 0
-	tensor_sl K_ll;
-
+	//minimal distortion conformal extrinsic curvature
+	//ATilde_ll(i,j) := ATilde_ij = psi^-4 A_ij = exp(-4phi) A_ij = exp(-4phi) (K_ij - 1/3 gamma_ij K) = exp(-4phi) K_ij - 1/3 gammaBar_ij K
+	tensor_sl ATilde_ll;
+	
 	//extrinsic curvature trace
 	//K := K^i_i
 	real K;
@@ -67,7 +67,7 @@ struct GeomCell {
 		result.alpha = alpha * scalar;
 		result.beta_u = beta_u * scalar;
 		result.gammaBar_ll = gammaBar_ll * scalar;
-		result.K_ll = K_ll * scalar;
+		result.ATilde_ll = ATilde_ll * scalar;
 		result.K = K * scalar;
 		result.phi = phi * scalar;
 		return result;
@@ -77,7 +77,7 @@ struct GeomCell {
 		alpha += sourceCell.alpha;
 		beta_u += sourceCell.beta_u;
 		gammaBar_ll += sourceCell.gammaBar_ll;
-		K_ll += sourceCell.K_ll;
+		ATilde_ll += sourceCell.ATilde_ll;
 		K += sourceCell.K;
 		phi += sourceCell.phi;
 		return *this;
@@ -231,6 +231,11 @@ struct AuxCell {
 		
 		//extrinsic curvature
 
+	//extrinsic curvature
+	//K_ll(i,j) := K_ij = A_ij + 1/3 gamma_ij K
+	//					= exp(4phi) (ATilde_ij + 1/3 gammaBar_ij K)
+	tensor_sl K_ll;
+
 	//K_ul(i,j) := K^i_j
 	tensor_ul K_ul;
 
@@ -255,9 +260,5 @@ struct AuxCell {
 
 	//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ij
 	real tr_ABar_sq;
-
-	//minimal distortion conformal extrinsic curvature
-	//ATilde_ll(i,j) := ATilde_ij = psi^-4 A_ij
-	tensor_sl ATilde_ll;
 };
 

@@ -17,10 +17,7 @@
 #include "i_integrator.h"
 #include "i_admformalism.h"
 
-/*
-ADM Formalism class generates partial t values for the K_ll and gamma_ll structures.
-the rest of the properties can be seen as read-only ... should I store them in a separate structure than the AuxCell?
-*/
+//Formalism class generates partial t values
 template<typename real_, int dim_>
 struct ADMFormalism : public IADMFormalism<real_, dim_> {
 	typedef real_ real;
@@ -477,24 +474,25 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 		for (iter = auxGrid.begin(); iter != auxGrid.end(); ++iter) {
 			AuxCell &cell = *iter;
 			const GeomCell &geomCell = geomGridRead(iter.index);
-	
+
 			const real &K = geomCell.K;
 			const tensor_sl &gamma_ll = cell.gamma_ll;
-			const tensor_sl &K_ll = geomCell.K_ll;
+			const tensor_sl &ATilde_ll = geomCell.ATilde_ll;
 			
 			const real &psi = cell.psi;
 			const tensor_su &gamma_uu = cell.gamma_uu;
 			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
 
-			//A_ll(i,j) := A_ij = K_ij - 1/3 gamma_ij K
+			real psiSquared = psi * psi;
+			real psiToTheFourth = psiSquared * psiSquared;
+
+			//A_ll(i,j) := ATilde_ij = exp(4phi) ATilde_ij = psi^4 ATilde_ij
 			tensor_sl &A_ll = cell.A_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
-					A_ll(i,j) = K_ll(i,j) - gamma_ll(i,j) * K / 3.;
+					A_ll(i,j) = ATilde_ll(i,j) * psiToTheFourth;
 				}
 			}
-		
-			real psiSquared = psi * psi;
 
 			//ABar_ll(i,j) := ABar_ij = psi^2 A_ij
 			tensor_sl &ABar_ll = cell.ABar_ll;
@@ -535,16 +533,14 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 				}
 			}
 
-			real psiToTheFourth = psiSquared * psiSquared;
-			real oneOverPsiToTheFourth = 1. / psiToTheFourth;
-			//ATilde_ll(i,j) := ATilde_ij = psi^-4 A_ij
-			tensor_sl &ATilde_ll = cell.ATilde_ll;
+			//K_ll(i,j) := K_ij = A_ij + 1/3 gamma_ij K
+			tensor_sl &K_ll = cell.K_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
-					ATilde_ll(i,j) = A_ll(i,j) * oneOverPsiToTheFourth;
+					K_ll(i,j) = A_ll(i,j) + 1./3. * gamma_ll(i,j) * K;
 				}
 			}
-
+		
 			//K^i_j := gamma^ik K_kj
 			tensor_ul &K_ul = cell.K_ul;
 			for (int i = 0; i < dim; ++i) {
@@ -699,16 +695,16 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			const tensor_u &beta_u = geomCell.beta_u;
 			const tensor_sl &gammaBar_ll = geomCell.gammaBar_ll;
 			const real &K = geomCell.K;
-			const tensor_sl &K_ll = geomCell.K_ll;
+			const tensor_sl &ATilde_ll = geomCell.ATilde_ll;
 			
+			const real &psi = cell.psi;
 			const tensor_l &D_alpha_l = cell.D_alpha_l;
 			const tensor_usl &conn_ull = cell.conn_ull;
 			const tensor_sl &R_ll = cell.R_ll;
 			const tensor_sl &gamma_ll = cell.gamma_ll;
 			const tensor_su &gamma_uu = cell.gamma_uu;
+			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
 			const tensor_lsl &partial_gammaBar_lll = cell.partial_gammaBar_lll;
-			const tensor_ul &K_ul = cell.K_ul;
-			const tensor_sl &ATilde_ll = cell.ATilde_ll;
 			const real &tr_K_sq = cell.tr_K_sq;
 
 			//partial2_alpha_ll(i,j) := partial_i partial_j alpha
@@ -754,9 +750,6 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 				}
 			}
 
-			//partial_K_lll(k,i,j) := partial_k K_ij
-			tensor_lsl partial_K_lll = partialDerivative(geomGridRead, &GeomCell::K_ll, dx, iter.index);
-
 			//S := S^i_i := gamma^ij S_ij
 			real S = 0.;
 			for (int i = 0; i < dim; ++i) {
@@ -765,23 +758,56 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 				}
 			}
 			
-			//partial_t K_ij = alpha (R_ij - 2 K_ik K^k_j + K K_ij) - D_i D_j alpha - 8 pi alpha (S_ij - 1/2 gamma_ij (S - rho)) + beta^k partial_k K_ij + K_ik partial_j beta^k + K_kj partial_i beta^k
+			//partial_ATilde_lll(i,j,k) := partial_i ATilde_jk
+			tensor_lsl partial_ATilde_lll = partialDerivative(geomGridRead, &GeomCell::ATilde_ll, dx, iter.index);
+
+			//ATilde_ul(i,j) := ATilde^i_j = gammaBar^ik ATilde_kj
+			tensor_ul ATilde_ul;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					ATilde_ul(i,j) = 0;
+					for (int k = 0; k < dim; ++k) {
+						ATilde_ul(i,j) += gammaBar_uu(i,k) * ATilde_ll(k,j);
+					}
+				}
+			}
+
+			//traceless portion of partial_t ATilde_ij := tracefree(-D^2 alpha + alpha (R_ij - 8 pi S_ij))
+			tensor_sl tracelessPortionOfPartialT_ATilde_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
-					partial_t_geomCell.K_ll(i,j) = 0.;
-					partial_t_geomCell.K_ll(i,j) += alpha * R_ll(i,j);
+					tracelessPortionOfPartialT_ATilde_ll(i,j) = -D2_alpha_ll(i,j) + alpha * (R_ll(i,j) - 8. * M_PI * S_ll(i,j));
+				}
+			}
+
+			real traceOfTraceless = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					traceOfTraceless += gamma_uu(i,j) * tracelessPortionOfPartialT_ATilde_ll(i,j);
+				}
+			}
+
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					tracelessPortionOfPartialT_ATilde_ll(i,j) -= 1./3. * gamma_ll(i,j) * traceOfTraceless;
+				}
+			}
+
+			real psiSquared = psi * psi;
+			real psiToTheFourth = psiSquared * psiSquared;
+			//partial_t ATilde_ij = exp(-4phi) ((-D_i D_j alpha + alpha (R_ij - 8 pi S_ij))^TF + alpha (K ATilde_ij - 2 ATilde_il ATilde^l_j))
+			//		+ beta^k partial_k ATilde_ij + ATilde_ik partial_j beta^k + ATilde_kj partial_i beta^k - 2/3 ATilde_ij partial_k beta^k
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					partial_t_geomCell.ATilde_ll(i,j) = psiToTheFourth * tracelessPortionOfPartialT_ATilde_ll(i,j) + alpha * K * ATilde_ll(i,j);
 					for (int k = 0; k < dim; ++k) {
-						partial_t_geomCell.K_ll(i,j) -= alpha * 2. * K_ll(i,k) * K_ul(k,j);
+						partial_t_geomCell.ATilde_ll(i,j) += 
+							-alpha * 2. * ATilde_ll(i,k) * ATilde_ul(k,j)
+							+ beta_u(k) * partial_ATilde_lll(k,i,j)
+							+ ATilde_ll(i,k) * partial_beta_lu(j,k)
+							+ ATilde_ll(k,j) * partial_beta_lu(i,k);
 					}
-					partial_t_geomCell.K_ll(i,j) += alpha * K * K_ll(i,j) 
-						- D2_alpha_ll(i,j)
-						- 8. * M_PI * alpha * (
-							S_ll(i,j) - .5 * gamma_ll(i,j) * (S - rho));
-					for (int k = 0; k < dim; ++k) {
-						partial_t_geomCell.K_ll(i,j) += beta_u(k) * partial_K_lll(k,i,j)
-							+ K_ll(k,i) * partial_beta_lu(j,k)
-							+ K_ll(k,j) * partial_beta_lu(i,k);
-					}
+					partial_t_geomCell.ATilde_ll(i,j) -= 2./3. * ATilde_ll(i,j) * trace_partial_beta;
 				}
 			}
 
@@ -809,68 +835,8 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 		}
 	}
 
-	//no guarantees that any of the aux values are good
-	// since the last integrator calculation could have come from a tmp state
-	// rather than the read state.
-	//so everything should be recalculated here.
-	//TODO dirty bit aux, for its association with a geom cell, or something
-	void constrain(GeomGrid &geomGridRead) {
-		for (typename AuxGrid::iterator iter = auxGrid.begin(); iter != auxGrid.end(); ++iter) {
-			AuxCell &cell = *iter;
-			GeomCell &geomCell = geomGridRead(iter.index);
-
-			const tensor_sl &gamma_ll = cell.gamma_ll;
-			tensor_sl &gammaBar_ll = geomCell.gammaBar_ll;
-
-			//psi = exp(phi)
-			real &psi = cell.psi;
-			psi = exp(geomCell.phi);
-			real psiSquared = psi * psi;
-			real psiToTheFourth = psiSquared * psiSquared;
-
-			//update gammaBar^ij and gamma^ij
-			tensor_su &gammaBar_uu = cell.gammaBar_uu;
-			gammaBar_uu = inverse(gammaBar_ll, 1.);
-			
-			tensor_su &gamma_uu = cell.gamma_uu;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					gamma_uu(i,j) = gammaBar_uu(i,j) / psiToTheFourth;
-				}
-			}
-			
-			//same deal with K?
-			//K = K^i_i = gamma^ij K_ij
-			//A_ij = K_ij - 1/3 gamma_ij K is 'traceless'
-			
-			tensor_sl &K_ll = geomCell.K_ll;
-
-			real oldK = 0;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					oldK += K_ll(i,j) * gamma_uu(i,j);
-				}
-			}
-
-			real &K = geomCell.K;
-			tensor_sl &A_ll = cell.A_ll;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					//remove old trace component
-					A_ll(i,j) = K_ll(i,j) - (1./3.) * gamma_ll(i,j) * oldK;
-					//add new trace component
-					K_ll(i,j) = A_ll(i,j) + (1./3.) * A_ll(i,j) * K;
-				}
-			}
-		}
-
-	}
-
-
 	void update(real dt) {
 		integrator->update(dt);
-
-		constrain(*geomGridWriteCurrent);
 
 		time += dt;
 

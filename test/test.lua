@@ -105,6 +105,7 @@ local tests = {
 		res = 100,
 		size = 4.1,
 		args = 'bowen-york 4.1e6 0 0 4.1e6',
+		excludeFromAll = true,
 	},
 
 }

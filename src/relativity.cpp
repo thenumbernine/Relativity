@@ -19,6 +19,8 @@
 
 #include "output_table.h"
 
+#define DISABLE_FLOAT	//disable 32-bit fpp for faster builds
+
 using namespace std;
 
 template<typename real, int dim>
@@ -87,7 +89,9 @@ struct InitTest<real, dim, InitialDataType>{
 };
 
 enum {
+#ifndef DISABLE_FLOAT		
 	PRECISION_FLOAT,
+#endif
 	PRECISION_DOUBLE,
 	NUM_PRECISIONS
 };
@@ -180,9 +184,12 @@ SimParams interpretArgs(int argc, char **argv) {
 				continue;
 			} else if (!strcmp(argv[i], "precision")) {
 				const char *precision = argv[++i];
+#ifndef DISABLE_FLOAT
 				if (!strcmp(precision, "float")) {
 					params.precision = PRECISION_FLOAT;
-				} else if (!strcmp(precision, "double")) {
+				} else 
+#endif				
+				if (!strcmp(precision, "double")) {
 					params.precision = PRECISION_DOUBLE;
 				} else {
 					throw Exception() << "got an unknown precision " << precision;
@@ -306,9 +313,11 @@ void runSimPrecision(SimParams &params) {
 template<int dim>
 void runSimDim(SimParams &params) {
 	switch (params.precision) {
+#ifndef DISABLE_FLOAT
 	case PRECISION_FLOAT:
 		runSimPrecision<float, dim>(params);
 		break;
+#endif
 	case PRECISION_DOUBLE:
 		runSimPrecision<double, dim>(params);
 		break;

@@ -227,12 +227,21 @@ struct BowenYork : public InitialData<real, dim> {
 			//			= A_ij - 1/3 gamma_ij K 
 			//			= psi^-2 ABar_ij - 1/3 gamma_ij K
 			//			= psi^-2 ABar_ij - 1/3 psi^4 gammaBar_ij K
-			tensor_sl &K_ll = geomCell.K_ll;
+			tensor_sl K_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					K_ll(i,j) = ABar_ll(i,j) * oneOverPsiSquared - 1./3. * psiToTheFourth * gammaBar_ll(i,j) * K;
 				}
 			}
+
+			//ATilde_ll(i,j) := ATilde_ij = exp(-4phi) K_ij - 1/3 gammaBar_ij K
+			tensor_sl &ATilde_ll = geomCell.ATilde_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					ATilde_ll(i,j) = psiToTheFourth * K_ll(i,j) - 1./3. * gammaBar_ll(i,j) * K;
+				}
+			}
+
 		}
 	}
 };

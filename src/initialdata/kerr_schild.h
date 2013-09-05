@@ -132,10 +132,18 @@ struct KerrSchild : public InitialData<real, dim> {
 			real &K = geomCell.K;
 			K = 2 * M * alpha * alpha * alpha / (r * r) * (1. + 3. * M / r);
 
-			tensor_sl &K_ll = geomCell.K_ll;
+			tensor_sl K_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					K_ll(i,j) = 2. * H * a / r * (eta(i,j) - (2. + H) * l_l(i) * l_l(j));
+				}
+			}
+
+			//ATilde_ll(i,j) := ATilde_ij = exp(-4phi) K_ij - 1/3 gammaBar_ij K
+			tensor_sl &ATilde_ll = geomCell.ATilde_ll;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					ATilde_ll(i,j) = expMinusFourPhi * K_ll(i,j) - 1./3. * gammaBar_ll(i,j) * K;
 				}
 			}
 		}
