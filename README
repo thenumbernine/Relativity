@@ -555,6 +555,14 @@ ATilde_ij = exp(-4phi) (K_ij - 1/3 gamma_ij K)
 		  = exp(-4phi) K_ij - 1/3 exp(-4phi) gamma_ij K
 		  = exp(-4phi) K_ij - 1/3 gammaBar_ij K
 
+good ol ABar which I am ditching
+ABar^ij = psi^10 A^ij
+ABar_ij = psi^2 A_ij
+ATilde^ij = psi^4 A^ij
+ATilde_ij = psi^-4 A_ij
+so exp(6phi) ATilde^ij = psi^6 ATilde^ij = psi^6 psi^4 A^ij = psi^10 A^ij = ABar^ij
+ABar^ij = psi^10 psi^-4 ATilde^ij = psi^6 ATilde^ij
+
 
 one extra for the record
 traceless(A)_ij = A_ij - 1/3 gamma_ij A

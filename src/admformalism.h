@@ -495,47 +495,37 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 				}
 			}
 
+			//ATilde_uu(i,j) := ATilde^ij = ATilde^i_k gammaBar^kj
+			tensor_su ATilde_uu;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					ATilde_uu(i,j) = 0;
+					for (int k = 0; k < dim; ++k) {
+						ATilde_uu(i,j) = ATilde_ul(i,k) * gammaBar_uu(k,j);
+					}
+				}
+			}
+
 			real psiSquared = psi * psi;
 			real psiToTheFourth = psiSquared * psiSquared;
+			real psiToTheSixth = psiSquared * psiToTheFourth;
+
+			//ABar_uu(i,j) := ABar^ij = 
+			tensor_su &ABar_uu = cell.ABar_uu;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					ABar_uu(i,j) = psiToTheSixth * ATilde_uu(i,j);
+				}
+			}
 
 			//A_ll(i,j) := ATilde_ij = exp(4phi) ATilde_ij = psi^4 ATilde_ij
-			tensor_sl &A_ll = cell.A_ll;
+			tensor_sl A_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					A_ll(i,j) = ATilde_ll(i,j) * psiToTheFourth;
 				}
 			}
-
-			//ABar_ll(i,j) := ABar_ij = psi^2 A_ij
-			tensor_sl &ABar_ll = cell.ABar_ll;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					ABar_ll(i,j) = A_ll(i,j) * psiSquared;
-				}
-			}
-
-			//ABar_ul(i,j) := ABar^i_j = gammaBar^ik ABar_kj
-			tensor_ul ABar_ul;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					ABar_ul(i,j) = 0;
-					for (int k = 0; k < dim; ++k) {
-						ABar_ul(i,j) += gammaBar_uu(i,k) * ABar_ll(k,j);
-					}
-				}
-			}
-
-			//ABar_uu(i,j) := ABar^ij = ABar^i_k gammaBar^kj
-			tensor_su &ABar_uu = cell.ABar_uu;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					ABar_uu(i,j) = 0;
-					for (int k = 0; k < dim; ++k) {
-						ABar_uu(i,j) += ABar_ul(i,k) * gammaBar_uu(k,j);
-					}
-				}
-			}
-
+			
 			//K_ll(i,j) := K_ij = A_ij + 1/3 gamma_ij K
 			tensor_sl &K_ll = cell.K_ll;
 			for (int i = 0; i < dim; ++i) {
@@ -555,17 +545,6 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 				}
 			}
 		
-			//K_uu(i,j) := K^ij = K^i_k gamma^kj
-			tensor_su &K_uu = cell.K_uu;
-			for (int i = 0; i  < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					K_uu(i,j) = 0;
-					for (int k = 0; k < dim; ++k) {
-						K_uu(i,j) += K_ul(i,k) * gamma_uu(k,j);
-					}
-				}
-			}
-			
 			//tr_K_sq := tr(K^2) = (K^2)^i_i = K^ij K_ji = K^i_j K^j_i
 			//this method uses tr(K^2) = K^ij K_ij in particular
 			//tr_K_sq := tr(K^2) = K^ij K_ij
@@ -573,7 +552,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			tr_K_sq = 0.;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
-					tr_K_sq += K_uu(i,j) * K_ll(i,j); 
+					tr_K_sq += K_ul(i,j) * K_ul(j,i); 
 				}
 			}
 		}
@@ -684,7 +663,6 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			const tensor_sl &R_ll = cell.R_ll;
 			const tensor_sl &gamma_ll = cell.gamma_ll;
 			const tensor_su &gamma_uu = cell.gamma_uu;
-			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
 			const tensor_lsl &partial_gammaBar_lll = cell.partial_gammaBar_lll;
 			const real &tr_K_sq = cell.tr_K_sq;
 

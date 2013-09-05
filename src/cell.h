@@ -238,22 +238,11 @@ struct AuxCell {
 	//K_ul(i,j) := K^i_j
 	tensor_ul K_ul;
 
-	//K_uu(i,j) := K^ij
-	tensor_su K_uu;
-
 	//tr_K_sq := (K^2)^i_i = K^ij K_ji
 	real tr_K_sq;
 
 		//conformal extrinsic curvature
 
-	//traceless part of extrinsic curvature tensor
-	//A_ll(i,j) := A_ij = K_ij - 1/3 gamma_ij K
-	tensor_sl A_ll;
-
-	//"natural" conformal extrinsic curvature
-	//ABar_ll(i,j) := ABar_ij = psi^2 A_ij
-	tensor_sl ABar_ll;
-	
 	//ABar_uu(i,j) := ABar^ij = psi^10 A^ij
 	tensor_su ABar_uu;
 
