@@ -7,7 +7,7 @@
 #include <iostream>
 
 /*
-This one's coming from "Numerical Relativity" p.61:
+This one's coming from Baumgarte & Shapiro p.61:
 beta^i = 0
 gammaBar_ij = eta_ij
 rho = S^i = 0
@@ -93,7 +93,7 @@ struct BrillLindquist : public InitialData<real, dim> {
 				oneOverAlpha += .5 * M / r;
 			}
 
-			//now "Numerical Relativity" p.59 starts off talking about Schwarzschild geometry and represents it analogous to the isotropic coordinates on p.50.
+			//now Baumgarte & Shapiro p.59 starts off talking about Schwarzschild geometry and represents it analogous to the isotropic coordinates on p.50.
 			//The isotropic coordinates show that beta and K are all zero.
 			//gamma_ij is indeed (1 + M/(2r))^4 eta_ij coinciding with a conformal metric of gammaBar_ij = eta_ij and psi = 1 + M/(2r).
 			//The lapse is given (for a single body, p.50) as alpha = (1 - M/(2r))/(1 + M/(2r)).

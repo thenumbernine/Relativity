@@ -42,7 +42,7 @@ local installDir = '/data/local/bin/'
 
 local tests = {
 	{
-		name = 'gro_j0422_32_kerr-schild',
+		name = 'kerr-schild.1d.gro_j0422_32',
 		dim = 1,
 		iter = 100,
 		res = 100,
@@ -50,7 +50,7 @@ local tests = {
 		args = 'kerr-schild 4.1',
 	},
 	{
-		name = 'sagitarrius_a_star_kerr-schild',
+		name = 'kerr-schild.1d.sagitarrius_a_star',
 		dim = 1,
 		iter = 100,
 		res = 100,
@@ -58,15 +58,15 @@ local tests = {
 		args = 'kerr-schild 4.1e6',
 	},
 	{
-		name = 'binary_black_holes_brill-lindquist',
+		name = 'brill-lindquist.1d.binary_black_holes',
 		dim = 1,
 		iter = 100,
 		res = 100,
 		size = 4.1,
-		args = 'brill-lindquist 2 -2 1 2 1', 
+		args = 'brill-lindquist 2 -2 4 2 4', 
 	},
 	{
-		name = 'gro_j0422_32_bowen-york',
+		name = 'bowen-york.1d.gro_j0422_32',
 		dim = 1,
 		iter = 100,
 		res = 100,
@@ -74,7 +74,7 @@ local tests = {
 		args = 'bowen-york 4.1 4.1',
 	},
 	{	-- spinning test
-		name = 'sagitarrius_a_star_bowen-york',
+		name = 'bowen-york.1d.sagitarrius_a_star',
 		dim = 1,
 		iter = 100,
 		res = 100,
@@ -82,7 +82,7 @@ local tests = {
 		args = 'bowen-york 4.1e6 0 0 4.1e6',
 	},
 	{	-- boosted test
-		name = 'sagitarrius_a_star_bowen-york_boosted',
+		name = 'bowen-york.1d.sagitarrius_a_star.boosted',
 		dim = 1,
 		iter = 100,
 		res = 100,
@@ -90,7 +90,7 @@ local tests = {
 		args = 'bowen-york 4.1e6 0 0 4.1e6 4.1e6 0 0',
 	},
 	{		-- 2D kerr-schild
-		name = 'sagitarrius_a_star_kerr-schild_2d',
+		name = 'kerr-schild.2d.sagitarrius_a_star',
 		dim = 2,
 		iter = 10,
 		res = 20,
@@ -99,7 +99,7 @@ local tests = {
 		args = 'kerr-schild 4.1e6',
 	},
 	{		-- 2D bowen-york
-		name = 'sagitarrius_a_star_bowen-york_2d',
+		name = 'bowen-york.2d.sagitarrius_a_star',
 		dim = 2,
 		iter = 10,
 		res = 20,
@@ -108,7 +108,15 @@ local tests = {
 		args = 'bowen-york 4.1e6 0 0 4.1e6',
 	},
 	{
-		name = 'sagitarrius_a_star_bowen-york_2d_big',
+		name = 'brill-lindquist.2d.binary_black_holes',
+		dim = 2,
+		iter = 1,
+		res = 100,
+		size = 4.1,
+		args = 'brill-lindquist 2 -2 0 4 2 0 4', 
+	},
+	{
+		name = 'bowen-york.2d.sagitarrius_a_star.big',
 		dim = 2,
 		iter = 0,
 		res = 100,

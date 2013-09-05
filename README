@@ -5,7 +5,7 @@ Sources:
 - "Numerical Relativity: Solving Einstein's Equations on the Computer", Baumgarte, Shapiro. (c) 2010
 - "Introduction to 3+1 Numerical Relativity", Alcubierre. (c) 2008
 
-Starting again from scratch now that I've gone through the ADM chapter of "Gravitation" and the 3+1 decomposition chapter of "Numerical Relativity"
+Starting again from scratch now that I've gone through the ADM chapter of Misner, Thorne, & Wheeler and the 3+1 decomposition chapter of Baumgarte & Shapiro
 I read somewhere that the other two books are the first two books published on the topic of numerical relativity ( http://adsabs.harvard.edu/abs/2011CQGra..28v9002G ).
 I've observed this as I am progressing through the two simultaneously.  It seems Baumgarte and Shapiro are better at explaining things, taking smaller steps and providing problems for the reader.
 I'm a big fan of this, seeing as I need all the help I can get.  Alcubierre, on the other hand, does a better job with the finishing details: offering in certain places more complete descriptions of solutions
@@ -14,9 +14,8 @@ I'm a big fan of this, seeing as I need all the help I can get.  Alcubierre, on 
 TODO
 
 	algorithm:
-- initial data
 - lapse and shift functions
-- I hear slope limiters on derivatives are a good idea. (Alcubierre p.365)
+- Riemann solver implementation.  Baumgarte & Shapiro p.384 and Alcubierre p.5.6 discuss this.
 - currently I'm running on an explicit integrator.  need to use implicit ones.
 
 	implementation:
@@ -43,7 +42,7 @@ TODO
 
 Conventions & Notations:
 
-	indexes: (taken from "Numerical Relativity" p.26)
+	indexes: (taken from Baumgarte & Shapiro p.26)
 
 a-h, o-z:	4D -- most often txyz. not sure if t should be stored first (for math index notation consistency) or last (ugly casting between 3D and 4D rank-1 tensors) just yet.
 i-n:		3D -- most often xyz.
@@ -54,7 +53,7 @@ partial_u 	= partial derivative wrt coordinate u
 diff_u 		= covariant derivative wrt coordinate u
 D_u 		= projection derivative / covariant of spatial metric wrt coordinate u
 			   = proj diff_v
-proj 		= projection operator ("Numerical Relativity" eqn 2.31)
+proj 		= projection operator (Baumgarte & Shapiro eqn 2.31)
 			   such that proj T^a_b = gamma^a_c gamma_b^d T^c_d
 
 	variables:
@@ -186,8 +185,8 @@ conn^i_lk = 1/2 g^im (g_ml,k + g_mk,l - g_lk,i)
 when raising the extrinsic curvature tensor, do the time components of the metric matter?
 (or can it be calculated solely by the spatial metric / projection operator?)
 
-both "Numerical Relativity" and Alcubierre make mention that the extrinsic curvature only matters for the spatial components
-"Gravitation" and Alcubierre define K_ab = -proj diff_a n_b, and Baumgarte & Shapiro as K_ab = -proj diff_(a n_b) (where T_(a,b) = 1/2 (T_ab + T_ba) ).
+both Baumgarte & Shapiro and Alcubierre make mention that the extrinsic curvature only matters for the spatial components
+Misner, Thorne, & Wheeler and Alcubierre define K_ab = -proj diff_a n_b, and Baumgarte & Shapiro as K_ab = -proj diff_(a n_b) (where T_(a,b) = 1/2 (T_ab + T_ba) ).
 Alcubierre mentions how only the spatial components of diff_a n_b are symmetric, but that due to projection we don't have to worry about the others. (p.69)
 Baumgarte & Shapiro mention how the tensor itself is only defined wrt spatial components (p.34)
 They go on to explain that the the trace is given by K = g^ab K_ab = gamma^ab K_ab, which would hold true if the time components of K_a0 were zero (as those of gamma^a0 are)
@@ -232,7 +231,7 @@ S^ab = gamma^ac gamma^bd T_cd
 	 = gamma^ai gamma^bj T_ij (since gamma^at = 0)
 S^ij = gamma^ik gamma^jl T_kl
 
-"Numerical Relativity" p.47
+Baumgarte & Shapiro p.47
 S^i = -gamma^ij n^a T_aj
 
 S = S^a_a
@@ -241,7 +240,7 @@ S = S^a_a
   = gamma^cb gamma_b^d T_cd
   = gamma^cd T_cd
   = gamma^ij T_ij (since the other gamma^ab components are zero)
-("Numerical Relativity" p.47) gives the following:
+(Baumgarte & Shapiro p.47) gives the following:
 S_ij = gamma_ia gamma_jb T^ab	<- which may or may not include the betas in gamma_ab = g_ab - n_a n_b
 S = gamma^ij S_ij
   = gamma_ai gamma^ij gamma_jb T^ab
@@ -256,7 +255,7 @@ S = gamma^ij S_ij
 
 Kerr-Schild coordinates in terms of lapse and shift
 (I'm sure someone else has done this already -- and done a better job)
-I'm getting this from Alcubierre p.56 and "Numerical Relativity" p.52
+I'm getting this from Alcubierre p.56 and Baumgarte & Shapiro p.52
 
 Boyer-Lindquist coordinates:
 ds^2 = -(1 - 2 M r / rho^2) - 4 M a r sin(theta)^2 / rho^2 dt dphi + rho^2 / delta dr^2 + rho^2 dtheta^2 + sin(theta)^2 / rho^2 ((r^2 + a^2)^2 - a^2 delta sin(theta)^2) dphi^2
@@ -296,7 +295,7 @@ beta_i = H l_i
 	<=> alpha^2 = 1 - 2 H - beta^k beta_k
 	<=> alpha = sqrt(1 - 2 H - beta^k beta_k)
 
-and to boot ("Numerical Relativity" p.51):
+and to boot (Baumgarte & Shapiro p.51):
 K_ij = 2 H alpha / r (eta_ij - (2 + H) l_i l_j)
 
 
@@ -307,7 +306,7 @@ K_ij = 2 H alpha / r (eta_ij - (2 + H) l_i l_j)
 
 Constraints:
 
-(Most this is taken from Ch.2 of "Numerical Relativity".
+(Most this is taken from Ch.2 of Baumgarte & Shapiro.
 I've got all the intermediate steps in a notebook, maybe someday I'll copy it all into here.  It's pretty long.)
 
 Einstein's equation:
@@ -365,7 +364,7 @@ gammaBar_ij = gamma^(-1/3) gamma_ij	<- such that det(gammaBar_ij) = 1
 psi^4 = gamma^(1/3)
 psi = gamma^(1/12)
 
-"Numerical Relativity" p.56 provides a convenient formula for deriving the metric (and properties) from the conformal metric:
+Baumgarte & Shapiro p.56 provides a convenient formula for deriving the metric (and properties) from the conformal metric:
 
 connection coefficients:
 conn^i_jk = connBar^i_jk + 2 (delta^i_j DBar_k ln(psi) + delta^i_k DBar_j ln(psi) - gammaBar_jk gammaBar^il DBar_l ln(psi))
