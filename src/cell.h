@@ -54,6 +54,10 @@ struct GeomCell {
 	//K := K^i_i
 	real K;
 
+	//connection function
+	//connBar_u(i) := connBar^i = gammaBar^jk connBar^i_jk = -partial_j gammaBar^ij
+	tensor_u connBar_u;
+
 	GeomCell()
 	:	alpha(real()),
 		phi(real()),
@@ -70,6 +74,7 @@ struct GeomCell {
 		result.ATilde_ll = ATilde_ll * scalar;
 		result.K = K * scalar;
 		result.phi = phi * scalar;
+		result.connBar_u = connBar_u * scalar;
 		return result;
 	}
 
@@ -80,6 +85,7 @@ struct GeomCell {
 		ATilde_ll += sourceCell.ATilde_ll;
 		K += sourceCell.K;
 		phi += sourceCell.phi;
+		connBar_u += sourceCell.connBar_u;
 		return *this;
 	}
 };
@@ -122,16 +128,23 @@ struct AuxCell {
 	'u' means upper
 	'l' means lower
 	's' means symmetric
-	'a' means antisymmetric
+	'a' means antisymmetric (haven't needed this one yet)
 	*/
-	typedef ::tensor<real,upper<dim>> tensor_u;
-	typedef ::tensor<real,lower<dim>> tensor_l;
-	typedef ::tensor<real,lower<dim>,lower<dim>> tensor_ll;
-	typedef ::tensor<real,upper<dim>,lower<dim>> tensor_ul;
-	typedef ::tensor<real,symmetric<upper<dim>,upper<dim>>> tensor_su;
-	typedef ::tensor<real,symmetric<lower<dim>,lower<dim>>> tensor_sl;
-	typedef ::tensor<real,upper<dim>,symmetric<lower<dim>,lower<dim>>> tensor_usl;
-	typedef ::tensor<real,lower<dim>,symmetric<lower<dim>,lower<dim>>> tensor_lsl;
+	typedef ::lower<dim> lower;
+	typedef ::upper<dim> upper;
+	
+	typedef ::symmetric<lower,lower> symmetric_lower;
+	typedef ::symmetric<upper,upper> symmetric_upper;
+	
+	typedef ::tensor<real,upper> tensor_u;
+	typedef ::tensor<real,lower> tensor_l;
+	typedef ::tensor<real,lower,lower> tensor_ll;
+	typedef ::tensor<real,upper,lower> tensor_ul;
+	typedef ::tensor<real,lower,upper> tensor_lu;
+	typedef ::tensor<real,symmetric_upper> tensor_su;
+	typedef ::tensor<real,symmetric_lower> tensor_sl;
+	typedef ::tensor<real,upper,symmetric_lower> tensor_usl;
+	typedef ::tensor<real,lower,symmetric_lower> tensor_lsl;
 
 
 	//our tensors initialze to zero, so why not our reals too?
@@ -166,15 +179,15 @@ struct AuxCell {
 	//beta_t = beta^k beta_k
 	tensor_l beta_l;
 
+	//partial_beta_lu(i,j) := partial_i beta^j
+	tensor_lu partial_beta_lu;
+
 		//metric related
 
 	//spatial metric
 	//gamma_ll(i,j) := gamma_ij
 	//gamma_it = gamma_tj = 0
 	tensor_sl gamma_ll;
-
-	//partial_gamma_lll(k,i,j) := partial_k gamma_ij
-	tensor_lsl partial_gamma_lll;
 
 	//gamma_uu(i,j) := gamma^ij = inverse(gamma_ij) = covalent(gamma_ij) / det(gamma_ij)
 	tensor_su gamma_uu;
@@ -188,7 +201,11 @@ struct AuxCell {
 	//conn_ull(i,j,k) := conn^i_jk
 	tensor_usl conn_ull;
 
-	//R_ll(i,j) := R_ij
+	//RPhi_ll(i,j) := RPhi_ij is found by substituting phi for ln(psi) in eqn 3.10 of Baumgarte & Shapiro.
+	// (but I thought this equation was for calculating R_ij?  And that ln(psi) = phi to begin with? So why do we now separate R_ij = RPhi_ij + RBar_ij?)
+	tensor_sl RPhi_ll;
+
+	//R_ll(i,j) := R_ij = RBar_ij + RPhi_ij
 	tensor_sl R_ll;
 
 	//Gaussian (scalar) curvature
@@ -216,15 +233,22 @@ struct AuxCell {
 	//partial_gammaBar_lll(i,j,k) := partial_i gammaBar_jk
 	tensor_lsl partial_gammaBar_lll;
 
+	//partial2_gammaBar_ll(i,j) := gammaBar^lm partial_l partial_m gammaBar_ij
+	// should the name be partialBar2? since I use gammaBar to raise it?
+	tensor_sl partial2_gammaBar_ll;
+
 	//connBar_lll(i,j,k) := connBar_ijk = 1/2 (partial_k gammaBar_ij + partial_j gammaBar_ik - partial_i gammaBar_jk)
 	tensor_lsl connBar_lll;
 
 	//connBar_ull(i,j,k) := connBar^i_jk = gammaBar^il connBar_ljk
 	tensor_usl connBar_ull;
-	
+
+	//partial_connBar_lu(i,j) := partial_i connBar^j
+	tensor_lu partial_connBar_lu;
+
 	//RBar_ll(i,j) := RBar_ij
 	tensor_sl RBar_ll;
-	
+
 	//RBar = gammaBar^ij RBar_ij
 	real RBar;
 		
@@ -240,5 +264,8 @@ struct AuxCell {
 
 	//ATilde_ul(i,j) := ATilde^i_j = gammaBar^ik ATilde_kj
 	tensor_ul ATilde_ul;
+
+	//ATilde_uu(i,j) := ATilde^ij = ATilde^i_k gammaBar^kj
+	tensor_su ATilde_uu;
 };
 

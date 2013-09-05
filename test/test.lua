@@ -89,7 +89,16 @@ local tests = {
 		size = 4.1e6,
 		args = 'bowen-york 4.1e6 0 0 4.1e6 4.1e6 0 0',
 	},
-	{
+	{		-- 2D kerr-schild
+		name = 'sagitarrius_a_star_kerr-schild_2d',
+		dim = 2,
+		iter = 10,
+		res = 20,
+		size = 4.1e6,
+		history = true,
+		args = 'kerr-schild 4.1e6',
+	},
+	{		-- 2D bowen-york
 		name = 'sagitarrius_a_star_bowen-york_2d',
 		dim = 2,
 		iter = 10,
@@ -101,7 +110,7 @@ local tests = {
 	{
 		name = 'sagitarrius_a_star_bowen-york_2d_big',
 		dim = 2,
-		iter = 100,
+		iter = 0,
 		res = 100,
 		size = 4.1,
 		args = 'bowen-york 4.1e6 0 0 4.1e6',

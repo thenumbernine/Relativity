@@ -282,6 +282,9 @@ void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 		>::init(simType, params.args, sim);
 	}
 
+	//construct connBar^i based on gammaBar_ij
+	sim.calcConnBar(*sim.getGeomGridReadCurrent());
+
 	ofstream f(params.filename.c_str());
 
 	OutputTable<real, dim>::header(f, cols);

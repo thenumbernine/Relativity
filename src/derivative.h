@@ -201,6 +201,38 @@ struct PartialSecondDerivativeClass<real, dim, CellType, PartialCellType, real> 
 };
 
 template<typename real, int dim, typename CellType, typename PartialCellType>
+struct PartialSecondDerivativeClass<real, dim, CellType, PartialCellType, tensor<real, upper<dim>>> {
+	typedef tensor<real, upper<dim>> InputType;
+	typedef tensor<real, lower<dim>, upper<dim>> PartialInputType;
+	typedef tensor<real, symmetric<lower<dim>, lower<dim>>, upper<dim>> OutputType;
+	typedef ::Grid<CellType, dim> Grid;
+	typedef ::Grid<PartialCellType, dim> PartialGrid;
+	typedef const InputType CellType::*CellFieldType;
+	typedef const PartialInputType PartialCellType::*CellPartialFieldType;
+	OutputType operator()(const Grid &grid, CellFieldType field, const PartialGrid &partialGrid, CellPartialFieldType partialField, const vector<real, dim> &dx, const vector<int, dim> &index) {
+		OutputType result;
+			
+		//partial2_field_lll(k,l,i) = partial_k partial_l field_i
+		for (int k = 0; k < dim; ++k) {
+			PartialInputType partial_field_ll_wrt_xk = partialDerivativeCoordinate<real, dim, PartialCellType, PartialInputType, 8>(partialGrid, partialField, dx, index, k);
+			for (int l = 0; l <= k; ++l) {
+				if (k == l) {
+					InputType partial2_field_l_wrt_kk = partialSecondDerivativeCoordinate<real, dim, CellType, InputType, 8>(grid, field, dx, index, k);
+					for (int i = 0; i < dim; ++i) {
+						result(k,l,i) = partial2_field_l_wrt_kk(i);
+					}
+				} else {
+					for (int i = 0; i < dim; ++i) {
+						result(k,l,i) = partial_field_ll_wrt_xk(l,i);
+					}
+				}
+			}
+		}
+
+		return result;
+	}
+};
+template<typename real, int dim, typename CellType, typename PartialCellType>
 struct PartialSecondDerivativeClass<real, dim, CellType, PartialCellType, tensor<real, symmetric<lower<dim>, lower<dim>>>> {
 	typedef tensor<real, symmetric<lower<dim>, lower<dim>>> InputType;
 	typedef tensor<real, lower<dim>, symmetric<lower<dim>, lower<dim>>> PartialInputType;
@@ -217,19 +249,12 @@ struct PartialSecondDerivativeClass<real, dim, CellType, PartialCellType, tensor
 			PartialInputType partial_field_lll_wrt_xk = partialDerivativeCoordinate<real, dim, PartialCellType, PartialInputType, 8>(partialGrid, partialField, dx, index, k);
 			for (int l = 0; l <= k; ++l) {
 				if (k == l) {
-#if 0				// working on subtensor dereferences
-					InputType partial2_field_ll_wrt_kk = partialSecondDerivativeCoordinate<real, dim, CellType, InputType, 8>(grid, field, dx, index, k);
-					result(k,l) = partial2_field_ll_wrt_kk;
-#endif
-					
-#if 1				//per-index in the mean time
 					InputType partial2_field_ll_wrt_kk = partialSecondDerivativeCoordinate<real, dim, CellType, InputType, 8>(grid, field, dx, index, k);
 					for (int i = 0; i < dim; ++i) {
 						for (int j = 0; j <= i; ++j) {
 							result(k,l,i,j) = partial2_field_ll_wrt_kk(i,j);
 						}
 					}
-#endif
 				} else {
 					for (int i = 0; i < dim; ++i) {
 						for (int j = 0; j <= i; ++j) {
