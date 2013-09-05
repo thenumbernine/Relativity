@@ -6,6 +6,7 @@ plot.lua <filename.txt> <outfilename.png> <dim> <field> <flags>
 flags:
 	history
 	log
+	plotargs <plotargs>	-- arguments for the plot command
 --]]
 
 local args = {...}
@@ -13,17 +14,24 @@ local filename = table.remove(args, 1)
 local outfilename = table.remove(args, 1)
 local dim = table.remove(args, 1)
 local field = table.remove(args, 1)
+local plotargs = ''
 
 dim = assert(tonumber(dim), 'expected a valid dimension')
 
 local useHistory = false
 local useLog = false
-for _,v in ipairs(args) do 
-	if v == 'history' then 
-		useHistory = true 
-	elseif v == 'log' then
-		useLog = true
-	end 
+do
+	local i = 1
+	while i <= #args do
+		local v = args[i]
+		if v == 'history' then 
+			useHistory = true 
+		elseif v == 'log' then
+			useLog = true
+		elseif v == 'plotargs' then
+			plotargs = table.remove(args, i+1)
+		end 
+	end
 end
 local useColor = true 
 
@@ -78,7 +86,7 @@ local plotfunction = #rows <= 2 and 'plot' or 'splot'
 -- if we're not in 3D already then add a color dimension
 if #rows < 3 and useColor then table.insert(rows, rows[#rows]) end
 
-local plotcmd = plotfunction..' "'..filename..'" using '..table.concat(rows, ':')
+local plotcmd = plotfunction..' '..plotargs..' "'..filename..'" using '..table.concat(rows, ':')
 if useColor then plotcmd = plotcmd ..' with '..datatype..' palette' end
 table.insert(cmds, plotcmd)
 

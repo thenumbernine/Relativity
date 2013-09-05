@@ -92,13 +92,21 @@ local tests = {
 	{
 		name = 'sagitarrius_a_star_bowen-york_2d',
 		dim = 2,
-		iter = 1,
-		res = 10,
+		iter = 10,
+		res = 20,
 		size = 4.1,
 		history = true,
 		args = 'bowen-york 4.1e6 0 0 4.1e6',
-		excludeFromAll = true,	-- exclude from running 'all' tests
 	},
+	{
+		name = 'sagitarrius_a_star_bowen-york_2d_big',
+		dim = 2,
+		iter = 100,
+		res = 100,
+		size = 4.1,
+		args = 'bowen-york 4.1e6 0 0 4.1e6',
+	},
+
 }
 
 function io.fileexists(filename)
