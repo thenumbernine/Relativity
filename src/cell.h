@@ -142,8 +142,7 @@ struct AuxCell {
 		psi(real()),
 		DBar2_psi(real()),
 		RBar(real()),
-		tr_K_sq(real()),
-		tr_ABar_sq(real())
+		tr_K_sq(real())
 	{}
 
 
@@ -258,7 +257,7 @@ struct AuxCell {
 	//ABar_uu(i,j) := ABar^ij = psi^10 A^ij
 	tensor_su ABar_uu;
 
-	//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ij
-	real tr_ABar_sq;
+	//ATilde_ul(i,j) := ATilde^i_j = gammaBar^ik ATilde_kj
+	tensor_ul ATilde_ul;
 };
 

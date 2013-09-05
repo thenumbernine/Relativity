@@ -483,6 +483,18 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			const tensor_su &gamma_uu = cell.gamma_uu;
 			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
 
+
+			//ATilde_ul(i,j) := ATilde^i_j = gammaBar^ik ATilde_kj
+			tensor_ul &ATilde_ul = cell.ATilde_ul;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					ATilde_ul(i,j) = 0;
+					for (int k = 0; k < dim; ++k) {
+						ATilde_ul(i,j) += gammaBar_uu(i,k) * ATilde_ll(k,j);
+					}
+				}
+			}
+
 			real psiSquared = psi * psi;
 			real psiToTheFourth = psiSquared * psiSquared;
 
@@ -521,15 +533,6 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 					for (int k = 0; k < dim; ++k) {
 						ABar_uu(i,j) += ABar_ul(i,k) * gammaBar_uu(k,j);
 					}
-				}
-			}
-
-			//tr_ABar_sq := tr(ABar^2) = ABar_ij ABar^ji
-			real &tr_ABar_sq = cell.tr_ABar_sq;
-			tr_ABar_sq = 0;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					tr_ABar_sq += ABar_ll(i,j) * ABar_uu(i,j);
 				}
 			}
 
@@ -580,98 +583,75 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			AuxCell &cell = *iter;
 			const GeomCell &geomCell = geomGridRead(iter.index);
 			const MatterCell &matterCell = matterGrid(iter.index);
+			
+			const real &K = geomCell.K;
 	
 			const real &psi = cell.psi;
 			const real &DBar2_psi = cell.DBar2_psi;
-			const real &tr_ABar_sq = cell.tr_ABar_sq;
 			const real &RBar = cell.RBar;
-			const real &K = geomCell.K;
+			const tensor_ul &ATilde_ul = cell.ATilde_ul;
+			const tensor_su &gammaBar_uu = cell.gammaBar_uu;
+			
 			const real &rho = matterCell.rho;
 			const tensor_u &S_u = matterCell.S_u;
 
-			//Hamiltonian constraint
-#if 0		//option #1: use original ADM method
-
-			const real &R = cell.R;
-			const real &tr_K_sq = cell.tr_K_sq;
+				//Hamiltonian constraint
 			
-			//H = 1/2 (R + K^2 - K^j_i K^i_j) - 8 pi rho
-			real &H = cell.H;
-			H = .5 * (R + K * K - tr_K_sq) - 8. * M_PI * rho;
-#endif
-#if 0		//option #2: use conformal values
-	
 			real psiSquared = psi * psi;
 			real psiToTheFourth = psiSquared * psiSquared;
-			
-			//"Numerical Relativity" p.57
-			//H = 1/2 ( -8 DBar^2 psi + psi RBar + psi^5 (K^2 - tr(K^2)) - 16 pi psi^5 rho)
-			//  = 1/2 ( -8 DBar^2 psi + psi (RBar + psi^4 (K^2 - tr(K^2) - 16 pi rho)))
+			real psiToTheSixth = psiSquared * psiToTheFourth;
+
+			//tr_ATilde_sq := tr(ATilde^2) = ATilde_ij ATilde^ji
+			real tr_ATilde_sq = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					tr_ATilde_sq += ATilde_ul(i,j) * ATilde_ul(j,i);
+				}
+			}
+
+			//Baumgarte & Shapiro p.390
+			//H = gammaBar^ij DBar_i DBar_j exp(phi) - exp(phi)/8 RBar + exp(5phi)/8 ATilde_ij ATilde^ij - exp(5phi)/12 K^2 + 2 pi exp(5phi) rho
+			//  = DBar^2 psi + psi( -RBar / 8 + psi^4 (tr(ATilde^2) / 8 - K^2 / 12 + 2 pi rho)
 			real &H = cell.H;
-			H = .5 * (-8. * DBar2_psi + psi * (RBar + psiToTheFourth * (K * K - tr_K_sq - 16. * M_PI * rho)));
-#endif
-#if 1		//option #3: use conformal factor and conformal traceless extrinsic curvature
-			{
-				real psiSquared = psi * psi;
-				real psiToTheFourth = psiSquared * psiSquared;
-				real psiToTheEighth = psiToTheFourth * psiToTheFourth;
+			H = DBar2_psi + psi * (-RBar / 8. + psiToTheFourth * (tr_ATilde_sq / 8. - K * K / 12. + 2. * M_PI * rho));
+
+				//momentum constraint
+				
+			//DBar_ABar_luu(i,j,k) := DBar_i ABar^jk
+			tensor_lsu DBar_ABar_luu = covariantDerivative(auxGrid, &AuxCell::ABar_uu, auxGrid, &AuxCell::connBar_ull, dx, iter.index);
+	
+			//DBar_ABar_u(i) := DBar_j ABar^ji
+			tensor_u DBar_ABar_u;
+			for (int i = 0; i < dim; ++i) {
+				DBar_ABar_u(i) = 0;
+				for (int j = 0; j < dim; ++j) {
+					DBar_ABar_u(i) += DBar_ABar_luu(i,j,i);
+				}
+			}
 			
-				//"Numerical Relativity" p.65
-				//H = 1/2 (-8 DBar^2 psi + psi RBar + 2/3 psi^5 K^2 - psi^-7 tr(ABar^2) - 16 pi psi^5 rho)
-				//  = 1/2 (-8 DBar^2 psi + psi (RBar + psi^4 (2/3 K^2 - 16 pi rho) - psi^-8 tr(ABar^2)))
-				real &H = cell.H;
-				H = .5 * (-8. * DBar2_psi + psi * (RBar + psiToTheFourth * ((2./3.) * K * K - 16. * M_PI * rho) - tr_ABar_sq / psiToTheEighth));
-			}
-#endif
+			//DBar_K_l(i) := DBar_i K
+			tensor_l DBar_K_l = partialDerivative(geomGridRead, &GeomCell::K, dx, iter.index);
 
-#if 0		//option #1: original momentum constraint
-			{
-				const tensor_su &gamma_uu = cell.gamma_uu;
-				
-				//diff_K_uu(k,i,j) := diff_k K^ij
-				//I'm not seeing a distinction between the 4D and 3D representations of the constraints.
-				//The "Numerical Relativity" book did transition from a covariant form of the 4D constraint to a contravariant form of the 3D constraint
-				//It also added caveats on how D_i v_j = delta_i v_j only for rank-(0,2) forms and only if v was purely spatial.
-				tensor_lsu diff_K_luu = covariantDerivative(auxGrid, &AuxCell::K_uu, auxGrid, &AuxCell::conn_ull, dx, iter.index);
-
-				//partial_K_l(i) := partial_i K
-				tensor_l partial_K_l = partialDerivative(auxGrid, &AuxCell::K, dx, iter.index);
-
-				//M_u(i) := M^i = D_j (K^ij - gamma^ij K) - 8 pi S^i
-				tensor_u &M_u = cell.M_u;
-				for (int i = 0; i < dim; ++i) {
-					M_u(i) = -8. * M_PI * S_u(i);
-					for (int j = 0; j < dim; ++j) {
-						M_u(i) += diff_K_luu(j,i,j) - gamma_uu(i,j) * partial_K_l(j);
-					}
+			//DBar_K_u(i) := DBar^i K = gammaBar^ij DBar_j K
+			tensor_u DBar_K_u;
+			for (int i = 0; i < dim; ++i) {
+				DBar_K_u(i) = 0;
+				for (int j = 0; j < dim; ++j) {
+					DBar_K_u(i) += gammaBar_uu(i,j) * DBar_K_l(j);
 				}
 			}
-#endif
-#if 1		//option #1: use conformal traceless extrinsic curvature
-			{
-				const tensor_su &gammaBar_uu = cell.gammaBar_uu;
-				
-				//DBar_K_l(i) := DBar_i K
-				tensor_l DBar_K_l = partialDerivative(geomGridRead, &GeomCell::K, dx, iter.index);
 
-				//DBar_ABar_luu(i,j,k) := DBar_i ABar^jk
-				tensor_lsu DBar_ABar_luu = covariantDerivative(auxGrid, &AuxCell::ABar_uu, auxGrid, &AuxCell::connBar_ull, dx, iter.index);
-
-				real psiSquared = psi * psi;
-				real psiToTheFourth = psiSquared * psiSquared;
-				real psiToTheSixth = psiSquared * psiToTheFourth;
-				real psiToTheTenth = psiToTheFourth * psiToTheSixth;
-
-				//M_u(i) := M^i = DBar_j ABar^ij - 2/3 psi^6 gammaBar^ij DBar_j K - 8 pi psi^10 S^i
-				tensor_u &M_u = cell.M_u;
-				for (int i = 0; i < dim; ++i) {
-					M_u(i) = -8 * M_PI * psiToTheTenth * S_u(i);
-					for (int j = 0; j < dim; ++j) {
-						M_u(i) += DBar_ABar_luu(j,i,j) - 2./3. * psiToTheSixth * gammaBar_uu(i,j) * DBar_K_l(j);
-					}
-				}
+			//Baumgarte & Shapiro 
+			//p.65
+			//M_u(i) := M^i = DBar_j ABar^ij - 2/3 psi^6 gammaBar^ij DBar_j K - 8 pi psi^10 S^i
+			//p.390
+			//M_u(i) := M^i = DBar_j (psi^6 ATilde^ij) - 2/3 psi^6 DBar^i K - 8 pi psi^6 S^i
+			//		  = DBar_j ABar^ij + psi^6( - 2/3 gammaBar^ij DBar_j K - 8 pi S^i)
+			//hmm, looks like that psi^10 turned into an exp(6phi) ... wonder why that isn't an exp(10phi) ...
+			tensor_u &M_u = cell.M_u;
+			for (int i = 0; i < dim; ++i) {
+				M_u(i) = DBar_ABar_u(i) + psiToTheSixth * (-2./3. * DBar_K_u(i) - 8. * M_PI * S_u(i));
 			}
-#endif
 		}
 	}
 
@@ -697,6 +677,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			const real &K = geomCell.K;
 			const tensor_sl &ATilde_ll = geomCell.ATilde_ll;
 			
+			const tensor_ul &ATilde_ul = cell.ATilde_ul;	
 			const real &psi = cell.psi;
 			const tensor_l &D_alpha_l = cell.D_alpha_l;
 			const tensor_usl &conn_ull = cell.conn_ull;
@@ -760,17 +741,6 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			
 			//partial_ATilde_lll(i,j,k) := partial_i ATilde_jk
 			tensor_lsl partial_ATilde_lll = partialDerivative(geomGridRead, &GeomCell::ATilde_ll, dx, iter.index);
-
-			//ATilde_ul(i,j) := ATilde^i_j = gammaBar^ik ATilde_kj
-			tensor_ul ATilde_ul;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					ATilde_ul(i,j) = 0;
-					for (int k = 0; k < dim; ++k) {
-						ATilde_ul(i,j) += gammaBar_uu(i,k) * ATilde_ll(k,j);
-					}
-				}
-			}
 
 			//traceless portion of partial_t ATilde_ij := tracefree(-D^2 alpha + alpha (R_ij - 8 pi S_ij))
 			tensor_sl tracelessPortionOfPartialT_ATilde_ll;
