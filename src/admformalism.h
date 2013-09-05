@@ -527,7 +527,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			}
 			
 			//K_ll(i,j) := K_ij = A_ij + 1/3 gamma_ij K
-			tensor_sl &K_ll = cell.K_ll;
+			tensor_sl K_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					K_ll(i,j) = A_ll(i,j) + 1./3. * gamma_ll(i,j) * K;
@@ -535,7 +535,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			}
 		
 			//K^i_j := gamma^ik K_kj
-			tensor_ul &K_ul = cell.K_ul;
+			tensor_ul K_ul;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j < dim; ++j) {
 					K_ul(i,j) = 0;
@@ -548,6 +548,7 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 			//tr_K_sq := tr(K^2) = (K^2)^i_i = K^ij K_ji = K^i_j K^j_i
 			//this method uses tr(K^2) = K^ij K_ij in particular
 			//tr_K_sq := tr(K^2) = K^ij K_ij
+			// TODO rewrite this in terms of K and ATilde (or ABar)
 			real &tr_K_sq = cell.tr_K_sq;
 			tr_K_sq = 0.;
 			for (int i = 0; i < dim; ++i) {
@@ -786,6 +787,8 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 	void update(real dt) {
 		integrator->update(dt);
 
+		constrain(*geomGridWriteCurrent);
+
 		time += dt;
 
 		//TODO update fluid components
@@ -794,6 +797,56 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 		//do something more clever if we ever get any more than 2 histories
 		//if you never need more than 2 then maybe we won't need histories at all, just partials?
 		std::swap(geomGridReadCurrent, geomGridWriteCurrent);
+	}
+
+	//apply constraints to determinants and traces
+	void constrain(GeomGrid &geomGrid) {
+
+		for (typename GeomGrid::iterator iter = geomGrid.begin(); iter != geomGrid.end(); ++iter) {
+			GeomCell &geomCell = *iter;
+
+			tensor_sl &gammaBar_ll = geomCell.gammaBar_ll;
+			tensor_sl &ATilde_ll = geomCell.ATilde_ll;
+			
+			/*
+			det(gammaBar_ij) 
+			= det(gamma^-1/3 gamma_ij)
+			= gamma^-1 gamma
+			= 1
+			*/
+			real gammaBar = determinant(gammaBar_ll);
+			real oneOverCubeRootGammaBar = 1. / cbrt(gammaBar);
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					gammaBar_ll(i,j) *= oneOverCubeRootGammaBar;
+				}
+			}
+		
+			tensor_su gammaBar_uu = inverse(gammaBar_ll, 1); 
+
+			/*
+			tr(A_ij)
+			= tr(K_ij - 1/3 gamma_ij K)
+			= gamma^ij K_ij - 1/3 gamma^ij gamma_ij K
+			= K - 1/3 3 K
+			= 0
+
+			tr(ATilde_ij) = 3 psi^-4 tr(A_ij) = 3 psi^-4 * 0 
+			= 0
+			*/
+			real tr_ATilde = 0;
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j < dim; ++j) {
+					tr_ATilde += gammaBar_uu(i,j) * ATilde_ll(i,j);
+				}
+			}
+
+			for (int i = 0; i < dim; ++i) {
+				for (int j = 0; j <= i; ++j) {
+					ATilde_ll(i,j) -= 1./3. * gammaBar_ll(i,j) * tr_ATilde;
+				}
+			}
+		}
 	}
 };
 

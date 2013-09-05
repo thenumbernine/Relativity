@@ -230,14 +230,6 @@ struct AuxCell {
 		
 		//extrinsic curvature
 
-	//extrinsic curvature
-	//K_ll(i,j) := K_ij = A_ij + 1/3 gamma_ij K
-	//					= exp(4phi) (ATilde_ij + 1/3 gammaBar_ij K)
-	tensor_sl K_ll;
-
-	//K_ul(i,j) := K^i_j
-	tensor_ul K_ul;
-
 	//tr_K_sq := (K^2)^i_i = K^ij K_ji
 	real tr_K_sq;
 
