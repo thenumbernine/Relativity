@@ -1,6 +1,6 @@
 #pragma once
 
-#include "crtp_cast.h"
+#include "Common/crtp_cast.h"
 #include "clamp.h"
 
 /*
