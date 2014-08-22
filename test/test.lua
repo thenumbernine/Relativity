@@ -39,7 +39,7 @@ end
 
 -- this one needs to match the makefile variable.
 -- i might put that in a separate param file for both of these to read in
-local installDir = '../'	
+local installDir = '../dist/osx/debug/relativity.app/Contents/MacOS/'
 
 local tests = {
 	{

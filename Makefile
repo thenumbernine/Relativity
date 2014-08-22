@@ -1,28 +1,16 @@
-TARGETDIR := ./
-CPPFLAGS := -Wall -O0 -g
+DIST_FILENAME=relativity
+DIST_TYPE=app
 
-default: install
+include ../Common/Base.mk
+include ../Tensor/Include.mk
+include ../Profiler/Include.mk
+include ../Parallel/Include.mk
 
-test: install
+.PHONY: test
+test: default
 	cd test; lua test.lua all
 
-setbase: install
+.PHONY: setbase
+setbase: default
 	cd test; lua test.lua all setbase
-
-DEPS := $(shell find src -name "*.h")
-
-relativity: src/relativity.cpp $(DEPS)
-	g++ $(CPPFLAGS) -std=c++0x src/relativity.cpp -o relativity
-
-install: relativity
-#	cp relativity $(TARGETDIR) 
-
-all: relativity
-
-clean:
-	-rm relativity
-
-.PHONY: default all install test setbase plot clean
-
-
 
