@@ -64,12 +64,8 @@ struct BrillLindquist : public InitialData<real, dim> {
 			eta(i,i) = 1.;
 		}
 
-		const vector &min = sim.min;
-		const vector &max = sim.max;
-
 		//provide initial conditions
 		
-		vector center = (max + min) * .5;
 		std::cout << "providing initial conditions..." << std::endl;
 		for (typename ADMFormalism::GeomGrid::iterator iter = sim.geomGridReadCurrent->begin(); iter != sim.geomGridReadCurrent->end(); ++iter) {
 			typename ADMFormalism::GeomCell &geomCell = *iter;

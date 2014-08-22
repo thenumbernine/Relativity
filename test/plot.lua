@@ -1,3 +1,4 @@
+#! /usr/bin/env lua
 --[[
 plotting script
 
@@ -91,7 +92,7 @@ local plotcmd = plotfunction..' '..plotargs..' "'..filename..'" using '..table.c
 if useColor then plotcmd = plotcmd ..' with '..datatype..' palette' end
 table.insert(cmds, plotcmd)
 
-local gnuplot = 'droidplot'
+local gnuplot = 'gnuplot'
 local cmd = gnuplot.." -e '"..table.concat(cmds, '; ').."'"
 print(cmd)
-assert(os.execute(cmd) == 0)
+assert(os.execute(cmd))

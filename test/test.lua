@@ -1,3 +1,4 @@
+#! /usr/bin/env lua
 --[[
 args
 	setbase: 	set the current test results to the baseline.  notice that it does not run the tests and generate new results.
@@ -38,7 +39,7 @@ end
 
 -- this one needs to match the makefile variable.
 -- i might put that in a separate param file for both of these to read in
-local installDir = '/data/local/bin/'	
+local installDir = '../'	
 
 local tests = {
 	{
@@ -136,9 +137,7 @@ end
 
 local function exec(cmd)
 	print(cmd)
-	local result = os.execute(cmd)
-	if result ~= 0 then return false, 'failed with error: '..result end
-	return true
+	return assert(os.execute(cmd))
 end
 
 local function runCmd(targetTestName, cmd)
@@ -172,14 +171,14 @@ local function runCmd(targetTestName, cmd)
 			--]]
 			if cmd == 'plot' then
 				-- don't assert because gnuplot errors if the data is all zeroes
-				exec('lua plot.lua '..filename
+				exec('./plot.lua '..filename
 					..' '..(filename:match('(.*)%.txt'))..'.png'
 					..' '..test.dim
 					..' '..plotColumn
 					..(plotLog and ' log' or '')
 				)
 				if plotHistory then
-					exec('lua plot.lua '..filename
+					exec('./plot.lua '..filename
 						..' '..(filename:match('(.*)%.txt'))..'_history.png'
 						..' '..test.dim
 						..' '..plotColumn

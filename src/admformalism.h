@@ -733,9 +733,6 @@ struct ADMFormalism : public IADMFormalism<real_, dim_> {
 
 			GeomCell &partial_t_geomCell = partial_t_geomGrid(iter.index);
 
-			//D_beta_ll(j,i) := D_j beta_i = partial_j beta_i - conn^k_ij beta_k
-			tensor_ll D_beta_ll = covariantDerivative(auxGrid, &AuxCell::beta_l, auxGrid, &AuxCell::conn_ull, dx, iter.index);
-
 			//trace_partial_beta := partial_i beta^i
 			real trace_partial_beta = 0.;
 			for (int i = 0; i < dim; ++i) {

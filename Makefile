@@ -1,4 +1,4 @@
-TARGETDIR := /data/local/bin/
+TARGETDIR := ./
 CPPFLAGS := -Wall -O0 -g
 
 default: install
@@ -15,7 +15,7 @@ relativity: src/relativity.cpp $(DEPS)
 	g++ $(CPPFLAGS) -std=c++0x src/relativity.cpp -o relativity
 
 install: relativity
-	cp relativity $(TARGETDIR) 
+#	cp relativity $(TARGETDIR) 
 
 all: relativity
 
