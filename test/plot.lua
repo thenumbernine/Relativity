@@ -51,6 +51,7 @@ local datatype = 'lines'
 local cmds = {
 	'set style data '..datatype,
 	'set palette rgbformulae 33,13,10', --?
+	'set terminal png size 800,600 enhanced font "Helvetica,12"',
 	'set output "'..outfilename..'"',
 	'set format x "%e"',
 	'set format y "%e"',
