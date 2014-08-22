@@ -2,7 +2,7 @@
 
 #include "initialdata.h"
 #include "../constants.h"
-#include "../exception.h"
+#include "Common/Exception.h"
 
 #include <iostream>
 
@@ -26,16 +26,16 @@ struct Schwarzschild : public InitialData<real, dim> {
 	Schwarzschild() : M(0), R(0), rho(0) {}
 	
 	virtual void init(ADMFormalism &sim, std::vector<std::string> &args) {
-		if (!args.size()) throw Exception() << "expected mass";
+		if (!args.size()) throw Common::Exception() << "expected mass";
 		M = atof(args[0].c_str());
 		args.erase(args.begin());
 		
-		if (!args.size()) throw Exception() << "expected radius";
+		if (!args.size()) throw Common::Exception() << "expected radius";
 		R = atof(args[0].c_str());
 		args.erase(args.begin());
 	
 		//technically ... I could calculate this ...
-		if (!args.size()) throw Exception() << "expected density";
+		if (!args.size()) throw Common::Exception() << "expected density";
 		rho = atof(args[0].c_str());
 		args.erase(args.begin());
 	

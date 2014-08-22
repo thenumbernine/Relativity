@@ -2,7 +2,7 @@
 
 #include "initialdata.h"
 #include "../constants.h"
-#include "../exception.h"
+#include "Common/Exception.h"
 
 #include <iostream>
 
@@ -30,7 +30,7 @@ struct KerrSchild : public InitialData<real, dim> {
 
 	virtual void init(ADMFormalism &sim, std::vector<std::string> &args) {
 	
-		if (!args.size()) throw Exception() << "expected mass";
+		if (!args.size()) throw Common::Exception() << "expected mass";
 		M = atof(args[0].c_str());
 		args.erase(args.begin());
 	

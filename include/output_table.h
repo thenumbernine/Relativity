@@ -3,11 +3,12 @@
 /*
 trying to organize my output stuff instead of typing headers into two places and hoping they match up
 */
-#include <ostream>
 #include "grid.h"
 #include "cell.h"
 #include "admformalism.h"
 #include "tensor.h"
+#include "Common/Exception.h"
+#include <ostream>
 
 struct CoordNames {
 	static const char *names[];
@@ -284,7 +285,7 @@ struct OutputTable {
 		if (findColumnName<GeomCell>(columnName, columnIndex)) return columnIndex;
 		if (findColumnName<MatterCell>(columnName, columnIndex)) return columnIndex;
 		if (findColumnName<AuxCell>(columnName, columnIndex)) return columnIndex;
-		throw Exception() << "failed to find column named " << columnName;
+		throw Common::Exception() << "failed to find column named " << columnName;
 	}
 
 	static int getNumColumns() {

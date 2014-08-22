@@ -2,7 +2,7 @@
 
 #include "initialdata.h"
 #include "../constants.h"
-#include "../exception.h"
+#include "Common/Exception.h"
 
 #include <iostream>
 
@@ -35,7 +35,7 @@ struct BrillLindquist : public InitialData<real, dim> {
 	std::vector<tensor<real, lower<dim+1>>> blackHoleInfo;
 
 	virtual void init(ADMFormalism &sim, std::vector<std::string> &args) {
-		if (!args.size()) throw Exception() << "expected simulation arguments";
+		if (!args.size()) throw Common::Exception() << "expected simulation arguments";
 		int numBlackHoles = atoi(args[0].c_str());
 		args.erase(args.begin());
 
@@ -44,7 +44,7 @@ struct BrillLindquist : public InitialData<real, dim> {
 		for (int i = 0; i < numBlackHoles; ++i) {
 			tensor<real, lower<dim+1>> blackHole;
 			for (int j = 0; j < dim+1; ++j) {
-				if (!args.size()) throw Exception() << "expected simulation arguments";
+				if (!args.size()) throw Common::Exception() << "expected simulation arguments";
 				blackHole(j) = atof(args[0].c_str());
 				args.erase(args.begin());
 			}

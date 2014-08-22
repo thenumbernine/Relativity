@@ -1,7 +1,7 @@
 #include "admformalism.h"
 #include "integrators.h"
 #include "inverse.h"
-#include "exception.h"
+#include "Common/Exception.h"
 
 #include <string.h>
 
@@ -83,7 +83,7 @@ struct InitTest<real, dim, InitialDataType>{
 		if (simType == init.name()) {
 			init.init(sim, args);
 		} else {
-			throw Exception() << "got unknown simulation type " << simType;
+			throw Common::Exception() << "got unknown simulation type " << simType;
 		}
 	}
 };
@@ -192,7 +192,7 @@ SimParams interpretArgs(int argc, char **argv) {
 				if (!strcmp(precision, "double")) {
 					params.precision = PRECISION_DOUBLE;
 				} else {
-					throw Exception() << "got an unknown precision " << precision;
+					throw Common::Exception() << "got an unknown precision " << precision;
 				}
 				continue;
 			} else if (!strcmp(argv[i], "integrator")) {
@@ -202,7 +202,7 @@ SimParams interpretArgs(int argc, char **argv) {
 				} else if (!strcmp(integrator, "rk4")) {
 					params.integrator = INTEGRATOR_RK4;
 				} else {
-					throw Exception() << "got an unknown integrator " << integrator;
+					throw Common::Exception() << "got an unknown integrator " << integrator;
 				}
 				continue;
 			} else if (!strcmp(argv[i], "filename")) {
@@ -257,7 +257,7 @@ void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 				cols[OutputTable<real, dim>::getColumnIndex(colName)] = true;
 			}
 		}
-		if (!anyFound) throw Exception() << "you forgot to provide any columns to output";
+		if (!anyFound) throw Common::Exception() << "you forgot to provide any columns to output";
 	}
 
 
@@ -307,7 +307,7 @@ void runSimPrecision(SimParams &params) {
 		integrator = new RK4Integrator<real, dim>();
 		break;
 	default:
-		throw Exception() << "got an integrator I couldn't handle " << params.integrator;
+		throw Common::Exception() << "got an integrator I couldn't handle " << params.integrator;
 	}
 	runSimIntegrator<real, dim>(params, integrator);
 	delete integrator;
@@ -325,7 +325,7 @@ void runSimDim(SimParams &params) {
 		runSimPrecision<double, dim>(params);
 		break;
 	default:
-		throw Exception() << "got a precision I couldn't handle " << params.precision;
+		throw Common::Exception() << "got a precision I couldn't handle " << params.precision;
 	}
 }
 
@@ -341,7 +341,7 @@ void runSim(SimParams &params) {
 		runSimDim<3>(params);
 		break;
 	default:
-		throw Exception() << "got a dimension I couldn't handle " << params.dim;
+		throw Common::Exception() << "got a dimension I couldn't handle " << params.dim;
 	}
 }
 
