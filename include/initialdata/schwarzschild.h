@@ -10,18 +10,19 @@
 this is a Schwarzschild init from Baumgarte & Shapiro p.50, with some matter thrown in there
 TODO use Baumgarte & Shapiro p.66 Sobelev function for matter solution 
 */
-template<typename real, int dim>
-struct Schwarzschild : public InitialData<real, dim> {
+template<typename Real, int dim>
+struct Schwarzschild : public InitialData<Real, dim> {
 	virtual const char *name() { return "schwarzschild"; }
 
-	typedef ::vector<real, dim> vector;
-	typedef ::InitialData<real, dim> InitialData;
+	typedef Tensor::Vector<Real, dim> Vector;
+	typedef Tensor::Vector<int, dim> DerefType;
+	typedef ::InitialData<Real, dim> InitialData;
 	typedef typename InitialData::ADMFormalism ADMFormalism;
-	typedef typename ADMFormalism::tensor_sl tensor_sl;
+	typedef typename ADMFormalism::TensorSL TensorSL;
 
-	real M;		//total mass, in meters
-	real R;		//radius, in meters
-	real rho;	//density ... which I could calculate myself (in meters^-2)
+	Real M;		//total mass, in meters
+	Real R;		//radius, in meters
+	Real rho;	//density ... which I could calculate myself (in meters^-2)
 
 	Schwarzschild() : M(0), R(0), rho(0) {}
 	
@@ -48,39 +49,39 @@ struct Schwarzschild : public InitialData<real, dim> {
 		
 		//provide initial conditions
 		
-		vector center = (sim.max + sim.min) * .5;
+		Vector center = (sim.max + sim.min) * .5;
 		std::cout << "providing initial conditions..." << std::endl;
-		for (typename ADMFormalism::GeomGrid::iterator iter = sim.geomGridReadCurrent->begin(); iter != sim.geomGridReadCurrent->end(); ++iter) {
-			typename ADMFormalism::GeomCell &geomCell = *iter;
-			typename ADMFormalism::MatterCell &matterCell = sim.matterGrid(iter.index);
+		for (DerefType index : sim.geomGridReadCurrent->range()) {
+			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
+			typename ADMFormalism::MatterCell &matterCell = sim.matterGrid(index);
 
-			vector v = sim.coordForIndex(iter.index) - center;
+			Vector v = sim.coordForIndex(index) - center;
 			
-			real r = vector::length(v);
-			real MOverTwoR = M / (2. * r);
-			real oneMinusMOverTwoR = 1. - MOverTwoR;
-			real onePlusMOverTwoR = 1. + MOverTwoR;
-			real onePlusMOverTwoR_Squared = onePlusMOverTwoR * onePlusMOverTwoR;
+			Real r = Vector::length(v);
+			Real MOverTwoR = M / (2. * r);
+			Real oneMinusMOverTwoR = 1. - MOverTwoR;
+			Real onePlusMOverTwoR = 1. + MOverTwoR;
+			Real onePlusMOverTwoR_Squared = onePlusMOverTwoR * onePlusMOverTwoR;
 			
 			geomCell.alpha = oneMinusMOverTwoR / onePlusMOverTwoR; 
 		
 			//beta^i = 0
 
-			tensor_sl gamma_ll;
+			TensorSL gamma_ll;
 			for (int i = 0; i < dim; ++i) {
 				gamma_ll(i,i) = onePlusMOverTwoR_Squared * onePlusMOverTwoR_Squared;
 			}
 			
 			//gamma = det(gamma_ij)
-			real gamma = determinant(gamma_ll);
+			Real gamma = determinant(gamma_ll);
 			
 			//phi = log(gamma) / 12
-			real &phi = geomCell.phi;
+			Real &phi = geomCell.phi;
 			phi = log(gamma) / 12.;
 
-			real expMinusFourPhi = exp(-4. * phi);
+			Real expMinusFourPhi = exp(-4. * phi);
 			//gammaBar_ll(i,j) := gamma^-1/3 gamma_ij
-			tensor_sl &gammaBar_ll = geomCell.gammaBar_ll;
+			TensorSL &gammaBar_ll = geomCell.gammaBar_ll;
 			for (int i = 0; i < dim; ++i) {
 				for (int j = 0; j <= i; ++j) {
 					gammaBar_ll(i,j) = expMinusFourPhi * gamma_ll(i,j);

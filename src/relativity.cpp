@@ -264,8 +264,8 @@ void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 	cout << "constructing sim..." << endl;
 	
 	real maxDist = params.size * sunRadiusInM;
-	typedef ::vector<real, dim> vector;
-	ADMFormalism<real, dim> sim(vector(-maxDist), vector(maxDist), params.res, integrator);
+	typedef Tensor::Vector<real, dim> Vector;
+	ADMFormalism<real, dim> sim(Vector(-maxDist), Vector(maxDist), params.res, integrator);
 
 	//why not allow for a non-initial-condition sim?
 	//for the record, i think alpha will be initialized to zero as welll, 

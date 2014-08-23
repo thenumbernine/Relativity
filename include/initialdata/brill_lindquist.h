@@ -19,20 +19,21 @@ psi = 1 + sum_a M_a / (2 r_a)
 ...and more detail can be found in chapter 13.2
 In fact, I'm stealing 1/alpha = sum_a M_a / (r c_a) from 12.51 without fully reading the rest of the chapter
 */
-template<typename real, int dim>
-struct BrillLindquist : public InitialData<real, dim> {
+template<typename Real, int dim>
+struct BrillLindquist : public InitialData<Real, dim> {
 	virtual const char *name() { return "brill-lindquist"; }
 
-	typedef ::vector<real, dim> vector;
-	typedef ::InitialData<real, dim> InitialData;
+	typedef Tensor::Vector<Real, dim> Vector;
+	typedef Tensor::Vector<int, dim> DerefType;
+	typedef ::InitialData<Real, dim> InitialData;
 	typedef typename InitialData::ADMFormalism ADMFormalism;
-	typedef typename ADMFormalism::tensor_l tensor_l;
-	typedef typename ADMFormalism::tensor_u tensor_u;
-	typedef typename ADMFormalism::tensor_sl tensor_sl;
-	typedef typename ADMFormalism::tensor_su tensor_su;
+	typedef typename ADMFormalism::TensorL TensorL;
+	typedef typename ADMFormalism::TensorU TensorU;
+	typedef typename ADMFormalism::TensorSL TensorSL;
+	typedef typename ADMFormalism::TensorSU TensorSU;
 
 	//I should at least make this a structure or something
-	std::vector<tensor<real, lower<dim+1>>> blackHoleInfo;
+	std::vector<Tensor::Tensor<Real, Tensor::Lower<dim+1>>> blackHoleInfo;
 
 	virtual void init(ADMFormalism &sim, std::vector<std::string> &args) {
 		if (!args.size()) throw Common::Exception() << "expected simulation arguments";
@@ -42,7 +43,7 @@ struct BrillLindquist : public InitialData<real, dim> {
 		std::cout << "number of black holes " << numBlackHoles << std::endl;
 
 		for (int i = 0; i < numBlackHoles; ++i) {
-			tensor<real, lower<dim+1>> blackHole;
+			Tensor::Tensor<Real, Tensor::Lower<dim+1>> blackHole;
 			for (int j = 0; j < dim+1; ++j) {
 				if (!args.size()) throw Common::Exception() << "expected simulation arguments";
 				blackHole(j) = atof(args[0].c_str());
@@ -59,7 +60,7 @@ struct BrillLindquist : public InitialData<real, dim> {
 			blackHoleInfo.push_back(blackHole);
 		}
 		
-		tensor_sl eta;
+		TensorSL eta;
 		for (int i = 0; i < dim; ++i) {
 			eta(i,i) = 1.;
 		}
@@ -67,24 +68,24 @@ struct BrillLindquist : public InitialData<real, dim> {
 		//provide initial conditions
 		
 		std::cout << "providing initial conditions..." << std::endl;
-		for (typename ADMFormalism::GeomGrid::iterator iter = sim.geomGridReadCurrent->begin(); iter != sim.geomGridReadCurrent->end(); ++iter) {
-			typename ADMFormalism::GeomCell &geomCell = *iter;
+		for (DerefType index : sim.geomGridReadCurrent->range()) {
+			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index); 
 			
-			vector x = sim.coordForIndex(iter.index);
+			Vector x = sim.coordForIndex(index);
 
 			//calculate gammaBar_ij
 			geomCell.gammaBar_ll = eta;
 			
 			//calculate psi
-			real psi = 1;
-			real oneOverAlpha = 0;
+			Real psi = 1;
+			Real oneOverAlpha = 0;
 			for (int i = 0; i < (int)blackHoleInfo.size(); ++i) {
-				real M = blackHoleInfo[i](dim);
-				vector c;
+				Real M = blackHoleInfo[i](dim);
+				Vector c;
 				for (int j = 0; j < dim; ++j) {
 					c(j) = blackHoleInfo[i](j);
 				}
-				real r = vector::length(x - c);
+				Real r = Vector::length(x - c);
 				psi += .5 * M / r;
 				oneOverAlpha += .5 * M / r;
 			}

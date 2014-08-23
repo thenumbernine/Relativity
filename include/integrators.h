@@ -10,21 +10,21 @@ that includes ...
 */
 
 #include "cell.h"
-#include "grid.h"
+#include "Tensor/Grid.h"
 #include "i_integrator.h"
 #include "i_admformalism.h"
 
 template<typename real, int dim>
 struct Integrator : public IIntegrator<real, dim> {
-	typedef Grid<GeomCell<real, dim>, dim> GeomGrid;
+	typedef Tensor::Grid<GeomCell<real, dim>, dim> GeomGrid;
 	typedef ::IADMFormalism<real, dim> IADMFormalism;
 
 	IADMFormalism *sim;
-	vector<int, dim> size;
+	Tensor::Vector<int, dim> size;
 
 	Integrator() : sim(NULL) {}
 
-	virtual void init(IADMFormalism *sim_, const ::vector<int, dim> &size_) {
+	virtual void init(IADMFormalism *sim_, const Tensor::Vector<int, dim> &size_) {
 		sim = sim_;
 		size = size_;
 	}
@@ -33,14 +33,14 @@ struct Integrator : public IIntegrator<real, dim> {
 	//or init all the grids in ctor and implement a copy ctor in the grids
 
 	void copyGrid(GeomGrid *dst, const GeomGrid *src) {
-		for (typename GeomGrid::const_iterator iter = src->begin(); iter != src->end(); ++iter) {
-			(*dst)(iter.index) = *iter;
+		for (Tensor::Vector<int, dim> index : src->range()) {
+			(*dst)(index) = (*src)(index);
 		}
 	}
 
 	void multAddGrid(GeomGrid *dst, const GeomGrid *src, real scale) {
-		for (typename GeomGrid::const_iterator iter = src->begin(); iter != src->end(); ++iter) {
-			(*dst)(iter.index) += *iter * scale;
+		for (Tensor::Vector<int, dim> index : src->range()) {
+			(*dst)(index) += (*src)(index) * scale;
 		}
 	}
 };
@@ -59,7 +59,7 @@ struct EulerIntegrator : public Integrator<real, dim> {
 		delete partialTCells;
 	}
 
-	virtual void init(IADMFormalism *sim_, const ::vector<int, dim> &size_) {
+	virtual void init(IADMFormalism *sim_, const Tensor::Vector<int, dim> &size_) {
 		Integrator::init(sim_, size_);
 		
 		assert(!partialTCells);
@@ -96,7 +96,7 @@ struct RK4Integrator : public Integrator<real, dim> {
 		delete k4;
 	}
 	
-	virtual void init(IADMFormalism *sim_, const ::vector<int, dim> &size_) {
+	virtual void init(IADMFormalism *sim_, const Tensor::Vector<int, dim> &size_) {
 		Integrator::init(sim_, size_);
 		
 		assert(!xtmp);
