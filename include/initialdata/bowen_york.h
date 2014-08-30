@@ -3,7 +3,7 @@
 #include "initialdata.h"
 #include "../constants.h"
 #include "Common/Exception.h"
-
+#include "Parallel/Parallel.h"
 #include <iostream>
 
 
@@ -81,7 +81,8 @@ struct BowenYork : public InitialData<Real, dim> {
 		
 		Vector center = (max + min) * .5;
 		std::cout << "providing initial conditions..." << std::endl;
-		for (DerefType index : sim.geomGridReadCurrent->range()) {
+		Tensor::RangeObj<dim> range = sim.geomGridReadCurrent->range();
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
 			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
 			//we don't need this cell, just a function in the AuxCell class for computing psi from phi 
 			typename ADMFormalism::AuxCell &cell = sim.auxGrid(index);
@@ -242,8 +243,7 @@ struct BowenYork : public InitialData<Real, dim> {
 					ATilde_ll(i,j) = psiToTheFourth * K_ll(i,j) - 1./3. * gammaBar_ll(i,j) * K;
 				}
 			}
-
-		}
+		});
 	}
 };
 

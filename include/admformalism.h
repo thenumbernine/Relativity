@@ -1,21 +1,17 @@
 #pragma once
 
-#include <assert.h>
-#include <math.h>
-
-#include <iostream>
-
-#include "Tensor/Vector.h"
-#include "Tensor/Tensor.h"
-
 #include "cell.h"
-#include "Tensor/Grid.h"
-
 #include "inverse.h"
 #include "derivative.h"
-
 #include "i_integrator.h"
 #include "i_admformalism.h"
+#include "Tensor/Vector.h"
+#include "Tensor/Tensor.h"
+#include "Tensor/Grid.h"
+#include "Parallel/Parallel.h"
+#include <assert.h>
+#include <math.h>
+#include <iostream>
 
 //Formalism class generates partial t values
 template<typename Real_, int dim_>
@@ -152,13 +148,15 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	//doesn't trust auxGrid.  instead it performs an inverse operation itself,
 	// so only use this on startup after gammaBar_ll is determined.
 	void calcConnBar(GeomGrid &geomGrid) {
-		for (DerefType index : auxGrid.range()) {
+		Tensor::RangeObj<dim> range = auxGrid.range();
+		
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGrid(index);
 			cell.gammaBar_uu = inverse(geomCell.gammaBar_ll, 1.);
-		}
+		});
 
-		for (DerefType index : geomGrid.range()) {
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			GeomCell &geomCell = geomGrid(index);
 
 			TensorLSU partial_gammaBar_luu = partialDerivative(auxGrid, &AuxCell::gammaBar_uu, dx, index);
@@ -169,7 +167,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					geomCell.connBar_u(i) += partial_gammaBar_luu(j,i,j);
 				}
 			}
-		}
+		});
 	}
 
 	//calculates partial_gammaBar_lll, connBar_lll, connBar_ull, R_ll, R
@@ -178,7 +176,8 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		//partial_gammaBar_lll depends on gamma_ll
 		//connBar_lll depends on partial_gammaBar_lll
 		//connBar_ull depends on connBar_lll and gamma_uu
-		for (DerefType index : auxGrid.range()) {
+		Tensor::RangeObj<dim> range = auxGrid.range();
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const TensorSU &gammaBar_uu = cell.gammaBar_uu;
 		
@@ -208,9 +207,9 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					}
 				}
 			}
-		}
+		});
 
-		for (DerefType index : auxGrid.range()) {
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const TensorSU &gammaBar_uu = cell.gammaBar_uu;
 
@@ -229,7 +228,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					}
 				}
 			}
-		}
+		});
 	}
 
 	Vector coordForIndex(const DerefType &index) const {
@@ -250,7 +249,8 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		//first compute and store aux values that will be subsequently used for partial differentiation
 		//during this process read and write to the same cell
 		
-		for (DerefType index : auxGrid.range()) {
+		Tensor::RangeObj<dim> range = auxGrid.range();
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 	
@@ -285,10 +285,10 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					cell.gamma_uu(i,j) = oneOverPsiToTheFourth * cell.gammaBar_uu(i,j);
 				}
 			}
-		}
+		});
 		
 		//beta_l, gamma_uu, D_alpha_l
-		for (DerefType index : auxGrid.range()) {
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 			
@@ -312,11 +312,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			
 			//partial_beta_lu(j,i) := partial_j beta^i
 			cell.partial_beta_lu = partialDerivative(geomGridRead, &GeomCell::beta_u, dx, index);
-		}
+		});
 
 		//DBar_phi_l depends on phi
 		//DBar_psi_l depends on psi
-		for (DerefType index : auxGrid.range()) {
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 	
 			//DBar_phi_l(i) := DBar_i ln(psi) = partial_i ln(psi)
@@ -324,7 +324,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 
 			//DBar_psi_l(i) := DBar_i psi
 			cell.DBar_psi_l = partialDerivative(auxGrid, &AuxCell::psi, dx, index);
-		}
+		});
 
 		//calculates partial_gammaBar_lll, connBar_lll, connBar_ull
 		// depends on gammaBar_ll, gammaBar_uu
@@ -332,7 +332,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 
 		//conn_ull depends on connBar_ull, DBar_phi_l, gammaBar_uu, gammaBar_ll
 		//conn_lll depends on conn_ull and gamma_ll
-		for (DerefType index : auxGrid.range()) {
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 
@@ -369,9 +369,9 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					}
 				}
 			}
-		}
+		});
 		
-		for (DerefType index : auxGrid.range()) {
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 			
@@ -508,10 +508,10 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					DBar2_psi += gammaBar_uu(i,j) * DBar2_psi_ll(i,j);
 				}
 			}
-		}
+		});
 
 		//calculate extrinsic curvature tensors
-		for (DerefType index : auxGrid.range()) {
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 
@@ -596,10 +596,10 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					tr_K_sq += K_ul(i,j) * K_ul(j,i); 
 				}
 			}
-		}
+		});
 
 		//calcConstraints
-		for (DerefType index : auxGrid.range()) {
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 			const MatterCell &matterCell = matterGrid(index);
@@ -672,7 +672,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			for (int i = 0; i < dim; ++i) {
 				M_u(i) = DBar_ABar_u(i) + psiToTheSixth * (-2./3. * DBar_K_u(i) - 8. * M_PI * S_u(i));
 			}
-		}
+		});
 	}
 
 
@@ -683,7 +683,8 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	{
 		calcAux(geomGridRead);
 	
-		for (DerefType index : auxGrid.range()) {
+		Tensor::RangeObj<dim> range = auxGrid.range();
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 			const MatterCell &matterCell = matterGrid(index);
@@ -846,7 +847,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					}
 				}
 			}
-		}
+		});
 	}
 
 	void update(Real dt) {
@@ -867,7 +868,8 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	//apply constraints to determinants and traces
 	void constrain(GeomGrid &geomGrid) {
 
-		for (DerefType index : geomGrid.range()) {
+		Tensor::RangeObj<dim> range = auxGrid.range();
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
 			GeomCell &geomCell = geomGrid(index);
 
 			TensorSL &gammaBar_ll = geomCell.gammaBar_ll;
@@ -911,7 +913,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					ATilde_ll(i,j) -= 1./3. * gammaBar_ll(i,j) * tr_ATilde;
 				}
 			}
-		}
+		});
 	}
 };
 

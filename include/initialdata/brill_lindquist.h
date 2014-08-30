@@ -3,7 +3,7 @@
 #include "initialdata.h"
 #include "../constants.h"
 #include "Common/Exception.h"
-
+#include "Parallel/Parallel.h"
 #include <iostream>
 
 /*
@@ -68,7 +68,8 @@ struct BrillLindquist : public InitialData<Real, dim> {
 		//provide initial conditions
 		
 		std::cout << "providing initial conditions..." << std::endl;
-		for (DerefType index : sim.geomGridReadCurrent->range()) {
+		Tensor::RangeObj<dim> range = sim.geomGridReadCurrent->range();
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
 			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index); 
 			
 			Vector x = sim.coordForIndex(index);
@@ -101,7 +102,7 @@ struct BrillLindquist : public InitialData<Real, dim> {
 			//geomCell.alpha = 1. / oneOverAlpha;
 			geomCell.alpha = 1.;
 			geomCell.phi = log(psi);
-		}
+		});
 	}
 };
 

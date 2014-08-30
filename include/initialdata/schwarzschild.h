@@ -3,7 +3,7 @@
 #include "initialdata.h"
 #include "../constants.h"
 #include "Common/Exception.h"
-
+#include "Parallel/Parallel.h"
 #include <iostream>
 
 /*
@@ -51,7 +51,8 @@ struct Schwarzschild : public InitialData<Real, dim> {
 		
 		Vector center = (sim.max + sim.min) * .5;
 		std::cout << "providing initial conditions..." << std::endl;
-		for (DerefType index : sim.geomGridReadCurrent->range()) {
+		Tensor::RangeObj<dim> range = sim.geomGridReadCurrent->range();
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
 			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
 			typename ADMFormalism::MatterCell &matterCell = sim.matterGrid(index);
 
@@ -93,7 +94,7 @@ struct Schwarzschild : public InitialData<Real, dim> {
 			if (r <= R) {
 				matterCell.rho = sim.dx.volume() * rho;
 			}
-		}
+		});
 	}
 };
 

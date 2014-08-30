@@ -8,6 +8,7 @@ trying to organize my output stuff instead of typing headers into two places and
 #include "Tensor/Grid.h"
 #include "Tensor/Tensor.h"
 #include "Common/Exception.h"
+#include "Parallel/Parallel.h"
 #include <ostream>
 
 struct CoordNames {
@@ -258,7 +259,8 @@ struct OutputTable {
 	}
 
 	static void state(std::ostream &o, const ADMFormalism &sim, std::vector<bool> &columns) {
-		for (Tensor::Vector<int, dim> index : sim.auxGrid.range()) {
+		Tensor::RangeObj<dim> range = sim.auxGrid.range();
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
 			const AuxCell &auxCell = sim.auxGrid(index);
 			const MatterCell &matterCell = sim.matterGrid(index);
 			const GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
@@ -275,7 +277,7 @@ struct OutputTable {
 			outputValuesForCellType<MatterCell>(o, matterCell, columns, columnIndex);
 			outputValuesForCellType<AuxCell>(o, auxCell, columns, columnIndex);
 			o << std::endl;
-		}
+		});
 		o << std::endl;
 	}
 

@@ -3,7 +3,7 @@
 #include "initialdata.h"
 #include "../constants.h"
 #include "Common/Exception.h"
-
+#include "Parallel/Parallel.h"
 #include <iostream>
 
 /*
@@ -67,7 +67,8 @@ struct KerrSchild : public InitialData<Real, dim> {
 		
 		Vector center = (max + min) * .5;
 		std::cout << "providing initial conditions..." << std::endl;
-		for (DerefType index : sim.geomGridReadCurrent->range()) {
+		Tensor::RangeObj<dim> range = sim.geomGridReadCurrent->range();
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
 			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
 				
 			Vector v = sim.coordForIndex(index) - center;
@@ -147,7 +148,7 @@ struct KerrSchild : public InitialData<Real, dim> {
 					ATilde_ll(i,j) = expMinusFourPhi * K_ll(i,j) - 1./3. * gammaBar_ll(i,j) * K;
 				}
 			}
-		}
+		});
 	}
 };
 

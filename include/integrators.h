@@ -11,6 +11,7 @@ that includes ...
 
 #include "cell.h"
 #include "Tensor/Grid.h"
+#include "Parallel/Parallel.h"
 #include "i_integrator.h"
 #include "i_admformalism.h"
 
@@ -33,9 +34,10 @@ struct Integrator : public IIntegrator<real, dim> {
 	//or init all the grids in ctor and implement a copy ctor in the grids
 
 	void copyGrid(GeomGrid *dst, const GeomGrid *src) {
-		for (Tensor::Vector<int, dim> index : src->range()) {
+		Tensor::RangeObj<dim> range = src->range();
+		Parallel::parallel->foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
 			(*dst)(index) = (*src)(index);
-		}
+		});
 	}
 
 	void multAddGrid(GeomGrid *dst, const GeomGrid *src, real scale) {

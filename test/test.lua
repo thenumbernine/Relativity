@@ -137,7 +137,9 @@ end
 
 local function exec(cmd)
 	print(cmd)
-	return assert(os.execute(cmd))
+	local result, str, code = os.execute(cmd)
+	if str and code then str = str .. ' code ' .. code end
+	return result, str
 end
 
 local function runCmd(targetTestName, cmd)
