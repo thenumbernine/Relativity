@@ -5,10 +5,10 @@
 #include "derivative.h"
 #include "i_integrator.h"
 #include "i_admformalism.h"
+#include "parallel.h"
 #include "Tensor/Vector.h"
 #include "Tensor/Tensor.h"
 #include "Tensor/Grid.h"
-#include "Parallel/Parallel.h"
 #include <assert.h>
 #include <math.h>
 #include <iostream>
@@ -150,13 +150,13 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	void calcConnBar(GeomGrid &geomGrid) {
 		Tensor::RangeObj<dim> range = auxGrid.range();
 		
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGrid(index);
 			cell.gammaBar_uu = inverse(geomCell.gammaBar_ll, 1.);
 		});
 
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			GeomCell &geomCell = geomGrid(index);
 
 			TensorLSU partial_gammaBar_luu = partialDerivative(auxGrid, &AuxCell::gammaBar_uu, dx, index);
@@ -177,7 +177,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		//connBar_lll depends on partial_gammaBar_lll
 		//connBar_ull depends on connBar_lll and gamma_uu
 		Tensor::RangeObj<dim> range = auxGrid.range();
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const TensorSU &gammaBar_uu = cell.gammaBar_uu;
 		
@@ -209,7 +209,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			}
 		});
 
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const TensorSU &gammaBar_uu = cell.gammaBar_uu;
 
@@ -250,7 +250,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		//during this process read and write to the same cell
 		
 		Tensor::RangeObj<dim> range = auxGrid.range();
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 	
@@ -288,7 +288,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		});
 		
 		//beta_l, gamma_uu, D_alpha_l
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 			
@@ -316,7 +316,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 
 		//DBar_phi_l depends on phi
 		//DBar_psi_l depends on psi
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 	
 			//DBar_phi_l(i) := DBar_i ln(psi) = partial_i ln(psi)
@@ -332,7 +332,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 
 		//conn_ull depends on connBar_ull, DBar_phi_l, gammaBar_uu, gammaBar_ll
 		//conn_lll depends on conn_ull and gamma_ll
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 
@@ -371,7 +371,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			}
 		});
 		
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 			
@@ -511,7 +511,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		});
 
 		//calculate extrinsic curvature tensors
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 
@@ -599,7 +599,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		});
 
 		//calcConstraints
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 			const MatterCell &matterCell = matterGrid(index);
@@ -684,7 +684,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		calcAux(geomGridRead);
 	
 		Tensor::RangeObj<dim> range = auxGrid.range();
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGridRead(index);
 			const MatterCell &matterCell = matterGrid(index);
@@ -869,7 +869,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	void constrain(GeomGrid &geomGrid) {
 
 		Tensor::RangeObj<dim> range = auxGrid.range();
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](DerefType index) {
+		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			GeomCell &geomCell = geomGrid(index);
 
 			TensorSL &gammaBar_ll = geomCell.gammaBar_ll;

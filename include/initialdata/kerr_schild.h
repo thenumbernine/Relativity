@@ -2,8 +2,8 @@
 
 #include "initialdata.h"
 #include "../constants.h"
+#include "../parallel.h"
 #include "Common/Exception.h"
-#include "Parallel/Parallel.h"
 #include <iostream>
 
 /*
@@ -68,7 +68,7 @@ struct KerrSchild : public InitialData<Real, dim> {
 		Vector center = (max + min) * .5;
 		std::cout << "providing initial conditions..." << std::endl;
 		Tensor::RangeObj<dim> range = sim.geomGridReadCurrent->range();
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
+		parallel.foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
 			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
 				
 			Vector v = sim.coordForIndex(index) - center;

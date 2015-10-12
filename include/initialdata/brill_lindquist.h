@@ -2,8 +2,8 @@
 
 #include "initialdata.h"
 #include "../constants.h"
+#include "../parallel.h"
 #include "Common/Exception.h"
-#include "Parallel/Parallel.h"
 #include <iostream>
 
 /*
@@ -69,7 +69,7 @@ struct BrillLindquist : public InitialData<Real, dim> {
 		
 		std::cout << "providing initial conditions..." << std::endl;
 		Tensor::RangeObj<dim> range = sim.geomGridReadCurrent->range();
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
+		parallel.foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
 			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index); 
 			
 			Vector x = sim.coordForIndex(index);

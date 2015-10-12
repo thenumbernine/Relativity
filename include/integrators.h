@@ -10,8 +10,8 @@ that includes ...
 */
 
 #include "cell.h"
+#include "parallel.h"
 #include "Tensor/Grid.h"
-#include "Parallel/Parallel.h"
 #include "i_integrator.h"
 #include "i_admformalism.h"
 
@@ -35,7 +35,7 @@ struct Integrator : public IIntegrator<real, dim> {
 
 	void copyGrid(GeomGrid *dst, const GeomGrid *src) {
 		Tensor::RangeObj<dim> range = src->range();
-		Parallel::parallel->foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
+		parallel.foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
 			(*dst)(index) = (*src)(index);
 		});
 	}
