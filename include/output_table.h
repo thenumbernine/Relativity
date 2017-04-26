@@ -31,7 +31,7 @@ template<typename Real, int dim>
 struct OutputFieldVector {
 	static void outputName(std::ostream &o, const char *name, const char *indexSymbol) {
 		for (int i = 0; i < dim; ++i) {
-			o << name << indexSymbol << CoordNames::names[dim] << "\t";
+			o << name << indexSymbol << CoordNames::names[i] << "\t";
 		}
 	}
 	static void outputField(std::ostream &o, const typename Tensor::GenericRank1<dim>::template Body<Real, Real> &body) {

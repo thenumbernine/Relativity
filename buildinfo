@@ -1,0 +1,3 @@
+distName='Relativity'
+distType='app'
+depends:append{'../Common', '../Tensor', '../Profiler', '../Parallel'}
