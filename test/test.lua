@@ -1,4 +1,4 @@
-#! /usr/bin/env lua
+#! /usr/bin/env luajit
 --[[
 args
 	setbase: 	set the current test results to the baseline.  notice that it does not run the tests and generate new results.
@@ -9,6 +9,8 @@ args
 default if nothing is specified:
 	run plot diff
 --]]
+
+local ffi = require 'ffi'
 
 local baselinePrefix = 'baseline_'
 local plotColumn = 'K'
@@ -39,7 +41,10 @@ end
 
 -- this one needs to match the makefile variable.
 -- i might put that in a separate param file for both of these to read in
-local installDir = '../dist/osx/debug/relativity.app/Contents/MacOS/'
+local installDir = ({
+	OSX = '../dist/osx/debug/Relativity.app/Contents/MacOS/',
+	Linux = '../dist/linux/debug/',
+})[ffi.os]
 
 local tests = {
 	{
@@ -155,7 +160,7 @@ local function runCmd(targetTestName, cmd)
 				assert(exec('cp '..filename..' '..basefile))
 			end
 			if cmd == 'run' then
-				assert(exec(installDir..'relativity integrator rk4'
+				assert(exec(installDir..'Relativity integrator rk4'
 					..' filename '..filename
 					..' dim '..test.dim
 					..' iter '..test.iter

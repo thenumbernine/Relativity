@@ -349,4 +349,3 @@ int main(int argc, char **argv) {
 	SimParams params = interpretArgs(argc, argv);
 	runSim(params);
 }
-
