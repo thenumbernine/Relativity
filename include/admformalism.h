@@ -1,7 +1,7 @@
 #pragma once
 
 #include "cell.h"
-#include "inverse.h"
+#include "Tensor/Inverse.h"
 #include "derivative.h"
 #include "i_integrator.h"
 #include "i_admformalism.h"
@@ -153,7 +153,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGrid(index);
-			cell.gammaBar_uu = inverse(geomCell.gammaBar_ll, 1.);
+			cell.gammaBar_uu = Tensor::inverse(geomCell.gammaBar_ll, 1.);
 		});
 
 		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
@@ -275,8 +275,8 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 				}
 			}
 		
-			//gammaBar^ij = inverse(gammaBar_ij)
-			cell.gammaBar_uu = inverse(geomCell.gammaBar_ll, 1.);
+			//gammaBar^ij = Tensor::inverse(gammaBar_ij)
+			cell.gammaBar_uu = Tensor::inverse(geomCell.gammaBar_ll, 1.);
 
 			Real oneOverPsiToTheFourth = 1. / psiToTheFourth;
 			//gamma^ij = psi^-4 gammaBar^ij
@@ -889,7 +889,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 				}
 			}
 		
-			TensorSU gammaBar_uu = inverse(gammaBar_ll, 1); 
+			TensorSU gammaBar_uu = Tensor::inverse(gammaBar_ll, 1); 
 
 			/*
 			tr(A_ij)
