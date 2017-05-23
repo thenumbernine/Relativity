@@ -2,7 +2,6 @@
 
 #include "Tensor/Vector.h"
 #include "Tensor/Tensor.h"
-#include "inverse.h"
 
 /*
 structure solely of integrated values

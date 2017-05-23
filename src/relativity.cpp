@@ -1,6 +1,5 @@
 #include "admformalism.h"
 #include "integrators.h"
-#include "inverse.h"
 #include "Common/Exception.h"
 
 #include <string.h>
