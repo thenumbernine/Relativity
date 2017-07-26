@@ -220,4 +220,3 @@ end
 for _,cmd in ipairs(args) do
 	runCmd(targetTestName, cmd)
 end
-
