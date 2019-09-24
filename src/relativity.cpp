@@ -20,13 +20,11 @@
 
 #define DISABLE_FLOAT	//disable 32-bit fpp for faster builds
 
-using namespace std;
-
 template<typename real, int dim>
 struct RunTest {
 	void operator()(
 		::ADMFormalism<real, dim> &sim,
-		ostream &f,
+		std::ostream &f,
 		real cfl, 
 		int numIters, 
 		bool outputHistory, 
@@ -40,7 +38,7 @@ struct RunTest {
 			OutputTable<real, dim>::state(f, sim, cols);
 		}
 
-		cout << "iterating..." << endl;
+		std::cout << "iterating..." << std::endl;
 		for (int i = 0; i < numIters; ++i) {
 			sim.update(dt);
 			
@@ -64,7 +62,7 @@ struct InitTest;
 
 template<typename real, int dim, typename InitialDataType, typename... InitialDataTypes>
 struct InitTest<real, dim, InitialDataType, InitialDataTypes...> {
-	typedef InitTest<real, dim, InitialDataTypes...> NextType;
+	using NextType = InitTest<real, dim, InitialDataTypes...>;
 	static void init(const std::string &simType, std::vector<std::string> &args, ADMFormalism<real, dim> &sim) {
 		InitialDataType init;
 		if (simType == init.name()) {
@@ -154,7 +152,7 @@ SimParams interpretArgs(int argc, char **argv) {
 		//0-param vars
 		if (!strcmp(argv[i], "history")) {
 			params.history = true;
-			cout << "using history" << endl;
+			std::cout << "using history" << std::endl;
 			continue;
 		} else if (!strcmp(argv[i], "allcols")) {
 			params.columnNames = "*all*";
@@ -163,23 +161,23 @@ SimParams interpretArgs(int argc, char **argv) {
 		} else if (i < argc-1) {
 			if (!strcmp(argv[i], "dim")) {
 				params.dim = atoi(argv[++i]);
-				cout << "dim " << params.dim << endl;
+				std::cout << "dim " << params.dim << std::endl;
 				continue;
 			} else if (!strcmp(argv[i], "res")) {
 				params.res = atoi(argv[++i]);
-				cout << "res " << params.res << endl;
+				std::cout << "res " << params.res << std::endl;
 				continue;
 			} else if (!strcmp(argv[i], "size")) {
 				params.size = atof(argv[++i]);
-				cout << "size " << params.size << endl;
+				std::cout << "size " << params.size << std::endl;
 				continue;
 			} else if (!strcmp(argv[i], "iter")) {
 				params.iter = atoi(argv[++i]);
-				cout << "iter " << params.iter << endl;
+				std::cout << "iter " << params.iter << std::endl;
 				continue;
 			} else if (!strcmp(argv[i], "cfl")) {
 				params.cfl = atof(argv[++i]);
-				cout << "cfl " << params.cfl << endl;
+				std::cout << "cfl " << params.cfl << std::endl;
 				continue;
 			} else if (!strcmp(argv[i], "precision")) {
 				const char *precision = argv[++i];
@@ -260,17 +258,17 @@ void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 	}
 
 
-	cout << "constructing sim..." << endl;
+	std::cout << "constructing sim..." << std::endl;
 	
 	real maxDist = params.size * sunRadiusInM;
-	typedef Tensor::Vector<real, dim> Vector;
+	using Vector = Tensor::Vector<real, dim>;
 	ADMFormalism<real, dim> sim(Vector(-maxDist), Vector(maxDist), params.res, integrator);
 
 	//why not allow for a non-initial-condition sim?
 	//for the record, i think alpha will be initialized to zero as welll, 
 	//so our 4D metrics technically will be singular ...
 	if (params.args.size()) {
-		string simType = params.args[0];
+		std::string simType = params.args[0];
 		params.args.erase(params.args.begin());
 
 		InitTest<real, dim,
@@ -284,14 +282,14 @@ void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 	//construct connBar^i based on gammaBar_ij
 	sim.calcConnBar(*sim.getGeomGridReadCurrent());
 
-	ofstream f(params.filename.c_str());
+	std::ofstream f(params.filename.c_str());
 
 	OutputTable<real, dim>::header(f, cols);
 	//sim.outputHeaders(f);
 	
 	RunTest<real, dim>()(sim, f, params.cfl, params.iter, params.history, cols);
 	
-	cout << "done!" << endl;
+	std::cout << "done!" << std::endl;
 }
 
 template<typename real, int dim>

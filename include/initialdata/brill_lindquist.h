@@ -23,14 +23,14 @@ template<typename Real, int dim>
 struct BrillLindquist : public InitialData<Real, dim> {
 	virtual const char *name() { return "brill-lindquist"; }
 
-	typedef Tensor::Vector<Real, dim> Vector;
-	typedef Tensor::Vector<int, dim> DerefType;
-	typedef ::InitialData<Real, dim> InitialData;
-	typedef typename InitialData::ADMFormalism ADMFormalism;
-	typedef typename ADMFormalism::TensorL TensorL;
-	typedef typename ADMFormalism::TensorU TensorU;
-	typedef typename ADMFormalism::TensorSL TensorSL;
-	typedef typename ADMFormalism::TensorSU TensorSU;
+	using Vector = Tensor::Vector<Real, dim>;
+	using DerefType = Tensor::Vector<int, dim>;
+	using InitialData = ::InitialData<Real, dim>;
+	using ADMFormalism = typename InitialData::ADMFormalism;
+	using TensorL = typename ADMFormalism::TensorL;
+	using TensorU = typename ADMFormalism::TensorU;
+	using TensorSL = typename ADMFormalism::TensorSL;
+	using TensorSU = typename ADMFormalism::TensorSU;
 
 	//I should at least make this a structure or something
 	std::vector<Tensor::Tensor<Real, Tensor::Lower<dim+1>>> blackHoleInfo;

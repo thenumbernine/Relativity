@@ -14,11 +14,11 @@ template<typename Real, int dim>
 struct Schwarzschild : public InitialData<Real, dim> {
 	virtual const char *name() { return "schwarzschild"; }
 
-	typedef Tensor::Vector<Real, dim> Vector;
-	typedef Tensor::Vector<int, dim> DerefType;
-	typedef ::InitialData<Real, dim> InitialData;
-	typedef typename InitialData::ADMFormalism ADMFormalism;
-	typedef typename ADMFormalism::TensorSL TensorSL;
+	using Vector = Tensor::Vector<Real, dim>;
+	using DerefType = Tensor::Vector<int, dim>;
+	using InitialData = ::InitialData<Real, dim>;
+	using ADMFormalism = typename InitialData::ADMFormalism;
+	using TensorSL = typename ADMFormalism::TensorSL;
 
 	Real M;		//total mass, in meters
 	Real R;		//radius, in meters

@@ -21,18 +21,18 @@ template<typename Real, int dim>
 struct BowenYork : public InitialData<Real, dim> {
 	virtual const char *name() { return "bowen-york"; }
 
-	typedef Tensor::Vector<Real, dim> Vector;
-	typedef Tensor::Vector<int, dim> DerefType;
-	typedef ::InitialData<Real, dim> InitialData;
-	typedef typename InitialData::ADMFormalism ADMFormalism;
-	typedef typename ADMFormalism::TensorL TensorL;
-	typedef typename ADMFormalism::TensorU TensorU;
-	typedef typename ADMFormalism::TensorSL TensorSL;
-	typedef typename ADMFormalism::TensorSU TensorSU;
+	using Vector = Tensor::Vector<Real, dim>;
+	using DerefType = Tensor::Vector<int, dim>;
+	using InitialData = ::InitialData<Real, dim>;
+	using ADMFormalism = typename InitialData::ADMFormalism;
+	using TensorL = typename ADMFormalism::TensorL;
+	using TensorU = typename ADMFormalism::TensorU;
+	using TensorSL = typename ADMFormalism::TensorSL;
+	using TensorSU = typename ADMFormalism::TensorSU;
 
-	enum { dim3 = 3 };	//representing angular momentum in 3d even for 1d and 2d cases, so i can give a 2d black hole some angular momentum
-	typedef Tensor::Tensor<Real, Tensor::Lower<dim3>> TensorL3;
-	typedef Tensor::Tensor<Real, Tensor::Upper<dim3>> TensorU3;
+	static constexpr auto dim3 = 3;	//representing angular momentum in 3d even for 1d and 2d cases, so i can give a 2d black hole some angular momentum
+	using TensorL3 = Tensor::Tensor<Real, Tensor::Lower<dim3>>;
+	using TensorU3 = Tensor::Tensor<Real, Tensor::Upper<dim3>>;
 	
 	Real M;						//black hole mass <=> half the Schwarzschild radius
 	TensorL3 J_l;	//angular momentum. technically only has to be a divergence-free field.

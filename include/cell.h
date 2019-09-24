@@ -21,11 +21,11 @@ looks like a dense system could get big for submatrixes (18^18 = 324 elements fo
 */
 template<typename Real_, int dim_>
 struct GeomCell {
-	typedef Real_ Real;
-	enum { dim = dim_ };
+	using Real = Real_;
+	static constexpr auto dim = dim_;
 
-	typedef Tensor::Tensor<Real, Tensor::Upper<dim>> TensorU;
-	typedef Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>> TensorSL;
+	using TensorU = Tensor::Tensor<Real, Tensor::Upper<dim>>;
+	using TensorSL = Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>>;
 
 	//lapse
 	Real alpha;
@@ -91,11 +91,11 @@ struct GeomCell {
 
 template<typename Real_, int dim_>
 struct MatterCell {
-	typedef Real_ Real;
-	enum { dim = dim_ };
+	using Real = Real_;
+	static constexpr auto dim = dim_;
 
-	typedef Tensor::Tensor<Real, Tensor::Upper<dim>> TensorU;
-	typedef Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>> TensorSL;
+	using TensorU = Tensor::Tensor<Real, Tensor::Upper<dim>>;
+	using TensorSL = Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>>;
 
 	MatterCell()
 	:	rho(Real())
@@ -117,8 +117,8 @@ struct MatterCell {
 
 template<typename Real_, int dim_>
 struct AuxCell {
-	typedef Real_ Real;
-	enum { dim = dim_ };
+	using Real = Real_;
+	static constexpr auto dim = dim_;
 
 	/*
 	different ranked tensor types
@@ -129,21 +129,21 @@ struct AuxCell {
 	'S' means symmetric
 	'A' means antisymmetric (haven't needed this one yet)
 	*/
-	typedef Tensor::Lower<dim> Lower;
-	typedef Tensor::Upper<dim> Upper;
+	using Lower = Tensor::Lower<dim>;
+	using Upper = Tensor::Upper<dim>;
 	
-	typedef Tensor::Symmetric<Lower, Lower> SymmetricLower;
-	typedef Tensor::Symmetric<Upper, Upper> SymmetricUpper;
+	using SymmetricLower = Tensor::Symmetric<Lower, Lower>;
+	using SymmetricUpper = Tensor::Symmetric<Upper, Upper>;
 	
-	typedef Tensor::Tensor<Real, Upper> TensorU;
-	typedef Tensor::Tensor<Real, Lower> TensorL;
-	typedef Tensor::Tensor<Real, Lower, Lower> TensorLL;
-	typedef Tensor::Tensor<Real, Upper, Lower> TensorUL;
-	typedef Tensor::Tensor<Real, Lower, Upper> TensorLU;
-	typedef Tensor::Tensor<Real, SymmetricUpper> TensorSU;
-	typedef Tensor::Tensor<Real, SymmetricLower> TensorSL;
-	typedef Tensor::Tensor<Real, Upper, SymmetricLower> TensorUSL;
-	typedef Tensor::Tensor<Real, Lower, SymmetricLower> TensorLSL;
+	using TensorU = Tensor::Tensor<Real, Upper>;
+	using TensorL = Tensor::Tensor<Real, Lower>;
+	using TensorLL = Tensor::Tensor<Real, Lower, Lower>;
+	using TensorUL = Tensor::Tensor<Real, Upper, Lower>;
+	using TensorLU = Tensor::Tensor<Real, Lower, Upper>;
+	using TensorSU = Tensor::Tensor<Real, SymmetricUpper>;
+	using TensorSL = Tensor::Tensor<Real, SymmetricLower>;
+	using TensorUSL = Tensor::Tensor<Real, Upper, SymmetricLower>;
+	using TensorLSL = Tensor::Tensor<Real, Lower, SymmetricLower>;
 
 
 	//our tensors initialze to zero, so why not our reals too?

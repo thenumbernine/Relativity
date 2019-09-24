@@ -17,8 +17,8 @@ that includes ...
 
 template<typename real, int dim>
 struct Integrator : public IIntegrator<real, dim> {
-	typedef Tensor::Grid<GeomCell<real, dim>, dim> GeomGrid;
-	typedef ::IADMFormalism<real, dim> IADMFormalism;
+	using GeomGrid = Tensor::Grid<GeomCell<real, dim>, dim>;
+	using IADMFormalism = ::IADMFormalism<real, dim>;
 
 	IADMFormalism *sim;
 	Tensor::Vector<int, dim> size;
@@ -49,9 +49,9 @@ struct Integrator : public IIntegrator<real, dim> {
 
 template<typename real, int dim>
 struct EulerIntegrator : public Integrator<real, dim> {
-	typedef ::Integrator<real, dim> Integrator;
-	typedef typename Integrator::IADMFormalism IADMFormalism;
-	typedef typename Integrator::GeomGrid GeomGrid;
+	using Integrator = ::Integrator<real, dim>;
+	using IADMFormalism = typename Integrator::IADMFormalism;
+	using GeomGrid = typename Integrator::GeomGrid;
 	
 	GeomGrid *partialTCells;
 
@@ -81,9 +81,9 @@ struct EulerIntegrator : public Integrator<real, dim> {
 
 template<typename real, int dim>
 struct RK4Integrator : public Integrator<real, dim> {
-	typedef ::Integrator<real, dim> Integrator;
-	typedef typename Integrator::IADMFormalism IADMFormalism;
-	typedef typename Integrator::GeomGrid GeomGrid;
+	using Integrator = ::Integrator<real, dim>;
+	using IADMFormalism = typename Integrator::IADMFormalism;
+	using GeomGrid = typename Integrator::GeomGrid;
 	
 	GeomGrid *xtmp;
 	GeomGrid *k1, *k2, *k3, *k4;

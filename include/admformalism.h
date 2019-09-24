@@ -16,44 +16,44 @@
 //Formalism class generates partial t values
 template<typename Real_, int dim_>
 struct ADMFormalism : public IADMFormalism<Real_, dim_> {
-	typedef Real_ Real;
-	enum { dim = dim_ };
+	using Real = Real_;
+	static constexpr auto dim = dim_;
 	
 		//cell types
 
-	typedef ::GeomCell<Real, dim> GeomCell;
-	typedef ::MatterCell<Real, dim> MatterCell;
-	typedef ::AuxCell<Real, dim> AuxCell;
+	using GeomCell = ::GeomCell<Real, dim>;
+	using MatterCell = ::MatterCell<Real, dim>;
+	using AuxCell = ::AuxCell<Real, dim>;
 	
-	typedef Tensor::Grid<GeomCell, dim> GeomGrid;
-	typedef Tensor::Grid<MatterCell, dim> MatterGrid;
-	typedef Tensor::Grid<AuxCell, dim> AuxGrid;
+	using GeomGrid = Tensor::Grid<GeomCell, dim>;
+	using MatterGrid = Tensor::Grid<MatterCell, dim>;
+	using AuxGrid = Tensor::Grid<AuxCell, dim>;
 
 		//statically-sized mathematical types
 		//(pull from cell where you can)
 	
 	//used for indexes
-	typedef Tensor::Vector<int, dim> DerefType;	
+	using DerefType = Tensor::Vector<int, dim>;	
 
-	typedef Tensor::Lower<dim> Lower;
-	typedef Tensor::Upper<dim> Upper;
+	using Lower = Tensor::Lower<dim>;
+	using Upper = Tensor::Upper<dim>;
 	
-	typedef Tensor::Symmetric<Lower,Lower> SymmetricLower;
-	typedef Tensor::Symmetric<Upper,Upper> SymmetricUpper;
+	using SymmetricLower = Tensor::Symmetric<Lower,Lower>;
+	using SymmetricUpper = Tensor::Symmetric<Upper,Upper>;
 
-	typedef typename AuxCell::TensorU TensorU;
-	typedef typename AuxCell::TensorL TensorL;
-	typedef typename AuxCell::TensorLL TensorLL;
-	typedef typename AuxCell::TensorSU TensorSU;
-	typedef typename AuxCell::TensorLU TensorLU;
-	typedef typename AuxCell::TensorSL TensorSL;
-	typedef typename AuxCell::TensorUSL TensorUSL;
-    typedef typename AuxCell::TensorLSL TensorLSL;
-	typedef Tensor::Tensor<Real, Upper,Lower> TensorUL;
-	typedef Tensor::Tensor<Real, Lower, SymmetricUpper> TensorLSU;
-	typedef Tensor::Tensor<Real, SymmetricLower, Upper> TensorSLU;
-	typedef Tensor::Tensor<Real, SymmetricLower, SymmetricLower> TensorSLSL;
-	typedef Tensor::Vector<Real, dim> Vector;
+	using TensorU = typename AuxCell::TensorU;
+	using TensorL = typename AuxCell::TensorL;
+	using TensorLL = typename AuxCell::TensorLL;
+	using TensorSU = typename AuxCell::TensorSU;
+	using TensorLU = typename AuxCell::TensorLU;
+	using TensorSL = typename AuxCell::TensorSL;
+	using TensorUSL = typename AuxCell::TensorUSL;
+    using TensorLSL = typename AuxCell::TensorLSL;
+	using TensorUL = Tensor::Tensor<Real, Upper,Lower>;
+	using TensorLSU = Tensor::Tensor<Real, Lower, SymmetricUpper>;
+	using TensorSLU = Tensor::Tensor<Real, SymmetricLower, Upper>;
+	using TensorSLSL = Tensor::Tensor<Real, SymmetricLower, SymmetricLower>;
+	using Vector = Tensor::Vector<Real, dim>;
 	
 	//what a relative notion...
 	//intended for use with output matching up iteration slices 

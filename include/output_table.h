@@ -147,7 +147,7 @@ struct OutputCellFields;
 #define BEGIN_CELL_FIELDS(CELL)	\
 template<typename Real, int dim>	\
 struct OutputCellFields<Real, dim, CELL<Real, dim>> {	\
-	typedef CELL<Real, dim> CellType;	\
+	using CellType = CELL<Real, dim>;	\
 	static ICellField<CellType> **fields() {	\
 		static ICellField<CellType> *fields[] = {
 
@@ -195,14 +195,14 @@ END_CELL_FIELDS()
 
 template<typename Real, int dim>
 struct OutputTable {
-	typedef ::ADMFormalism<Real, dim> ADMFormalism;
-	typedef ::GeomCell<Real, dim> GeomCell;
-	typedef ::AuxCell<Real, dim> AuxCell;
-	typedef ::MatterCell<Real, dim> MatterCell;
+	using ADMFormalism = ::ADMFormalism<Real, dim>;
+	using GeomCell = ::GeomCell<Real, dim>;
+	using AuxCell = ::AuxCell<Real, dim>;
+	using MatterCell = ::MatterCell<Real, dim>;
 
 	template<typename CellType> 
 	static void outputHeadersForCellType(std::ostream &o, const std::vector<bool> &columns, int &columnIndex) {
-		typedef ::ICellField<CellType> ICellField;
+		using ICellField = ::ICellField<CellType>;
 		ICellField **fields = OutputCellFields<Real, dim, CellType>::fields();
 		for (int i = 0; ; ++i) {
 			ICellField *field = fields[i];
@@ -213,7 +213,7 @@ struct OutputTable {
 
 	template<typename CellType> 
 	static void outputValuesForCellType(std::ostream &o, const CellType &cell, const std::vector<bool> &columns, int &columnIndex) {
-		typedef ::ICellField<CellType> ICellField;
+		using ICellField = ::ICellField<CellType>;
 		ICellField **fields = OutputCellFields<Real, dim, CellType>::fields();
 		for (int i = 0; ; ++i) {
 			ICellField *field = fields[i];
@@ -224,7 +224,7 @@ struct OutputTable {
 	
 	template<typename CellType> 
 	static bool findColumnName(const std::string &fullname, int &columnIndex) {
-		typedef ::ICellField<CellType> ICellField;
+		using ICellField = ::ICellField<CellType>;
 		ICellField **fields = OutputCellFields<Real, dim, CellType>::fields();
 		for (int i = 0; ; ++i) {
 			ICellField *field = fields[i];
@@ -237,7 +237,7 @@ struct OutputTable {
 	
 	template<typename CellType> 
 	static void countNumColumns(int &columnIndex) {
-		typedef ::ICellField<CellType> ICellField;
+		using ICellField = ::ICellField<CellType>;
 		ICellField **fields = OutputCellFields<Real, dim, CellType>::fields();
 		for (int i = 0; ; ++i) {
 			if (!fields[i]) break;
