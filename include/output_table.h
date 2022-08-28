@@ -154,7 +154,7 @@ struct OutputCellFields<Real, dim, CELL<Real, dim>> {	\
 #define CELL_FIELD(FIELD, SUFFIX...)	makeField(#FIELD, #FIELD #SUFFIX, &CellType::FIELD##SUFFIX),
 
 #define END_CELL_FIELDS()	\
-			NULL	\
+			nullptr	\
 		};	\
 		return fields;	\
 	}	\

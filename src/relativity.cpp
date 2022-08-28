@@ -294,20 +294,22 @@ void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 
 template<typename real, int dim>
 void runSimPrecision(SimParams &params) {
-	
-	IIntegrator<real, dim> *integrator = NULL;
 	switch (params.integrator) {
 	case INTEGRATOR_EULER:
-		integrator = new EulerIntegrator<real, dim>();
+		{
+			EulerIntegrator<real, dim> integrator;
+			runSimIntegrator<real, dim>(params, &integrator);
+		}
 		break;
 	case INTEGRATOR_RK4:
-		integrator = new RK4Integrator<real, dim>();
+		{
+			RK4Integrator<real, dim> integrator;
+			runSimIntegrator<real, dim>(params, &integrator);
+		}
 		break;
 	default:
 		throw Common::Exception() << "got an integrator I couldn't handle " << params.integrator;
 	}
-	runSimIntegrator<real, dim>(params, integrator);
-	delete integrator;
 }
 
 template<int dim>
