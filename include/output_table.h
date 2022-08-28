@@ -298,4 +298,3 @@ struct OutputTable {
 		return columnIndex;
 	}
 };
-

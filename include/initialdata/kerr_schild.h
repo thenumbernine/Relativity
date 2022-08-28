@@ -151,4 +151,3 @@ struct KerrSchild : public InitialData<Real, dim> {
 		});
 	}
 };
-

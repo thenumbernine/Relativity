@@ -10,4 +10,3 @@ struct IIntegrator {
 	virtual void init(IADMFormalism<Real, dim> *sim_, const Tensor::Vector<int, dim> &size_) = 0;
 	virtual void update(Real dt) = 0;
 };
-

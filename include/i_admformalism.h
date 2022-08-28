@@ -15,4 +15,3 @@ struct IADMFormalism {
 	virtual Tensor::Grid<GeomCell<Real, dim>, dim> *getGeomGridReadCurrent() = 0;
 	virtual Tensor::Grid<GeomCell<Real, dim>, dim> *getGeomGridWriteCurrent() = 0;
 };
-

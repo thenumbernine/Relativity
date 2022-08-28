@@ -20,4 +20,3 @@ const double sunRotationInRad_S = 2.8e-6;
 const double sunRotationInM = sunRotationInRad_S / metersPerS;
 const double sunAngularMomentumInKgM2_S = .4 * sunMassInKg * sunRadiusInM * sunRadiusInM * sunRotationInRad_S;
 const double sunAngularMomentumInM = .4 * sunMassInM * sunRadiusInM * sunRadiusInM * sunRotationInM;
-

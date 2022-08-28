@@ -246,4 +246,3 @@ struct BowenYork : public InitialData<Real, dim> {
 		});
 	}
 };
-

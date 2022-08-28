@@ -97,4 +97,3 @@ struct Schwarzschild : public InitialData<Real, dim> {
 		});
 	}
 };
-

@@ -916,4 +916,3 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		});
 	}
 };
-

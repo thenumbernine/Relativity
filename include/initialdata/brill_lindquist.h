@@ -105,4 +105,3 @@ struct BrillLindquist : public InitialData<Real, dim> {
 		});
 	}
 };
-

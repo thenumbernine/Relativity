@@ -267,4 +267,3 @@ struct AuxCell {
 	//ATilde_uu(i,j) := ATilde^ij = ATilde^i_k gammaBar^kj
 	TensorSU ATilde_uu;
 };
-

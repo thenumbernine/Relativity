@@ -435,4 +435,3 @@ covariantDerivative(
 {
 	return CovariantDerivativeClass<Real, dim, CellType, ConnCellType, InputType>()(grid, field, connGrid, connField, dx, index);
 }
-

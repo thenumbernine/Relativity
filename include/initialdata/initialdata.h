@@ -10,4 +10,3 @@ struct InitialData {
 	virtual void init(ADMFormalism &sim, std::vector<std::string> &args) = 0;
 	virtual const char *name() = 0;
 };
-

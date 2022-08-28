@@ -141,4 +141,3 @@ struct RK4Integrator : public Integrator<real, dim> {
 		this->multAddGrid(Integrator::sim->getGeomGridWriteCurrent(), k4, dt/6.);
 	}
 };
-
