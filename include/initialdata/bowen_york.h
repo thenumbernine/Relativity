@@ -65,9 +65,9 @@ struct BowenYork : public InitialData<Real, dim> {
 		
 		//if we need J to calculate psi and we need psi to calculate gamma and we need gamma to calculate J (norm wrt metric) ... then we have a separate system to solve?
 		//so until then I'm using the "approximation" J = |J^i|
-		Real J = TensorL3::BodyType::length(J_l.body);
+		Real J = J_l.body.length();
 		//same deal with P?
-		Real P = TensorL3::BodyType::length(P_u.body);
+		Real P = P_u.body.length();
 	
 		TensorSL eta;
 		for (int i = 0; i < dim; ++i) {
@@ -90,7 +90,7 @@ struct BowenYork : public InitialData<Real, dim> {
 			Vector x = sim.coordForIndex(index) - center;
 			
 			//r = |x^i|
-			Real r = Vector::length(x);
+			Real r = x.length();
 			Real rSquared = r * r;
 			Real rCubed = r * rSquared;
 

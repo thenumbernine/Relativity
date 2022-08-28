@@ -58,7 +58,7 @@ struct Schwarzschild : public InitialData<Real, dim> {
 
 			Vector v = sim.coordForIndex(index) - center;
 			
-			Real r = Vector::length(v);
+			Real r = v.length();
 			Real MOverTwoR = M / (2. * r);
 			Real oneMinusMOverTwoR = 1. - MOverTwoR;
 			Real onePlusMOverTwoR = 1. + MOverTwoR;

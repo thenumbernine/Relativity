@@ -72,7 +72,7 @@ struct KerrSchild : public InitialData<Real, dim> {
 			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
 				
 			Vector v = sim.coordForIndex(index) - center;
-			Real r = Vector::length(v);
+			Real r = v.length();
 			Real x = v(0);
 			Real y = dim > 1 ? v(1) : 0;
 			Real z = dim > 2 ? v(2) : 0;

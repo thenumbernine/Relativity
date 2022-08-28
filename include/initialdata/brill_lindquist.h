@@ -86,7 +86,7 @@ struct BrillLindquist : public InitialData<Real, dim> {
 				for (int j = 0; j < dim; ++j) {
 					c(j) = blackHoleInfo[i](j);
 				}
-				Real r = Vector::length(x - c);
+				Real r = (x - c).length();
 				psi += .5 * M / r;
 				oneOverAlpha += .5 * M / r;
 			}
