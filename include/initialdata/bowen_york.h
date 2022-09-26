@@ -1,8 +1,8 @@
 #pragma once
 
-#include "initialdata.h"
-#include "../constants.h"
-#include "../parallel.h"
+#include "initialdata/initialdata.h"
+#include "constants.h"
+#include "parallel.h"
 #include "Common/Exception.h"
 #include <iostream>
 

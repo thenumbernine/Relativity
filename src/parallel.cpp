@@ -1,3 +1,0 @@
-#include "parallel.h"	// <- within this project ... TODO: namespaces and directories ...
-
-::Parallel::Parallel parallel;

@@ -18,6 +18,10 @@
 
 #include "output_table.h"
 
+#include "parallel.h"	// <- within this project ... TODO: namespaces and directories ...
+
+::Parallel::Parallel parallel;
+
 #define DISABLE_FLOAT	//disable 32-bit fpp for faster builds
 
 template<typename real, int dim>
