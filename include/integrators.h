@@ -21,11 +21,11 @@ struct Integrator : public IIntegrator<real, dim> {
 	using IADMFormalism = ::IADMFormalism<real, dim>;
 
 	IADMFormalism *sim;
-	Tensor::Vector<int, dim> size;
+	Tensor::intN<dim> size;
 
 	Integrator() : sim(nullptr) {}
 
-	virtual void init(IADMFormalism *sim_, const Tensor::Vector<int, dim> &size_) {
+	virtual void init(IADMFormalism *sim_, const Tensor::intN<dim> &size_) {
 		sim = sim_;
 		size = size_;
 	}
@@ -35,13 +35,13 @@ struct Integrator : public IIntegrator<real, dim> {
 
 	void copyGrid(GeomGrid *dst, const GeomGrid *src) {
 		Tensor::RangeObj<dim> range = src->range();
-		parallel.foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
+		parallel.foreach(range.begin(), range.end(), [&](Tensor::intN<dim> index) {
 			(*dst)(index) = (*src)(index);
 		});
 	}
 
 	void multAddGrid(GeomGrid *dst, const GeomGrid *src, real scale) {
-		for (Tensor::Vector<int, dim> index : src->range()) {
+		for (Tensor::intN<dim> index : src->range()) {
 			(*dst)(index) += (*src)(index) * scale;
 		}
 	}
@@ -59,7 +59,7 @@ struct EulerIntegrator : public Integrator<real, dim> {
 	
 	virtual ~EulerIntegrator() {}
 
-	virtual void init(IADMFormalism *sim_, const Tensor::Vector<int, dim> &size_) {
+	virtual void init(IADMFormalism *sim_, const Tensor::intN<dim> &size_) {
 		Integrator::init(sim_, size_);
 		partialTCells.resize(Integrator::size);
 	}
@@ -88,7 +88,7 @@ struct RK4Integrator : public Integrator<real, dim> {
 	
 	virtual ~RK4Integrator() {}
 	
-	virtual void init(IADMFormalism *sim_, const Tensor::Vector<int, dim> &size_) {
+	virtual void init(IADMFormalism *sim_, const Tensor::intN<dim> &size_) {
 		Integrator::init(sim_, size_);
 		
 		xtmp.resize(Integrator::size);

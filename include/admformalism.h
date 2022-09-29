@@ -2,6 +2,8 @@
 
 #include "cell.h"
 #include "Tensor/Inverse.h"
+#include "Tensor/Derivative.h"
+#include "Tensor/clamp.h"
 #include "derivative.h"
 #include "i_integrator.h"
 #include "i_admformalism.h"
@@ -19,6 +21,8 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	using Real = Real_;
 	static constexpr auto dim = dim_;
 	
+	static constexpr int partialDerivativeOrder = 8;
+	
 		//cell types
 
 	using GeomCell = ::GeomCell<Real, dim>;
@@ -33,13 +37,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		//(pull from cell where you can)
 	
 	//used for indexes
-	using DerefType = Tensor::Vector<int, dim>;	
-
-	using Lower = Tensor::Lower<dim>;
-	using Upper = Tensor::Upper<dim>;
-	
-	using SymmetricLower = Tensor::Symmetric<Lower,Lower>;
-	using SymmetricUpper = Tensor::Symmetric<Upper,Upper>;
+	using DerefType = Tensor::intN<dim>;	
 
 	using TensorU = typename AuxCell::TensorU;
 	using TensorL = typename AuxCell::TensorL;
@@ -48,12 +46,12 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	using TensorLU = typename AuxCell::TensorLU;
 	using TensorSL = typename AuxCell::TensorSL;
 	using TensorUSL = typename AuxCell::TensorUSL;
-    using TensorLSL = typename AuxCell::TensorLSL;
-	using TensorUL = Tensor::Tensor<Real, Upper,Lower>;
-	using TensorLSU = Tensor::Tensor<Real, Lower, SymmetricUpper>;
-	using TensorSLU = Tensor::Tensor<Real, SymmetricLower, Upper>;
-	using TensorSLSL = Tensor::Tensor<Real, SymmetricLower, SymmetricLower>;
-	using Vector = Tensor::Vector<Real, dim>;
+    using TensorLSL = Tensor::_tensori<Real, Tensor::index_vec<dim>, Tensor::index_sym<dim>>;
+	using TensorLSU = TensorLSL;
+	using TensorUL = Tensor::_tensori<Real, Tensor::index_vec<dim>, Tensor::index_vec<dim>>;
+	using TensorSLU = Tensor::_tensori<Real, Tensor::index_sym<dim>, Tensor::index_vec<dim>>;
+	using TensorSLSL = Tensor::_tensori<Real, Tensor::index_sym<dim>, Tensor::index_sym<dim>>;
+	using Vector = Tensor::_vec<Real, dim>;
 	
 	//what a relative notion...
 	//intended for use with output matching up iteration slices 
@@ -120,10 +118,10 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	*/
 
 	ADMFormalism(
-		const Vector &min_, 
-		const Vector &max_, 
-		const DerefType &size_,
-		IIntegrator<Real, dim> *integrator_)
+		Vector const & min_, 
+		Vector const & max_, 
+		DerefType const & size_,
+		IIntegrator<Real, dim> * integrator_)
 	:	time(0),
 		size(size_),
 		min(min_),
@@ -153,13 +151,17 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell &cell = auxGrid(index);
 			const GeomCell &geomCell = geomGrid(index);
-			cell.gammaBar_uu = Tensor::inverse(geomCell.gammaBar_ll, 1.);
+			cell.gammaBar_uu = Tensor::inverse(geomCell.gammaBar_ll, (Real)1.);
 		});
 
 		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			GeomCell &geomCell = geomGrid(index);
 
-			TensorLSU partial_gammaBar_luu = partialDerivative(auxGrid, &AuxCell::gammaBar_uu, dx, index);
+			TensorLSU partial_gammaBar_luu = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, TensorSU>(
+				index, dx, [&](DerefType index) -> TensorSU {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return auxGrid(index).gammaBar_uu;
+				});
 		
 			for (int i = 0; i < dim; ++i) {
 				geomCell.connBar_u(i) = 0;
@@ -183,7 +185,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		
 			//partial_gammaBar_lll(k,i,j) := partial_k gamma_ij
 			TensorLSL &partial_gammaBar_lll = cell.partial_gammaBar_lll;
-			partial_gammaBar_lll = partialDerivative(geomGridRead, &GeomCell::gammaBar_ll, dx, index);
+			partial_gammaBar_lll = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, TensorSL>(
+				index, dx, [&](DerefType index) -> TensorSL {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return geomGridRead(index).gammaBar_ll;
+				});
 
 			//connBar_lll(i,j,k) := conn_ijk = 1/2 (partial_k gamma_ij + partial_j gamma_ik - partial_i gamma_jk)
 			TensorLSL &connBar_lll = cell.connBar_lll;
@@ -276,7 +282,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			}
 		
 			//gammaBar^ij = Tensor::inverse(gammaBar_ij)
-			cell.gammaBar_uu = Tensor::inverse(geomCell.gammaBar_ll, 1.);
+			cell.gammaBar_uu = Tensor::inverse(geomCell.gammaBar_ll, (Real)1.);
 
 			Real oneOverPsiToTheFourth = 1. / psiToTheFourth;
 			//gamma^ij = psi^-4 gammaBar^ij
@@ -297,7 +303,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	
 			//D_alpha_l(i) := diff_i alpha = partial_i alpha
 			TensorL &D_alpha_l = cell.D_alpha_l;
-			D_alpha_l = partialDerivative(geomGridRead, &GeomCell::alpha, dx, index);
+			D_alpha_l = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, Real>(
+				index, dx, [&](DerefType index) -> Real {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return geomGridRead(index).alpha;
+				});
 
 			//beta_l(i) := g_ij beta^j
 			//exclude sum of beta^t = 0
@@ -311,7 +321,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			}
 			
 			//partial_beta_lu(j,i) := partial_j beta^i
-			cell.partial_beta_lu = partialDerivative(geomGridRead, &GeomCell::beta_u, dx, index);
+			cell.partial_beta_lu = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, TensorU>(
+				index, dx, [&](DerefType index) -> TensorU {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return geomGridRead(index).beta_u;
+				});
 		});
 
 		//DBar_phi_l depends on phi
@@ -320,10 +334,18 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			AuxCell &cell = auxGrid(index);
 	
 			//DBar_phi_l(i) := DBar_i ln(psi) = partial_i ln(psi)
-			cell.DBar_phi_l = partialDerivative(geomGridRead, &GeomCell::phi, dx, index);
+			cell.DBar_phi_l = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, Real>(
+				index, dx, [&](DerefType index) -> Real {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return geomGridRead(index).phi;
+				});
 
 			//DBar_psi_l(i) := DBar_i psi
-			cell.DBar_psi_l = partialDerivative(auxGrid, &AuxCell::psi, dx, index);
+			cell.DBar_psi_l = partialDerivative<partialDerivativeOrder, Real, dim, Real>(
+				index, dx, [&](DerefType index) -> Real {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return auxGrid(index).psi;
+				});
 		});
 
 		//calculates partial_gammaBar_lll, connBar_lll, connBar_ull
@@ -424,7 +446,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			
 			//partial_connBar_lu(i,j) := partial_i connBar^j
 			TensorLU &partial_connBar_lu = cell.partial_connBar_lu;
-			partial_connBar_lu = partialDerivative(geomGridRead, &GeomCell::connBar_u, dx, index);
+			partial_connBar_lu = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, TensorU>( 
+				index, dx, [&](DerefType index) -> TensorU {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return geomGridRead(index).connBar_u;
+				});
 
 			//Baumgarte & Shapiro p.388
 			//RBar_ll(i,j) := RBar_ij = -1/2 gammaBar^lm partial_m partial_l gammaBar_ij + gammaBar_k(i partial_j) connBar^k + connBar^k connBar_(ij)k + gammaBar^lm (2 connBar^k_l(i connBar_j)km + connBar^k_im connBar_klj)
@@ -638,7 +664,9 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 				//momentum constraint
 				
 			//DBar_ABar_luu(i,j,k) := DBar_i ABar^jk
-			TensorLSU DBar_ABar_luu = covariantDerivative(auxGrid, &AuxCell::ABar_uu, auxGrid, &AuxCell::connBar_ull, dx, index);
+			TensorLSU DBar_ABar_luu = CovariantDerivativeClass_SU<
+				Real, dim, AuxCell, AuxCell
+			>::exec(auxGrid, &AuxCell::ABar_uu, auxGrid, &AuxCell::connBar_ull, dx, index);
 	
 			//DBar_ABar_u(i) := DBar_j ABar^ji
 			TensorU DBar_ABar_u;
@@ -650,7 +678,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			}
 			
 			//DBar_K_l(i) := DBar_i K
-			TensorL DBar_K_l = partialDerivative(geomGridRead, &GeomCell::K, dx, index);
+			TensorL DBar_K_l = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, Real>(
+				index, dx, [&](DerefType index) -> Real {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return geomGridRead(index).K;
+				});
 
 			//DBar_K_u(i) := DBar^i K = gammaBar^ij DBar_j K
 			TensorU DBar_K_u;
@@ -761,7 +793,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			}
 			
 			//partial_ATilde_lll(i,j,k) := partial_i ATilde_jk
-			TensorLSL partial_ATilde_lll = partialDerivative(geomGridRead, &GeomCell::ATilde_ll, dx, index);
+			TensorLSL partial_ATilde_lll = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, TensorSL>(
+				index, dx, [&](DerefType index) -> TensorSL {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return geomGridRead(index).ATilde_ll;
+				});
 
 			//traceless portion of partial_t ATilde_ij := tracefree(-D^2 alpha + alpha (R_ij - 8 pi S_ij))
 			TensorSL tracelessPortionOfPartialT_ATilde_ll;
@@ -803,7 +839,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			}
 
 			//partial_phi_l(i) := partial_i phi
-			TensorL partial_phi_l = partialDerivative(geomGridRead, &GeomCell::phi, dx, index);
+			TensorL partial_phi_l = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, Real>(
+				index, dx, [&](DerefType index) -> Real {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return geomGridRead(index).phi;
+				});
 
 			//partial_t -alpha K / 6 + beta^i partial_i phi + partial_i beta^i / 6
 			partial_t_geomCell.phi = (trace_partial_beta - alpha * K) / 6.;
@@ -812,7 +852,9 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			}
 
 			//D_K_l(i) := D_i K
-			TensorL D_K_l = covariantDerivative(geomGridRead, &GeomCell::K, auxGrid, &AuxCell::conn_ull, dx, index);
+			TensorL D_K_l = CovariantDerivativeClass_0<
+				Real, dim, GeomCell, AuxCell
+			>::exec(geomGridRead, &GeomCell::K, auxGrid, &AuxCell::conn_ull, dx, index);
 
 			//partial_t K = -gamma^ij D_i D_j alpha + alpha(K_ij K^ij + 4 pi (rho + S)) + beta^i D_i K
 			partial_t_geomCell.K = 0;
@@ -828,7 +870,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			TensorSLU partial2_beta_llu = partialSecondDerivative(geomGridRead, &GeomCell::beta_u, auxGrid, &AuxCell::partial_beta_lu, dx, index);
 
 			//partial_K_l(i) := partial_i K
-			TensorL partial_K_l = partialDerivative(geomGridRead, &GeomCell::K, dx, index);
+			TensorL partial_K_l = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, Real>(
+				index, dx, [&](DerefType index) -> Real {
+					index = Tensor::clamp(index, DerefType(), size-1);
+					return geomGridRead(index).K;
+				});
 			
 			//connBar^i is the connection function / connection coefficient iteration with Hamiltonian constraint baked in (Baumgarte & Shapiro p.389, Alcubierre p.86).
 			//partial_t connBar^i = -2 ATilde^ij partial_j alpha + 2 alpha (connBar^i_jk ATilde^kj - 2/3 gammaBar^ij partial_j K - 8 pi gammaBar^ij S_j + 6 ATilde^ij partial_j phi)
@@ -889,7 +935,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 				}
 			}
 		
-			TensorSU gammaBar_uu = Tensor::inverse(gammaBar_ll, 1); 
+			TensorSU gammaBar_uu = Tensor::inverse(gammaBar_ll, (Real)1); 
 
 			/*
 			tr(A_ij)

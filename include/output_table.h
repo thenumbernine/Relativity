@@ -12,90 +12,56 @@ trying to organize my output stuff instead of typing headers into two places and
 #include <ostream>
 
 struct CoordNames {
-	static const char *names[];
+	static char const * names[];
 };
-const char *CoordNames::names[] = {"x", "y", "z"};
+char const * CoordNames::names[] = {"x", "y", "z"};
 
 template<typename FieldType>
 struct OutputField {
-	static void outputName(std::ostream &o, const char *name) {
+	static void outputName(std::ostream &o, char const * name) {
 		o << name << "\t";
 	}
 
-	static void outputField(std::ostream &o,const FieldType &field) {
+	static void outputField(std::ostream &o, FieldType const & field) {
 		o << field << "\t";
 	}
 };
 
 template<typename Real, int dim> 
 struct OutputFieldVector {
-	static void outputName(std::ostream &o, const char *name, const char *indexSymbol) {
+	static void outputName(std::ostream &o, char const * name, char const * indexSymbol) {
 		for (int i = 0; i < dim; ++i) {
 			o << name << indexSymbol << CoordNames::names[i] << "\t";
 		}
 	}
-	static void outputField(std::ostream &o, const typename Tensor::GenericRank1<dim>::template Body<Real, Real> &body) {
+	static void outputField(std::ostream &o, Tensor::_vec<Real, dim> const & t) {
 		for (int i = 0; i < dim; ++i) {
-			o << body.v[i] << "\t";
+			o << t[i] << "\t";
 		}
 	}
 };
 
 template<typename Real, int dim>
-struct OutputField<Tensor::Tensor<Real, Tensor::Lower<dim>>> : public OutputFieldVector<Real, dim> {
-	static void outputName(std::ostream &o, const char *name) {
-		//TODO put the "_" vs "^" within the upper and Lower classes
-		//then write that mpl method of extracting the upper/Lower for a particular index
-		//	as well as the nested body type for a particular index
-		//	as well as the dimension for a particular index
-		//	etc...
-		OutputFieldVector<Real, dim>::outputName(o, name, "_");
+struct OutputField<Tensor::_vec<Real, dim>> : public OutputFieldVector<Real, dim> {
+	static void outputName(std::ostream &o, char const * name) {
+		OutputFieldVector<Real, dim>::outputName(o, name, "_");	//"^");//TODO can't determine anymore, no longer using Upper and Lower
 	}
-	static void outputField(std::ostream &o, const Tensor::Tensor<Real, Tensor::Lower<dim>> &t) {
-		OutputFieldVector<Real, dim>::outputField(o, t.body);
+	static void outputField(std::ostream &o, Tensor::_vec<Real, dim> const & t) {
+		OutputFieldVector<Real, dim>::outputField(o, t);
 	}
 };
-
-template<typename Real, int dim>
-struct OutputField<Tensor::Tensor<Real, Tensor::Upper<dim>>> : public OutputFieldVector<Real, dim> {
-	static void outputName(std::ostream &o, const char *name) {
-		OutputFieldVector<Real, dim>::outputName(o, name, "^");
-	}
-	static void outputField(std::ostream &o, const Tensor::Tensor<Real, Tensor::Upper<dim>> &t) {
-		OutputFieldVector<Real, dim>::outputField(o, t.body);
-	}
-};
-
 
 //TODO write iterators could simplify this a lot
 template<typename Real, int dim>
-struct OutputField<Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>>> {
-	static void outputName(std::ostream &o, const char *name) {
+struct OutputField<Tensor::_sym<Real, dim>> {
+	static void outputName(std::ostream &o, char const * name) {
 		for (int i = 0; i < dim; ++i) {
 			for (int j = 0; j <= i; ++j) {
-				o << name << "_" << CoordNames::names[i] << CoordNames::names[j] << "\t";
+				o << name << "_" << CoordNames::names[i] << CoordNames::names[j] << "\t";	// TODO Upper vs Lower
 			}
 		}
 	}
-	static void outputField(std::ostream &o, const Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>> &t) {
-		for (int i = 0; i < dim; ++i) {
-			for (int j = 0; j <= i; ++j) {
-				o << t(i,j) << "\t";
-			}
-		}
-	}
-};
-
-template<typename Real, int dim>
-struct OutputField<Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Upper<dim>, Tensor::Upper<dim>>>> {
-	static void outputName(std::ostream &o, const char *name) {
-		for (int i = 0; i < dim; ++i) {
-			for (int j = 0; j <= i; ++j) {
-				o << name << "^" << CoordNames::names[i] << CoordNames::names[j] << "\t";
-			}
-		}
-	}
-	static void outputField(std::ostream &o, const Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Upper<dim>, Tensor::Upper<dim>>> &t) {
+	static void outputField(std::ostream &o, Tensor::_sym<Real, dim> const & t) {
 		for (int i = 0; i < dim; ++i) {
 			for (int j = 0; j <= i; ++j) {
 				o << t(i,j) << "\t";
@@ -103,24 +69,23 @@ struct OutputField<Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Upper<dim>, Te
 		}
 	}
 };
-
 
 template<typename CellType>
 struct ICellField {
-	virtual const char *getFullName() const = 0;
+	virtual char const * getFullName() const = 0;
 	virtual void outputName(std::ostream &o) const = 0;
-	virtual void outputValues(std::ostream &o, const CellType &cell) const = 0;
+	virtual void outputValues(std::ostream &o, CellType const & cell) const = 0;
 };
 
 template<typename FieldType, typename CellType>
 struct CellField : public ICellField<CellType> {
-	const char *name;
-	const char *fullname;
+	char const * name;
+	char const * fullname;
 	FieldType CellType::*field;
-	CellField(const char *name_, const char *fullname_, FieldType CellType::*field_)
+	CellField(char const * name_, char const * fullname_, FieldType CellType::*field_)
 	: name(name_), fullname(fullname_), field(field_) {}
 
-	virtual const char *getFullName() const {
+	virtual char const * getFullName() const {
 		return fullname; 
 	}
 
@@ -128,13 +93,13 @@ struct CellField : public ICellField<CellType> {
 		OutputField<FieldType>::outputName(o, name);
 	}
 
-	virtual void outputValues(std::ostream &o, const CellType &cell) const {
+	virtual void outputValues(std::ostream &o, CellType const & cell) const {
 		OutputField<FieldType>::outputField(o, cell.*field);
 	}
 
 };
 template<typename FieldType, typename CellType>
-CellField<FieldType, CellType> *makeField(const char *name, const char *fullname, FieldType CellType::*field) {
+CellField<FieldType, CellType> *makeField(char const * name, char const * fullname, FieldType CellType::*field) {
 	return new CellField<FieldType, CellType>(name, fullname, field);
 }
 
@@ -201,7 +166,7 @@ struct OutputTable {
 	using MatterCell = ::MatterCell<Real, dim>;
 
 	template<typename CellType> 
-	static void outputHeadersForCellType(std::ostream &o, const std::vector<bool> &columns, int &columnIndex) {
+	static void outputHeadersForCellType(std::ostream &o, std::vector<bool> const & columns, int & columnIndex) {
 		using ICellField = ::ICellField<CellType>;
 		ICellField **fields = OutputCellFields<Real, dim, CellType>::fields();
 		for (int i = 0; ; ++i) {
@@ -212,7 +177,7 @@ struct OutputTable {
 	}
 
 	template<typename CellType> 
-	static void outputValuesForCellType(std::ostream &o, const CellType &cell, const std::vector<bool> &columns, int &columnIndex) {
+	static void outputValuesForCellType(std::ostream &o, CellType const & cell, std::vector<bool> const & columns, int &columnIndex) {
 		using ICellField = ::ICellField<CellType>;
 		ICellField **fields = OutputCellFields<Real, dim, CellType>::fields();
 		for (int i = 0; ; ++i) {
@@ -223,7 +188,7 @@ struct OutputTable {
 	}
 	
 	template<typename CellType> 
-	static bool findColumnName(const std::string &fullname, int &columnIndex) {
+	static bool findColumnName(std::string const & fullname, int &columnIndex) {
 		using ICellField = ::ICellField<CellType>;
 		ICellField **fields = OutputCellFields<Real, dim, CellType>::fields();
 		for (int i = 0; ; ++i) {
@@ -258,16 +223,16 @@ struct OutputTable {
 		o << std::endl;
 	}
 
-	static void state(std::ostream &o, const ADMFormalism &sim, std::vector<bool> &columns) {
+	static void state(std::ostream &o, ADMFormalism const & sim, std::vector<bool> &columns) {
 		Tensor::RangeObj<dim> range = sim.auxGrid.range();
-		parallel.foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
-			const AuxCell &auxCell = sim.auxGrid(index);
-			const MatterCell &matterCell = sim.matterGrid(index);
-			const GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
+		parallel.foreach(range.begin(), range.end(), [&](Tensor::intN<dim> index) {
+			AuxCell const & auxCell = sim.auxGrid(index);
+			MatterCell const & matterCell = sim.matterGrid(index);
+			GeomCell const & geomCell = (*sim.geomGridReadCurrent)(index);
 			
 			o << sim.time << "\t";
 
-			Tensor::Vector<Real, dim> x = sim.coordForIndex(index);
+			Tensor::_vec<Real, dim> x = sim.coordForIndex(index);
 			for (int i = 0; i < dim; ++i) {
 				o << x(i) << "\t";
 			}
@@ -282,7 +247,7 @@ struct OutputTable {
 	}
 
 	//only handles fullnames.  i.e. handles 'gamma_ll' rather than just 'gamma' for gamma_ij
-	static int getColumnIndex(const std::string &columnName) {
+	static int getColumnIndex(std::string const & columnName) {
 		int columnIndex = 0;
 		if (findColumnName<GeomCell>(columnName, columnIndex)) return columnIndex;
 		if (findColumnName<MatterCell>(columnName, columnIndex)) return columnIndex;

@@ -14,8 +14,8 @@ template<typename Real, int dim>
 struct KerrSchild : public InitialData<Real, dim> {
 	virtual const char *name() { return "kerr-schild"; }
 
-	using Vector = Tensor::Vector<Real, dim>;
-	using DerefType = Tensor::Vector<int, dim>;
+	using Vector = Tensor::_vec<Real, dim>;
+	using DerefType = Tensor::intN<dim>;
 	using InitialData = ::InitialData<Real, dim>;
 	using ADMFormalism = typename InitialData::ADMFormalism;
 	using TensorL = typename ADMFormalism::TensorL;
@@ -68,7 +68,7 @@ struct KerrSchild : public InitialData<Real, dim> {
 		Vector center = (max + min) * .5;
 		std::cout << "providing initial conditions..." << std::endl;
 		Tensor::RangeObj<dim> range = sim.geomGridReadCurrent->range();
-		parallel.foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
+		parallel.foreach(range.begin(), range.end(), [&](Tensor::intN<dim> index) {
 			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
 				
 			Vector v = sim.coordForIndex(index) - center;

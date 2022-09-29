@@ -21,8 +21,8 @@ template<typename Real, int dim>
 struct BowenYork : public InitialData<Real, dim> {
 	virtual const char *name() { return "bowen-york"; }
 
-	using Vector = Tensor::Vector<Real, dim>;
-	using DerefType = Tensor::Vector<int, dim>;
+	using Vector = Tensor::_vec<Real, dim>;
+	using DerefType = Tensor::intN<dim>;
 	using InitialData = ::InitialData<Real, dim>;
 	using ADMFormalism = typename InitialData::ADMFormalism;
 	using TensorL = typename ADMFormalism::TensorL;
@@ -31,8 +31,8 @@ struct BowenYork : public InitialData<Real, dim> {
 	using TensorSU = typename ADMFormalism::TensorSU;
 
 	static constexpr auto dim3 = 3;	//representing angular momentum in 3d even for 1d and 2d cases, so i can give a 2d black hole some angular momentum
-	using TensorL3 = Tensor::Tensor<Real, Tensor::Lower<dim3>>;
-	using TensorU3 = Tensor::Tensor<Real, Tensor::Upper<dim3>>;
+	using TensorL3 = Tensor::_vec<Real, dim3>;
+	using TensorU3 = Tensor::_vec<Real, dim3>;
 	
 	Real M;						//black hole mass <=> half the Schwarzschild radius
 	TensorL3 J_l;	//angular momentum. technically only has to be a divergence-free field.
@@ -65,9 +65,9 @@ struct BowenYork : public InitialData<Real, dim> {
 		
 		//if we need J to calculate psi and we need psi to calculate gamma and we need gamma to calculate J (norm wrt metric) ... then we have a separate system to solve?
 		//so until then I'm using the "approximation" J = |J^i|
-		Real J = J_l.body.length();
+		Real J = J_l.length();
 		//same deal with P?
-		Real P = P_u.body.length();
+		Real P = P_u.length();
 	
 		TensorSL eta;
 		for (int i = 0; i < dim; ++i) {
@@ -82,7 +82,7 @@ struct BowenYork : public InitialData<Real, dim> {
 		Vector center = (max + min) * .5;
 		std::cout << "providing initial conditions..." << std::endl;
 		Tensor::RangeObj<dim> range = sim.geomGridReadCurrent->range();
-		parallel.foreach(range.begin(), range.end(), [&](Tensor::Vector<int, dim> index) {
+		parallel.foreach(range.begin(), range.end(), [&](Tensor::intN<dim> index) {
 			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
 			//we don't need this cell, just a function in the AuxCell class for computing psi from phi 
 			typename ADMFormalism::AuxCell &cell = sim.auxGrid(index);

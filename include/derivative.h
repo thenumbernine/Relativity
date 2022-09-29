@@ -5,10 +5,11 @@
 #include "Tensor/Vector.h"
 #include "Tensor/Tensor.h"
 #include "Tensor/Grid.h"
+#include "Common/Macros.h"	//numberof
 
 //handles offset up to -size of the grid
 template<typename Type, int rank> 
-const Type& getGridOffset(const Tensor::Grid<Type, rank>& grid, Tensor::Vector<int, rank> index, int dim, int offset) {
+const Type& getGridOffset(const Tensor::Grid<Type, rank>& grid, Tensor::intN<rank> index, int dim, int offset) {
 	index(dim) += offset;
 	index(dim) += grid.size(dim);
 	index(dim) %= grid.size(dim);
@@ -54,12 +55,10 @@ struct PartialDerivCoeffs<Real, 8> {
 template<typename Real>
 const Real PartialDerivCoeffs<Real, 8>::coeffs[4] = { 4./5., -1./5., 4./105., -1./280. };
 
-#define numberof(x) (sizeof(x)/sizeof(*(x)))
-
 template<typename Real, int dim, typename CellType, typename InputType, int accuracy>
 struct PartialDerivativeCoordinateClass {
 	using Coeffs = PartialDerivCoeffs<Real, accuracy>;
-	InputType operator()(const Tensor::Grid<CellType, dim> &grid, const InputType CellType::*field, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index, int k) {
+	InputType operator()(const Tensor::Grid<CellType, dim> &grid, const InputType CellType::*field, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index, int k) {
 		InputType result = InputType();
 		Real oneOverDx = 1. / dx(k);
 		for (int i = 1; i <= (int)numberof(Coeffs::coeffs); ++i) {
@@ -69,7 +68,7 @@ struct PartialDerivativeCoordinateClass {
 	}
 };
 template<typename Real, int dim, typename CellType, typename InputType, int accuracy>
-InputType partialDerivativeCoordinate(const Tensor::Grid<CellType, dim> &grid, const InputType CellType::*field, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index, int k) {
+InputType partialDerivativeCoordinate(const Tensor::Grid<CellType, dim> &grid, const InputType CellType::*field, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index, int k) {
 	return PartialDerivativeCoordinateClass<Real, dim, CellType, InputType, accuracy>()(grid, field, dx, index, k);
 }
 
@@ -109,7 +108,7 @@ const Real PartialSecondDerivCoeffs<Real, 8>::coeffs[5] = { -205./72., 8./5., -1
 template<typename Real, int dim, typename CellType, typename InputType, int accuracy>
 struct PartialSecondDerivativeCoordinateClass {
 	using Coeffs = PartialSecondDerivCoeffs<Real, accuracy>;
-	InputType operator()(const Tensor::Grid<CellType, dim> &grid, const InputType CellType::*field, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index, int k) {
+	InputType operator()(const Tensor::Grid<CellType, dim> &grid, const InputType CellType::*field, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index, int k) {
 		Real oneOverDxSquared = 1. / (dx(k) * dx(k));
 		InputType result = grid(index).*field * (Coeffs::coeffs[0] * oneOverDxSquared);
 		for (int i = 1; i < (int)numberof(Coeffs::coeffs); ++i) {
@@ -119,74 +118,10 @@ struct PartialSecondDerivativeCoordinateClass {
 	}
 };
 template<typename Real, int dim, typename CellType, typename InputType, int accuracy>
-InputType partialSecondDerivativeCoordinate(const Tensor::Grid<CellType, dim> &grid, const InputType CellType::*field, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index, int k) {
+InputType partialSecondDerivativeCoordinate(const Tensor::Grid<CellType, dim> &grid, const InputType CellType::*field, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index, int k) {
 	return PartialSecondDerivativeCoordinateClass<Real, dim, CellType, InputType, accuracy>()(grid, field, dx, index, k);
 }
 
-/*
-partial derivative operator
-for now let's use 2-point everywhere: d/dx^i f(x) ~= (f(x + dx^i) - f(x - dx^i)) / (2 * |dx^i|)
-	index = index in grid of cell to pull the specified field
-	k = dimension to differentiate across
-*/
-template<typename Real, int dim, typename CellType, typename InputType>
-struct PartialDerivativeClass;
-
-template<typename Real, int dim, typename CellType, typename... args>
-struct PartialDerivativeClass<Real, dim, CellType, Tensor::Tensor<Real, args...>> {
-	using InputType = Tensor::Tensor<Real, args...>;
-	using OutputType = Tensor::Tensor<Real, Tensor::Lower<dim>, args...>;
-	using Grid = Tensor::Grid<CellType, dim>;
-	using CellFieldType = const InputType CellType::*;
-	static constexpr auto rank = InputType::rank;
-	OutputType operator()(const Grid &grid, CellFieldType field, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &gridIndex) {
-		static constexpr auto accuracy = 8;
-		using Coeffs = PartialDerivCoeffs<Real, accuracy>;
-		return OutputType([&](Tensor::Vector<int, rank+1> dstIndex){
-			int gradIndex = dstIndex(0);
-			Tensor::Vector<int, rank> srcIndex;
-			for (int i = 0; i < rank; ++i) {
-				srcIndex(i) = dstIndex(i+1);
-			}
-			Real sum = Real();
-			for (int i = 1; i <= (int)numberof(Coeffs::coeffs); ++i) {
-				sum += ((getGridOffset(grid, gridIndex, gradIndex, i).*field)(srcIndex) - (getGridOffset(grid, gridIndex, gradIndex, -1).*field)(srcIndex)) * Coeffs::coeffs[i-1];
-			}
-			return sum / dx(gradIndex);
-		});
-	}
-};
-
-template<typename Real, int dim, typename CellType>
-struct PartialDerivativeClass<Real, dim, CellType, Real> {
-	using InputType = Real;
-	using OutputType = Tensor::Tensor<Real, Tensor::Lower<dim>>;
-	using Grid = Tensor::Grid<CellType, dim>;
-	using CellFieldType = const InputType CellType::*;
-	OutputType operator()(const Grid &grid, CellFieldType field, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &gridIndex) {
-		static constexpr auto accuracy = 8;
-		using Coeffs = PartialDerivCoeffs<Real, accuracy>;
-		return OutputType([&](Tensor::Vector<int, 1> dstIndex){
-			int gradIndex = dstIndex(0);
-			Real sum = 0.f;
-			for (int i = 1; i <= (int)numberof(Coeffs::coeffs); ++i) {
-				sum += (getGridOffset(grid, gridIndex, gradIndex, i).*field - getGridOffset(grid, gridIndex, gradIndex, -1).*field) * Coeffs::coeffs[i-1];
-			}
-			return sum / dx(gradIndex);		
-		});
-	}
-};
-
-template<typename Real, int dim, typename CellType, typename InputType>
-typename PartialDerivativeClass<Real, dim, CellType, InputType>::OutputType
-partialDerivative(
-	const Tensor::Grid<CellType, dim> &grid, 
-	const InputType CellType::* field, 
-	const Tensor::Vector<Real, dim> &dx, 
-	const Tensor::Vector<int, dim> &index) 
-{
-	return PartialDerivativeClass<Real, dim, CellType, InputType>()(grid, field, dx, index);
-}
 
 /*
 partial second derivatives of vectors
@@ -199,13 +134,13 @@ struct PartialSecondDerivativeClass;
 template<typename Real, int dim, typename CellType, typename PartialCellType>
 struct PartialSecondDerivativeClass<Real, dim, CellType, PartialCellType, Real> {
 	using InputType = Real;
-	using PartialInputType = Tensor::Tensor<Real, Tensor::Lower<dim>>;
-	using OutputType = Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>>;
+	using PartialInputType = Tensor::_vec<Real, dim>;
+	using OutputType = Tensor::_sym<Real, dim>;
 	using Grid = Tensor::Grid<CellType, dim>;
 	using PartialGrid = Tensor::Grid<PartialCellType, dim>;
 	using CellFieldType = const InputType CellType::*;
 	using CellPartialFieldType = const PartialInputType PartialCellType::*;
-	OutputType operator()(const Grid &grid, CellFieldType field, const PartialGrid &partialGrid, CellPartialFieldType partialField, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index) {
+	OutputType operator()(const Grid &grid, CellFieldType field, const PartialGrid &partialGrid, CellPartialFieldType partialField, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
 		OutputType result;
 				
 		//partial2_field_ll(i,j) = partial_i partial_j field
@@ -225,15 +160,15 @@ struct PartialSecondDerivativeClass<Real, dim, CellType, PartialCellType, Real> 
 };
 
 template<typename Real, int dim, typename CellType, typename PartialCellType>
-struct PartialSecondDerivativeClass<Real, dim, CellType, PartialCellType, Tensor::Tensor<Real, Tensor::Upper<dim>>> {
-	using InputType = Tensor::Tensor<Real, Tensor::Upper<dim>>;
-	using PartialInputType = Tensor::Tensor<Real, Tensor::Lower<dim>, Tensor::Upper<dim>>;
-	using OutputType = Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>, Tensor::Upper<dim>>;
+struct PartialSecondDerivativeClass<Real, dim, CellType, PartialCellType, Tensor::_vec<Real, dim>> {
+	using InputType = Tensor::_vec<Real, dim>;
+	using PartialInputType = Tensor::_mat<Real, dim, dim>;
+	using OutputType = Tensor::_sym<Tensor::_vec<Real, dim>, dim>;
 	using Grid = Tensor::Grid<CellType, dim>;
 	using PartialGrid = Tensor::Grid<PartialCellType, dim>;
 	using CellFieldType = const InputType CellType::*;
 	using CellPartialFieldType = const PartialInputType PartialCellType::*;
-	OutputType operator()(const Grid &grid, CellFieldType field, const PartialGrid &partialGrid, CellPartialFieldType partialField, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index) {
+	OutputType operator()(const Grid &grid, CellFieldType field, const PartialGrid &partialGrid, CellPartialFieldType partialField, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
 		OutputType result;
 			
 		//partial2_field_lll(k,l,i) = partial_k partial_l field_i
@@ -257,15 +192,15 @@ struct PartialSecondDerivativeClass<Real, dim, CellType, PartialCellType, Tensor
 	}
 };
 template<typename Real, int dim, typename CellType, typename PartialCellType>
-struct PartialSecondDerivativeClass<Real, dim, CellType, PartialCellType, Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>>> {
-	using InputType = Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>>;
-	using PartialInputType = Tensor::Tensor<Real, Tensor::Lower<dim>, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>>;
-	using OutputType = Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>>;
+struct PartialSecondDerivativeClass<Real, dim, CellType, PartialCellType, Tensor::_sym<Real, dim>> {
+	using InputType = Tensor::_sym<Real, dim>;
+	using PartialInputType = Tensor::_vec<Tensor::_sym<Real, dim>, dim>;
+	using OutputType = Tensor::_sym<Tensor::_sym<Real, dim>, dim>;
 	using Grid = Tensor::Grid<CellType, dim>;
 	using PartialGrid = Tensor::Grid<PartialCellType, dim>;
 	using CellFieldType = const InputType CellType::*;
 	using CellPartialFieldType = const PartialInputType PartialCellType::*;
-	OutputType operator()(const Grid &grid, CellFieldType field, const PartialGrid &partialGrid, CellPartialFieldType partialField, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index) {
+	OutputType operator()(const Grid &grid, CellFieldType field, const PartialGrid &partialGrid, CellPartialFieldType partialField, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
 		OutputType result;
 			
 		//partial2_field_llll(k,l,i,j) = partial_k partial_l field_ij
@@ -300,8 +235,8 @@ partialSecondDerivative(
 	const InputType CellType::*field,
 	const Tensor::Grid<PartialCellType, dim> &partialGrid,
 	typename PartialSecondDerivativeClass<Real, dim, CellType, PartialCellType, InputType>::CellPartialFieldType partialField,
-	const Tensor::Vector<Real, dim> &dx,
-	const Tensor::Vector<int, dim> &index)
+	const Tensor::_vec<Real, dim> &dx,
+	const Tensor::intN<dim> &index)
 {
 	return PartialSecondDerivativeClass<Real, dim, CellType, PartialCellType, InputType>()(grid, field, partialGrid, partialField, dx, index);
 }
@@ -316,38 +251,45 @@ but symmetric mixed does not
 
 I think I'll make specializations for that reason ...
 */
-template<typename Real, int dim, typename CellType, typename ConnCellType, typename InputType>
-struct CovariantDerivativeClass;
 
 //scalar specialization
 //diff_i alpha = partial_i alpha
 template<typename Real, int dim, typename CellType, typename ConnCellType>
-struct CovariantDerivativeClass<Real, dim, CellType, ConnCellType, Real> {
+struct CovariantDerivativeClass_0 {
 	using InputType = Real;
-	using OutputType = Tensor::Tensor<Real, Tensor::Lower<dim>>;
+	using OutputType = Tensor::_vec<Real, dim>;
 	using Grid = Tensor::Grid<CellType, dim>;
 	using ConnGrid = Tensor::Grid<ConnCellType, dim>;
 	using CellFieldType = const InputType CellType::*;
 	using TensorUSL = typename ConnCellType::TensorUSL;
 	using ConnFieldType = const TensorUSL ConnCellType::*;
-	OutputType operator()(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index) {
-		return partialDerivative(grid, field, dx, index);
+	static OutputType exec(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
+		static constexpr int accuracy = 8;	//"order", not "accuracy", and put this all in one place plz
+		return Tensor::partialDerivative<accuracy, Real, dim, InputType>(
+			index, dx, [&](decltype(index) index) -> InputType {
+				return grid(index).*field;
+			});
 	}
 };
 
 //Tensor::Vector specialization
 //diff_i v^j = partial_i v^j + conn^j_ki v^k
 template<typename Real, int dim, typename CellType, typename ConnCellType>
-struct CovariantDerivativeClass<Real, dim, CellType, ConnCellType, Tensor::Tensor<Real, Tensor::Upper<dim>>> {
-	using InputType = Tensor::Tensor<Real, Tensor::Upper<dim>>;
-	using OutputType = Tensor::Tensor<Real, Tensor::Lower<dim>, Tensor::Upper<dim>>;
+struct CovariantDerivativeClass_U {
+	using InputType = Tensor::_vec<Real, dim>;
+	using OutputType = Tensor::_mat<Real, dim, dim>;
 	using Grid = Tensor::Grid<CellType, dim>;
 	using ConnGrid = Tensor::Grid<ConnCellType, dim>;
 	using CellFieldType = const InputType CellType::*;
 	using TensorUSL = typename ConnCellType::TensorUSL;
 	using ConnFieldType = const TensorUSL ConnCellType::*;
-	OutputType operator()(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index) {
-		OutputType result = partialDerivative(grid, field, dx, index);
+	static OutputType exec(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
+		static constexpr int accuracy = 8;	//"order", not "accuracy", and put this all in one place plz
+		OutputType result = Tensor::partialDerivative<accuracy, Real, dim, InputType>(
+			index, dx, [&](decltype(index) index) -> InputType {
+				return grid(index).*field;
+			});
+
 		const CellType &cell = grid(index);
 		const ConnCellType &connCell = connGrid(index);
 		const TensorUSL &conn_ull = connCell.*connField_ull;
@@ -365,16 +307,21 @@ struct CovariantDerivativeClass<Real, dim, CellType, ConnCellType, Tensor::Tenso
 //one-form specialization
 //diff_i w_j = partial_i w_j - conn^k_ji w_k
 template<typename Real, int dim, typename CellType, typename ConnCellType>
-struct CovariantDerivativeClass<Real, dim, CellType, ConnCellType, Tensor::Tensor<Real, Tensor::Lower<dim>>> {
-	using InputType = Tensor::Tensor<Real, Tensor::Lower<dim>>;
-	using OutputType = Tensor::Tensor<Real, Tensor::Lower<dim>, Tensor::Lower<dim>>;
+struct CovariantDerivativeClass_L {
+	using InputType = Tensor::_vec<Real, dim>;
+	using OutputType = Tensor::_mat<Real, dim, dim>;
 	using Grid = Tensor::Grid<CellType, dim>;
 	using ConnGrid = Tensor::Grid<ConnCellType, dim>;
 	using CellFieldType = const InputType CellType::*;
 	using TensorUSL = typename ConnCellType::TensorUSL;
 	using ConnFieldType = const TensorUSL ConnCellType::*;
-	OutputType operator()(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index) {
-		OutputType result = partialDerivative(grid, field, dx, index);
+	static OutputType exec(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
+		static constexpr int accuracy = 8;	//"order", not "accuracy", and put this all in one place plz
+		OutputType result = Tensor::partialDerivative<accuracy, Real, dim, InputType>(
+			index, dx, [&](decltype(index) index) -> InputType {
+				return grid(index).*field;
+			});
+
 		const CellType &cell = grid(index);
 		const ConnCellType &connCell = connGrid(index);
 		const TensorUSL &conn_ull = connCell.*connField_ull;
@@ -392,16 +339,21 @@ struct CovariantDerivativeClass<Real, dim, CellType, ConnCellType, Tensor::Tenso
 //symmetric rank-(2,0) tensor specialization
 //diff_i t^jk = partial_i t^jk + conn^j_li t^lk + conn^k_li t^jl
 template<typename Real, int dim, typename CellType, typename ConnCellType>
-struct CovariantDerivativeClass<Real, dim, CellType, ConnCellType, Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Upper<dim>, Tensor::Upper<dim>>>> {
-	using InputType = Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Upper<dim>, Tensor::Upper<dim>>>;
-	using OutputType = Tensor::Tensor<Real, Tensor::Lower<dim>, Tensor::Symmetric<Tensor::Upper<dim>, Tensor::Upper<dim>>>;
+struct CovariantDerivativeClass_SU {
+	using InputType = Tensor::_sym<Real, dim>;
+	using OutputType = Tensor::_vec<Tensor::_sym<Real, dim>, dim>;
 	using Grid = Tensor::Grid<CellType, dim>;
 	using ConnGrid = Tensor::Grid<ConnCellType, dim>;
 	using CellFieldType = const InputType CellType::*;
 	using TensorUSL = typename ConnCellType::TensorUSL;
 	using ConnFieldType = const TensorUSL ConnCellType::*;
-	OutputType operator()(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::Vector<Real, dim> &dx, const Tensor::Vector<int, dim> &index) {
-		OutputType result = partialDerivative(grid, field, dx, index);
+	static OutputType exec(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
+		static constexpr int accuracy = 8;	//"order", not "accuracy", and put this all in one place plz
+		OutputType result = Tensor::partialDerivative<accuracy, Real, dim, InputType>(
+			index, dx, [&](decltype(index) index) -> InputType {
+				return grid(index).*field;
+			});
+
 		const CellType &cell = grid(index);
 		const ConnCellType &connCell = connGrid(index);
 		const TensorUSL &conn_ull = connCell.*connField_ull;
@@ -421,17 +373,3 @@ struct CovariantDerivativeClass<Real, dim, CellType, ConnCellType, Tensor::Tenso
 		return result;
 	}
 };
-
-
-template<typename Real, int dim, typename CellType, typename ConnCellType, typename InputType>
-typename CovariantDerivativeClass<Real, dim, CellType, ConnCellType, InputType>::OutputType
-covariantDerivative(
-	const Tensor::Grid<CellType, dim> &grid, 
-	const InputType CellType::*field, 
-	const Tensor::Grid<ConnCellType, dim> &connGrid,
-	const Tensor::Tensor<Real, Tensor::Upper<dim>, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>> ConnCellType::*connField,
-	const Tensor::Vector<Real, dim> &dx, 
-	const Tensor::Vector<int, dim> &index)
-{
-	return CovariantDerivativeClass<Real, dim, CellType, ConnCellType, InputType>()(grid, field, connGrid, connField, dx, index);
-}

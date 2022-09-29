@@ -7,6 +7,7 @@
 //used by integrator for accessing read and write grids 
 template<typename Real, int dim>
 struct IADMFormalism {
+	virtual ~IADMFormalism() {} 
 	virtual void getExplicitPartials(
 		Real dt, 
 		const Tensor::Grid<GeomCell<Real, dim>, dim> &geomGrid, 

@@ -24,8 +24,8 @@ struct GeomCell {
 	using Real = Real_;
 	static constexpr auto dim = dim_;
 
-	using TensorU = Tensor::Tensor<Real, Tensor::Upper<dim>>;
-	using TensorSL = Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>>;
+	using TensorU = Tensor::_vec<Real, dim>;
+	using TensorSL = Tensor::_sym<Real, dim>;
 
 	//lapse
 	Real alpha;
@@ -65,7 +65,7 @@ struct GeomCell {
 
 	//operators used with integration
 
-	GeomCell operator*(const Real &scalar) const {
+	GeomCell operator*(Real const & scalar) const {
 		GeomCell result;
 		result.alpha = alpha * scalar;
 		result.beta_u = beta_u * scalar;
@@ -77,7 +77,7 @@ struct GeomCell {
 		return result;
 	}
 
-	GeomCell &operator+=(const GeomCell &sourceCell) {
+	GeomCell &operator+=(GeomCell const & sourceCell) {
 		alpha += sourceCell.alpha;
 		beta_u += sourceCell.beta_u;
 		gammaBar_ll += sourceCell.gammaBar_ll;
@@ -94,8 +94,8 @@ struct MatterCell {
 	using Real = Real_;
 	static constexpr auto dim = dim_;
 
-	using TensorU = Tensor::Tensor<Real, Tensor::Upper<dim>>;
-	using TensorSL = Tensor::Tensor<Real, Tensor::Symmetric<Tensor::Lower<dim>, Tensor::Lower<dim>>>;
+	using TensorU = Tensor::_tensor<Real, dim>;
+	using TensorSL = Tensor::_sym<Real, dim>;
 
 	MatterCell()
 	:	rho(Real())
@@ -129,21 +129,15 @@ struct AuxCell {
 	'S' means symmetric
 	'A' means antisymmetric (haven't needed this one yet)
 	*/
-	using Lower = Tensor::Lower<dim>;
-	using Upper = Tensor::Upper<dim>;
-	
-	using SymmetricLower = Tensor::Symmetric<Lower, Lower>;
-	using SymmetricUpper = Tensor::Symmetric<Upper, Upper>;
-	
-	using TensorU = Tensor::Tensor<Real, Upper>;
-	using TensorL = Tensor::Tensor<Real, Lower>;
-	using TensorLL = Tensor::Tensor<Real, Lower, Lower>;
-	using TensorUL = Tensor::Tensor<Real, Upper, Lower>;
-	using TensorLU = Tensor::Tensor<Real, Lower, Upper>;
-	using TensorSU = Tensor::Tensor<Real, SymmetricUpper>;
-	using TensorSL = Tensor::Tensor<Real, SymmetricLower>;
-	using TensorUSL = Tensor::Tensor<Real, Upper, SymmetricLower>;
-	using TensorLSL = Tensor::Tensor<Real, Lower, SymmetricLower>;
+	using TensorU = Tensor::_tensor<Real, dim>;
+	using TensorL = Tensor::_tensor<Real, dim>;
+	using TensorLL = Tensor::_tensor<Real, dim, dim>;
+	using TensorUL = Tensor::_tensor<Real, dim, dim>;
+	using TensorLU = Tensor::_tensor<Real, dim, dim>;
+	using TensorSU = Tensor::_sym<Real, dim>;
+	using TensorSL = Tensor::_sym<Real, dim>;
+	using TensorUSL = Tensor::_vec<Tensor::_sym<Real, dim>, dim>;
+	using TensorLSL = Tensor::_vec<Tensor::_sym<Real, dim>, dim>;
 
 
 	//our tensors initialze to zero, so why not our reals too?
