@@ -647,10 +647,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 
 		Tensor::RangeObj<dim> range = auxGrid.range();
 		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
-			GeomCell &geomCell = geomGrid(index);
-
-			TensorSL &gammaBar_ll = geomCell.gammaBar_ll;
-			TensorSL &ATilde_ll = geomCell.ATilde_ll;
+			GeomCell & geomCell = geomGrid(index);
 			
 			/*
 			det(gammaBar_ij) 
@@ -658,15 +655,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			= gamma^-1 gamma
 			= 1
 			*/
-			Real gammaBar = determinant(gammaBar_ll);
+			Real gammaBar = determinant(geomCell.gammaBar_ll);
 			Real oneOverCubeRootGammaBar = 1. / cbrt(gammaBar);
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					gammaBar_ll(i,j) *= oneOverCubeRootGammaBar;
-				}
-			}
+			geomCell.gammaBar_ll *= oneOverCubeRootGammaBar;
 		
-			TensorSU gammaBar_uu = Tensor::inverse(gammaBar_ll, (Real)1); 
+			TensorSU gammaBar_uu = Tensor::inverse(geomCell.gammaBar_ll, (Real)1); 
 
 			/*
 			tr(A_ij)
@@ -678,18 +671,8 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			tr(ATilde_ij) = 3 psi^-4 tr(A_ij) = 3 psi^-4 * 0 
 			= 0
 			*/
-			Real tr_ATilde = 0;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					tr_ATilde += gammaBar_uu(i,j) * ATilde_ll(i,j);
-				}
-			}
-
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					ATilde_ll(i,j) -= 1./3. * gammaBar_ll(i,j) * tr_ATilde;
-				}
-			}
+			Real tr_ATilde = gammaBar_uu.dot(geomCell.ATilde_ll);
+			geomCell.ATilde_ll -= 1./3. * geomCell.gammaBar_ll * tr_ATilde;
 		});
 	}
 };
