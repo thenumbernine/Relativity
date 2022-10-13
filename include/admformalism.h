@@ -163,12 +163,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					return auxGrid(index).gammaBar_uu;
 				});
 		
-			for (int i = 0; i < dim; ++i) {
-				geomCell.connBar_u(i) = 0;
-				for (int j = 0; j < dim; ++j) {
-					geomCell.connBar_u(i) += partial_gammaBar_luu(j,i,j);
-				}
-			}
+			geomCell.connBar_u = Tensor::template contract<0,2>(partial_gammaBar_luu);
 		});
 	}
 
@@ -318,17 +313,12 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 
 			auto DBar_phi_u = cell.gammaBar_uu * cell.DBar_phi_l;
 	
-			//conn^i_jk = connBar^i_jk + 2 (delta^i_j DBar_k ln(psi) + delta^i_k DBar_j ln(psi) - gammaBar_jk gammaBar^il DBar_l ln(psi))
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					for (int k = 0; k <= j; ++k) {
-						cell.conn_ull(i,j,k) = cell.connBar_ull(i,j,k);
-						if (i == j) cell.conn_ull(i,j,k) += 2. * cell.DBar_phi_l(k);
-						if (i == k) cell.conn_ull(i,j,k) += 2. * cell.DBar_phi_l(j);
-						cell.conn_ull(i,j,k) -= 2. * DBar_phi_u(i) * geomCell.gammaBar_ll(j,k);
-					}
-				}
-			}
+			//conn^i_jk = connBar^i_jk + 2 (delta^i_j DBar_k phi + delta^i_k DBar_j phi - gammaBar_jk gammaBar^il DBar_l phi)
+			// another TODO, would be nice to not redundantly calculate symmetric components here ... another TODO for index notation
+			cell.conn_ull = 2. * (
+				  Tensor::outer(Tensor::_ident<Real,dim>(1), cell.DBar_phi_l)
+				+ Tensor::outer(Tensor::_ident<Real,dim>(1), cell.DBar_phi_l).template transpose<1,2>()
+				- Tensor::outer(DBar_phi_u, geomCell.gammaBar_ll));
 
 			//conn_ijk = gamma_il conn^l_jk
 			cell.conn_lll = cell.gamma_ll * cell.conn_ull;
@@ -367,6 +357,15 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			//connBarSq_ijkl := connBar_ijm connBar^m_kl
 			auto connBarSq_llll = cell.connBar_lll * cell.connBar_ull;
 
+			//tr24_connBarSq_ll := connBarSq_ikjl gammBar^kl
+			auto tr24_connBarSq_ll = Tensor::template contract<1,3>(connBarSq_llll * cell.gammaBar_uu);
+
+			//tr25_connBarOuterSq_ll := connBar^k_im gammaBar^lm connBar_klj
+			// TODO optimized outer-and-contract-specific-indexes ... or just index notation ...
+			auto connBarOuter_llllll = Tensor::outer(cell.connBar_ull * cell.gammaBar_uu, cell.connBar_lll);
+			auto tr25_connBarOuterSq_llll = Tensor::template contract<1,4>(connBarOuter_llllll);
+			TensorSL tr14tr25_connBarOuterSq_ll = Tensor::template contract<0,3>(tr25_connBarOuterSq_llll);
+
 			//Baumgarte & Shapiro p.388
 			//RBar_ll(i,j) := RBar_ij = 
 			//	-1/2 gammaBar^lm partial_m partial_l gammaBar_ij 
@@ -374,29 +373,15 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			//		+ connBar_(ij)k connBar^k
 			//		+ gammaBar^lm (
 			//			2 connBar^k_l(i connBar_j)mk 
-			//			+ connBar^k_im connBar_klj
+			//			+ connBar^k_mi connBar_klj
 			//		)
 			TensorSL & RBar_ll = cell.RBar_ll;
 			RBar_ll = 
 				-1./2. * cell.partial2_gammaBar_ll
 				+ makeSym(partial_connBar_lu * geomCell.gammaBar_ll)
-				+ makeSym(cell.connBar_lll * geomCell.connBar_u);
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j < dim; ++j) {
-					for (int l = 0; l < dim; ++l) {
-						for (int m = 0; m < dim; ++m) {
-							RBar_ll(i,j) += 
-								  connBarSq_llll(j, m, i, l) * cell.gammaBar_uu(l,m)
-								+ connBarSq_llll(i, m, j, l) * cell.gammaBar_uu(l,m);
-							for (int k = 0; k < dim; ++k) {
-								RBar_ll(i,j) += 
-									cell.connBar_ull(k,m,i) * cell.connBar_lll(k,l,j)
-								;
-							}
-						}
-					}
-				}
-			}
+				+ makeSym(cell.connBar_lll * geomCell.connBar_u)
+				+ 2. * makeSym(tr24_connBarSq_ll)
+				+ tr14tr25_connBarOuterSq_ll;
 
 			//RBar = gammaBar^ij RBar_ij
 			cell.RBar = Tensor::dot(cell.gammaBar_uu, RBar_ll);
@@ -493,7 +478,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			>::exec(auxGrid, &AuxCell::ABar_uu, auxGrid, &AuxCell::connBar_ull, dx, index);
 	
 			//DBar_ABar_u(i) := DBar_j ABar^ji
-			TensorU DBar_ABar_u = DBar_ABar_luu.template contract<0,2>();
+			TensorU DBar_ABar_u = Tensor::template contract<0,2>(DBar_ABar_luu);
 			
 			//DBar_K_l(i) := DBar_i K
 			TensorL DBar_K_l = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, Real>(
@@ -621,7 +606,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 				+ geomCell.beta_u * cell.partial_connBar_lu
 				- geomCell.connBar_u * cell.partial_beta_lu
 				+ 2. * geomCell.alpha * cell.connBar_ull.template interior<2>(cell.ATilde_uu)
-				+ 1./3. * cell.gammaBar_uu * partial2_beta_llu.template contract<1,2>()
+				+ 1./3. * cell.gammaBar_uu * Tensor::template contract<1,2>(partial2_beta_llu)
 				+ cell.gammaBar_uu.template interior<2>(partial2_beta_llu);
 			;
 		});
