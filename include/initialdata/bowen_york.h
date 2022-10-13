@@ -69,13 +69,10 @@ struct BowenYork : public InitialData<Real, dim> {
 		//same deal with P?
 		Real P = P_u.length();
 	
-		TensorSL eta;
-		for (int i = 0; i < dim; ++i) {
-			eta(i,i) = 1.;
-		}
+		auto eta = Tensor::_ident<Real,dim>(1);	// spatial Minkowski is just identity
 
-		const Vector &min = sim.min;
-		const Vector &max = sim.max;
+		Vector const & min = sim.min;
+		Vector const & max = sim.max;
 
 		//provide initial conditions
 		
@@ -83,9 +80,9 @@ struct BowenYork : public InitialData<Real, dim> {
 		std::cout << "providing initial conditions..." << std::endl;
 		Tensor::RangeObj<dim> range = sim.geomGridReadCurrent->range();
 		parallel.foreach(range.begin(), range.end(), [&](Tensor::intN<dim> index) {
-			typename ADMFormalism::GeomCell &geomCell = (*sim.geomGridReadCurrent)(index);
+			typename ADMFormalism::GeomCell & geomCell = (*sim.geomGridReadCurrent)(index);
 			//we don't need this cell, just a function in the AuxCell class for computing psi from phi 
-			typename ADMFormalism::AuxCell &cell = sim.auxGrid(index);
+			typename ADMFormalism::AuxCell & cell = sim.auxGrid(index);
 				
 			Vector x = sim.coordForIndex(index) - center;
 			
@@ -142,35 +139,26 @@ struct BowenYork : public InitialData<Real, dim> {
 			//psi = psi0 + psi2P P^2 / M^2 psi2P + O(P^4)
 			//combined?
 			//psi = psi0 + psi2J J^2 / M^4 + psi2P P^2 / M^2 + O(J^4) + O(P^4)
-			Real &psi = cell.psi;
-			psi = psi0 + psi2J * J * J / (M * M * M * M) + psi2P * P * P / (M * M);
+			cell.psi = psi0 + psi2J * J * J / (M * M * M * M) + psi2P * P * P / (M * M);
 			
-			Real psiSquared = psi * psi;
+			Real psiSquared = cell.psi * cell.psi;
 			Real psiToTheFourth = psiSquared * psiSquared;
 			
 			//phi = log(psi)
-			Real &phi = geomCell.phi;
-			phi = log(psi);
+			geomCell.phi = log(cell.psi);
 
 			//gammaBar_ij = eta_ij
-			TensorSL &gammaBar_ll = geomCell.gammaBar_ll;
-			gammaBar_ll = eta;;
+			geomCell.gammaBar_ll = eta;;
 			
 			//l_i = gamma_ij l^j
 			// since I'm forcing angular momentum to be 3D (so I can get angular momentum in my 2D cases)
 			// and both l and J go into ABarL, so this has to be 3D as well
 			// should its lower form (which is lowered by eta times psi^4) omit the extra dimensions?
 			// or should it (as i'm doing) assume it is being lowered by a 3D eta with psi^4 conformal factor?
-			TensorL3 l_l;
-			for (int i = 0; i < dim3; ++i) {
-				l_l(i) = l_u(i) * psiToTheFourth;
-			}
+			TensorL3 l_l = l_u * psiToTheFourth;
 
 			//X^i = l^i / r^2
-			TensorU X_u;
-			for (int i = 0; i < dim; ++i) {
-				X_u(i) = l_u(i) / rSquared;
-			}
+//			TensorU X_u = l_u / rSquared;
 
 			//alpha = 1
 			geomCell.alpha = 1;
@@ -178,50 +166,21 @@ struct BowenYork : public InitialData<Real, dim> {
 			//beta^i = 0
 		
 			//ABarLL^ij = (LBar W)^ij = 6/r^3 l(^i eBar^j)^kl J_k l_l
-			TensorSU ABarL_uu;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					ABarL_uu(i,j) = 3. / (2. * r * r) * (P_u(i) * l_u(j) + P_u(j) * l_u(i));
-					for (int k = 0; k < dim3; ++k) {
-						ABarL_uu(i,j) += 3. / (2. * r * r) * (-(eta(i,j) - l_u(i) * l_u(j))) * l_l(k) * P_u(k);
-						for (int l = 0; l < dim3; ++l) {
-							if (k == (j+1)%dim3 && l == (k+1)%dim3) {
-								ABarL_uu(i,j) += 3. / rCubed * l_u(i) * J_l(k) * l_l(l);
-							} else if (j == (k+1)%dim3 && k == (l+1)%dim3) {
-								ABarL_uu(i,j) -= 3. / rCubed * l_u(i) * J_l(k) * l_l(l);
-							}
-						}
-					}
-				}
-			}
+			auto LC = Tensor::_asymR<Real,dim3,dim3>(1);
+			//TODO outer of rank1 & rank1 should be sym by default.
+			TensorSU ABarL_uu = 6. / rCubed * Tensor::makeSym(Tensor::outer(l_u, ((LC * l_l) * J_l)));
 
 			// free to specify / leave at zero
 			TensorSL ABarTT_uu;
 
 			//ABar^ij = ABarTT^ij + ABarL^ij
-			TensorSL ABar_uu;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					ABar_uu(i,j) = ABarTT_uu(i,j) + ABarL_uu(i,j);
-				}
-			}
+			TensorSL ABar_uu = ABarTT_uu + ABarL_uu;
 
 			//ABar_ij = gammaBar_ik ABar^kl gammaBar_lj
-			TensorSL ABar_ll;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					ABar_ll(i,j) = 0;
-					for (int k = 0; k < dim; ++k) {
-						for (int l = 0; l < dim; ++l) {
-							ABar_ll(i,j) += gammaBar_ll(i,k) * ABar_uu(k,l) * gammaBar_ll(l,j);
-						}
-					}
-				}
-			}
+			TensorSL ABar_ll = geomCell.gammaBar_ll * ABar_uu * geomCell.gammaBar_ll;
 
 			//K = 0
-			Real &K = geomCell.K;
-			K = 0;
+			geomCell.K = 0;
 
 			Real oneOverPsiSquared = 1. / psiSquared;
 
@@ -229,20 +188,10 @@ struct BowenYork : public InitialData<Real, dim> {
 			//			= A_ij - 1/3 gamma_ij K 
 			//			= psi^-2 ABar_ij - 1/3 gamma_ij K
 			//			= psi^-2 ABar_ij - 1/3 psi^4 gammaBar_ij K
-			TensorSL K_ll;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					K_ll(i,j) = ABar_ll(i,j) * oneOverPsiSquared - 1./3. * psiToTheFourth * gammaBar_ll(i,j) * K;
-				}
-			}
+			TensorSL K_ll = ABar_ll * oneOverPsiSquared - 1./3. * psiToTheFourth * geomCell.gammaBar_ll * geomCell.K;
 
 			//ATilde_ll(i,j) := ATilde_ij = exp(-4phi) K_ij - 1/3 gammaBar_ij K
-			TensorSL &ATilde_ll = geomCell.ATilde_ll;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					ATilde_ll(i,j) = psiToTheFourth * K_ll(i,j) - 1./3. * gammaBar_ll(i,j) * K;
-				}
-			}
+			geomCell.ATilde_ll = psiToTheFourth * K_ll - 1./3. * geomCell.gammaBar_ll * geomCell.K;
 		});
 	}
 };

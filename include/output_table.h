@@ -232,9 +232,9 @@ struct OutputTable {
 			
 			o << sim.time << "\t";
 
-			Tensor::_vec<Real, dim> x = sim.coordForIndex(index);
-			for (int i = 0; i < dim; ++i) {
-				o << x(i) << "\t";
+			auto x = sim.coordForIndex(index);
+			for (auto const & xi : x) {
+				o << xi << "\t";
 			}
 
 			int columnIndex = 0;

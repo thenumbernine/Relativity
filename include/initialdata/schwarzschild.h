@@ -12,7 +12,7 @@ TODO use Baumgarte & Shapiro p.66 Sobelev function for matter solution
 */
 template<typename Real, int dim>
 struct Schwarzschild : public InitialData<Real, dim> {
-	virtual const char *name() { return "schwarzschild"; }
+	virtual char const * name() { return "schwarzschild"; }
 
 	using Vector = Tensor::_vec<Real, dim>;
 	using DerefType = Tensor::intN<dim>;
@@ -68,26 +68,17 @@ struct Schwarzschild : public InitialData<Real, dim> {
 		
 			//beta^i = 0
 
-			TensorSL gamma_ll;
-			for (int i = 0; i < dim; ++i) {
-				gamma_ll(i,i) = onePlusMOverTwoR_Squared * onePlusMOverTwoR_Squared;
-			}
+			TensorSL gamma_ll = Tensor::_ident<Real,dim>(onePlusMOverTwoR_Squared * onePlusMOverTwoR_Squared);
 			
 			//gamma = det(gamma_ij)
 			Real gamma = determinant(gamma_ll);
 			
 			//phi = log(gamma) / 12
-			Real &phi = geomCell.phi;
-			phi = log(gamma) / 12.;
+			geomCell.phi = log(gamma) / 12.;
 
-			Real expMinusFourPhi = exp(-4. * phi);
+			Real expMinusFourPhi = exp(-4. * geomCell.phi);
 			//gammaBar_ll(i,j) := gamma^-1/3 gamma_ij
-			TensorSL &gammaBar_ll = geomCell.gammaBar_ll;
-			for (int i = 0; i < dim; ++i) {
-				for (int j = 0; j <= i; ++j) {
-					gammaBar_ll(i,j) = expMinusFourPhi * gamma_ll(i,j);
-				}
-			}
+			geomCell.gammaBar_ll = expMinusFourPhi * gamma_ll;
 
 			//K_ij = K = 0
 			
