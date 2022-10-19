@@ -185,18 +185,16 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					return geomGridRead(index).gammaBar_ll;
 				});
 
+			Tensor::Index<'i'> i;
+			Tensor::Index<'j'> j;
+			Tensor::Index<'k'> k;
+			Tensor::Index<'l'> l;
+			
 			//connBar_lll(i,j,k) := conn_ijk = 1/2 (partial_k gamma_ij + partial_j gamma_ik - partial_i gamma_jk)
-			TensorLSL &connBar_lll = cell.connBar_lll;
-			for (int k = 0; k < dim; ++k) {
-				for (int i = 0; i < dim; ++i) {
-					for (int j = 0; j <= i; ++j) {
-						connBar_lll(i,j,k) = .5 * (partial_gammaBar_lll(k,i,j) + partial_gammaBar_lll(j,i,k) - partial_gammaBar_lll(i,j,k));
-					}
-				}
-			}
+			cell.connBar_lll(i,j,k) = .5 * (partial_gammaBar_lll(k,i,j) + partial_gammaBar_lll(j,i,k) - partial_gammaBar_lll(i,j,k));
 
 			//connBar_ull(i,j,k) := conn^i_jk = gamma^il conn_ljk
-			cell.connBar_ull = cell.gammaBar_uu * connBar_lll;
+			cell.connBar_ull(i,j,k) = cell.gammaBar_uu(i,l) * cell.connBar_lll(l,j,k);
 		});
 
 		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
