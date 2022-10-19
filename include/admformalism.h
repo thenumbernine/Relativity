@@ -46,11 +46,11 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	using TensorLU = typename AuxCell::TensorLU;
 	using TensorSL = typename AuxCell::TensorSL;
 	using TensorUSL = typename AuxCell::TensorUSL;
-    using TensorLSL = Tensor::_tensori<Real, Tensor::index_vec<dim>, Tensor::index_sym<dim>>;
+    using TensorLSL = Tensor::_tensorx<Real, dim, -'s', dim>;
 	using TensorLSU = TensorLSL;
-	using TensorUL = Tensor::_tensori<Real, Tensor::index_vec<dim>, Tensor::index_vec<dim>>;
-	using TensorSLU = Tensor::_tensori<Real, Tensor::index_sym<dim>, Tensor::index_vec<dim>>;
-	using TensorSLSL = Tensor::_tensori<Real, Tensor::index_sym<dim>, Tensor::index_sym<dim>>;
+	using TensorUL = Tensor::_tensorx<Real, dim, dim>;
+	using TensorSLU = Tensor::_tensorx<Real, -'s', dim, dim>;
+	using TensorSLSL = Tensor::_tensorx<Real, -'s', dim, -'s', dim>;
 	using Vector = Tensor::_vec<Real, dim>;
 	
 	//what a relative notion...
