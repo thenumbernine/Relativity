@@ -73,7 +73,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	Vector dx;
 
 	//integrator
-	IIntegrator<Real, dim> *integrator;
+	IIntegrator<Real, dim> * integrator = {};
 
 	//grids
 	GeomGrid geomGrid0;
@@ -81,8 +81,8 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	MatterGrid matterGrid;
 	AuxGrid auxGrid;
 	
-	GeomGrid *geomGridReadCurrent;
-	GeomGrid *geomGridWriteCurrent;
+	GeomGrid * geomGridReadCurrent = {};
+	GeomGrid * geomGridWriteCurrent = {};
 	
 	/*
 	stencil
@@ -142,20 +142,23 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 
 	//helper functions
 
-	//calculate connBar_u based on gammaBar_ll
+	//calculate _Γ_u based on gammaBar_ll
 	//doesn't trust auxGrid.  instead it performs an inverse operation itself,
 	// so only use this on startup after gammaBar_ll is determined.
 	void calcConnBar(GeomGrid &geomGrid) {
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+			
 		Tensor::RangeObj<dim> range = auxGrid.range();
 		
 		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell & cell = auxGrid(index);
 			GeomCell const & geomCell = geomGrid(index);
-			cell.gammaBar_uu = Tensor::inverse(geomCell.gammaBar_ll, (Real)1.);
+			cell.gammaBar_uu = geomCell.gammaBar_ll.inverse((Real)1.);
 		});
 
 		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
-			GeomCell &geomCell = geomGrid(index);
+			GeomCell & geomCell = geomGrid(index);
 
 			TensorLSU partial_gammaBar_luu = Tensor::partialDerivative<partialDerivativeOrder, Real, dim, TensorSU>(
 				index, dx, [&](DerefType index) -> TensorSU {
@@ -163,13 +166,18 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					return auxGrid(index).gammaBar_uu;
 				});
 		
-			geomCell.connBar_u = Tensor::template contract<0,2>(partial_gammaBar_luu);
+			geomCell.connBar_u(i) = partial_gammaBar_luu(j,i,j);
 		});
 	}
 
 	//calculates partial_gammaBar_lll, connBar_lll, connBar_ull, R_ll, R
 	// depends on gamma_ll, gamma_uu
 	void calcConnections(GeomGrid const & geomGridRead) {
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		Tensor::Index<'k'> k;
+		Tensor::Index<'l'> l;
+			
 		//partial_gammaBar_lll depends on gamma_ll
 		//connBar_lll depends on partial_gammaBar_lll
 		//connBar_ull depends on connBar_lll and gamma_uu
@@ -185,11 +193,6 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 					return geomGridRead(index).gammaBar_ll;
 				});
 
-			Tensor::Index<'i'> i;
-			Tensor::Index<'j'> j;
-			Tensor::Index<'k'> k;
-			Tensor::Index<'l'> l;
-			
 			//connBar_lll(i,j,k) := conn_ijk = 1/2 (partial_k gamma_ij + partial_j gamma_ik - partial_i gamma_jk)
 			cell.connBar_lll(i,j,k) = .5 * (partial_gammaBar_lll(k,i,j) + partial_gammaBar_lll(j,i,k) - partial_gammaBar_lll(i,j,k));
 
@@ -199,11 +202,12 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 
 		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell & cell = auxGrid(index);
+			
 			//partial2_gammaBar_llll(k,l,i,j) = partial_k partial_l gamma_ij
 			TensorSLSL partial2_gammaBar_llll = partialSecondDerivative(geomGridRead, &GeomCell::gammaBar_ll, auxGrid, &AuxCell::partial_gammaBar_lll, dx, index);
 
 			//partial2_gammaBar_ll(i,j) := gammaBar^lm partial_l partial_m gammaBar_ij
-			cell.partial2_gammaBar_ll = cell.gammaBar_uu.template interior<2>(partial2_gammaBar_llll);
+			cell.partial2_gammaBar_ll(i,j) = cell.gammaBar_uu(k,l) * partial2_gammaBar_llll(k,l,i,j);
 		});
 	}
 
@@ -221,6 +225,10 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	
 	//iteration
 	void calcAux(GeomGrid const & geomGridRead) {
+		Tensor::Index<'i'> i;
+		Tensor::Index<'j'> j;
+		Tensor::Index<'k'> k;
+		Tensor::Index<'l'> l;
 		
 		//first compute and store aux values that will be subsequently used for partial differentiation
 		//during this process read and write to the same cell
@@ -247,8 +255,8 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			//gamma_ij = psi^4 gammaBar_ij
 			cell.gamma_ll = psiToTheFourth * geomCell.gammaBar_ll;
 		
-			//gammaBar^ij = Tensor::inverse(gammaBar_ij)
-			cell.gammaBar_uu = Tensor::inverse(geomCell.gammaBar_ll, (Real)1.);
+			//gammaBar^ij = gammaBar_ij.inverse()
+			cell.gammaBar_uu = geomCell.gammaBar_ll.inverse((Real)1.);
 
 			//gamma^ij = psi^-4 gammaBar^ij
 			cell.gamma_uu = cell.gammaBar_uu * (Real)(1. / psiToTheFourth);
@@ -308,15 +316,15 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 		parallel.foreach(range.begin(), range.end(), [&](DerefType index) {
 			AuxCell & cell = auxGrid(index);
 			GeomCell const & geomCell = geomGridRead(index);
-
-			auto DBar_phi_u = cell.gammaBar_uu * cell.DBar_phi_l;
 	
+			auto delta = Tensor::_ident<Real,dim>(1);
+			
 			//conn^i_jk = connBar^i_jk + 2 (delta^i_j DBar_k phi + delta^i_k DBar_j phi - gammaBar_jk gammaBar^il DBar_l phi)
-			// another TODO, would be nice to not redundantly calculate symmetric components here ... another TODO for index notation
-			cell.conn_ull = 2. * (
-				  Tensor::outer(Tensor::_ident<Real,dim>(1), cell.DBar_phi_l)
-				+ Tensor::outer(Tensor::_ident<Real,dim>(1), cell.DBar_phi_l).template transpose<1,2>()
-				- Tensor::outer(DBar_phi_u, geomCell.gammaBar_ll));
+			cell.conn_ull(i,j,k) = 2. * (
+				  delta(i,j) * cell.DBar_phi_l(k)
+				+ delta(i,k) * cell.DBar_phi_l(j)
+				- geomCell.gammaBar_ll(j,k) * cell.gammaBar_uu(i,l) * cell.DBar_phi_l(l)
+			);
 
 			//conn_ijk = gamma_il conn^l_jk
 			cell.conn_lll = cell.gamma_ll * cell.conn_ull;
@@ -336,10 +344,14 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 				index);
 
 			//DBar2_phi_ll(i,j) := DBar_i DBar_j ln(psi) = partial_i partial_j ln(psi) - connBar^k_ij partial_k ln(psi)
-			TensorSL DBar2_phi_ll = partial2_phi_ll - cell.DBar_phi_l * cell.connBar_ull;
+			TensorSL DBar2_phi_ll;
+			DBar2_phi_ll(i,j) = partial2_phi_ll(i,j) - cell.DBar_phi_l(k) * cell.connBar_ull(k,i,j);
 
 			//DBar2_phi := DBar^2 ln(psi) = gammaBar^ij DBar_i DBar_j ln(psi)
 			Real DBar2_phi = Tensor::interior<2>(cell.gammaBar_uu, DBar2_phi_ll);
+			//TODO
+			//Real DBar2_phi;
+			//DBar2_phi = cell.gammaBar_uu(i,j) * DBar2_phi_ll(i,j);
 
 			//normBar_DBar_phi = gammaBar^ij (DBar_i ln(psi)) (DBar_j ln(psi))
 			Real normBar_DBar_phi = cell.DBar_phi_l * cell.gammaBar_uu * cell.DBar_phi_l;
