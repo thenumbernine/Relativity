@@ -265,7 +265,7 @@ struct CovariantDerivativeClass_0 {
 	using ConnFieldType = const TensorUSL ConnCellType::*;
 	static OutputType exec(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
 		static constexpr int accuracy = 8;	//"order", not "accuracy", and put this all in one place plz
-		return Tensor::partialDerivative<accuracy, Real, dim, InputType>(
+		return Tensor::partialDerivativeGrid<accuracy, Real, dim, InputType>(
 			index, dx, [&](decltype(index) index) -> InputType {
 				return grid(index).*field;
 			});
@@ -285,7 +285,7 @@ struct CovariantDerivativeClass_U {
 	using ConnFieldType = const TensorUSL ConnCellType::*;
 	static OutputType exec(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
 		static constexpr int accuracy = 8;	//"order", not "accuracy", and put this all in one place plz
-		OutputType result = Tensor::partialDerivative<accuracy, Real, dim, InputType>(
+		OutputType result = Tensor::partialDerivativeGrid<accuracy, Real, dim, InputType>(
 			index, dx, [&](decltype(index) index) -> InputType {
 				return grid(index).*field;
 			});
@@ -317,7 +317,7 @@ struct CovariantDerivativeClass_L {
 	using ConnFieldType = const TensorUSL ConnCellType::*;
 	static OutputType exec(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
 		static constexpr int accuracy = 8;	//"order", not "accuracy", and put this all in one place plz
-		OutputType result = Tensor::partialDerivative<accuracy, Real, dim, InputType>(
+		OutputType result = Tensor::partialDerivativeGrid<accuracy, Real, dim, InputType>(
 			index, dx, [&](decltype(index) index) -> InputType {
 				return grid(index).*field;
 			});
@@ -349,7 +349,7 @@ struct CovariantDerivativeClass_SU {
 	using ConnFieldType = const TensorUSL ConnCellType::*;
 	static OutputType exec(const Grid &grid, CellFieldType field, const ConnGrid &connGrid, ConnFieldType connField_ull, const Tensor::_vec<Real, dim> &dx, const Tensor::intN<dim> &index) {
 		static constexpr int accuracy = 8;	//"order", not "accuracy", and put this all in one place plz
-		OutputType result = Tensor::partialDerivative<accuracy, Real, dim, InputType>(
+		OutputType result = Tensor::partialDerivativeGrid<accuracy, Real, dim, InputType>(
 			index, dx, [&](decltype(index) index) -> InputType {
 				return grid(index).*field;
 			});
