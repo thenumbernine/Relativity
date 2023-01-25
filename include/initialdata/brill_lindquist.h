@@ -23,7 +23,7 @@ template<typename Real, int dim>
 struct BrillLindquist : public InitialData<Real, dim> {
 	virtual const char *name() { return "brill-lindquist"; }
 
-	using Vector = Tensor::_vec<Real, dim>;
+	using Vector = Tensor::vec<Real, dim>;
 	using DerefType = Tensor::intN<dim>;
 	using InitialData = ::InitialData<Real, dim>;
 	using ADMFormalism = typename InitialData::ADMFormalism;
@@ -33,7 +33,7 @@ struct BrillLindquist : public InitialData<Real, dim> {
 	using TensorSU = typename ADMFormalism::TensorSU;
 
 	//I should at least make this a structure or something
-	std::vector<Tensor::_vec<Real, dim+1>> blackHoleInfo;
+	std::vector<Tensor::vec<Real, dim+1>> blackHoleInfo;
 
 	virtual void init(ADMFormalism &sim, std::vector<std::string> &args) {
 		if (!args.size()) throw Common::Exception() << "expected simulation arguments";
@@ -43,7 +43,7 @@ struct BrillLindquist : public InitialData<Real, dim> {
 		std::cout << "number of black holes " << numBlackHoles << std::endl;
 
 		for (int i = 0; i < numBlackHoles; ++i) {
-			Tensor::_vec<Real, dim+1> blackHole;
+			Tensor::vec<Real, dim+1> blackHole;
 			for (int j = 0; j < dim+1; ++j) {
 				if (!args.size()) throw Common::Exception() << "expected simulation arguments";
 				blackHole(j) = atof(args[0].c_str());

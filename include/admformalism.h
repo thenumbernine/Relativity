@@ -46,12 +46,12 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 	using TensorLU = typename AuxCell::TensorLU;
 	using TensorSL = typename AuxCell::TensorSL;
 	using TensorUSL = typename AuxCell::TensorUSL;
-    using TensorLSL = Tensor::_tensorx<Real, dim, -'s', dim>;
+    using TensorLSL = Tensor::tensorx<Real, dim, -'s', dim>;
 	using TensorLSU = TensorLSL;
-	using TensorUL = Tensor::_tensorx<Real, dim, dim>;
-	using TensorSLU = Tensor::_tensorx<Real, -'s', dim, dim>;
-	using TensorSLSL = Tensor::_tensorx<Real, -'s', dim, -'s', dim>;
-	using Vector = Tensor::_vec<Real, dim>;
+	using TensorUL = Tensor::tensorx<Real, dim, dim>;
+	using TensorSLU = Tensor::tensorx<Real, -'s', dim, dim>;
+	using TensorSLSL = Tensor::tensorx<Real, -'s', dim, -'s', dim>;
+	using Vector = Tensor::vec<Real, dim>;
 	
 	//what a relative notion...
 	//intended for use with output matching up iteration slices 
@@ -318,7 +318,7 @@ struct ADMFormalism : public IADMFormalism<Real_, dim_> {
 			AuxCell & cell = auxGrid(index);
 			GeomCell const & geomCell = geomGridRead(index);
 	
-			auto delta = Tensor::_ident<Real,dim>(1);
+			auto delta = Tensor::ident<Real,dim>(1);
 			
 			//conn^i_jk = connBar^i_jk + 2 (delta^i_j DBar_k phi + delta^i_k DBar_j phi - gammaBar_jk gammaBar^il DBar_l phi)
 			cell.conn_ull(i,j,k) = 2. * (

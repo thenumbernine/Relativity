@@ -14,7 +14,7 @@ template<typename Real, int dim>
 struct KerrSchild : public InitialData<Real, dim> {
 	virtual char const * name() { return "kerr-schild"; }
 
-	using Vector = Tensor::_vec<Real, dim>;
+	using Vector = Tensor::vec<Real, dim>;
 	using DerefType = Tensor::intN<dim>;
 	using InitialData = ::InitialData<Real, dim>;
 	using ADMFormalism = typename InitialData::ADMFormalism;
@@ -55,7 +55,7 @@ struct KerrSchild : public InitialData<Real, dim> {
 		
 		Real a = J / M;	//angular momentum density
 		
-		auto eta = Tensor::_ident<Real,dim>(1);
+		auto eta = Tensor::ident<Real,dim>(1);
 
 		Vector const & min = sim.min;
 		Vector const & max = sim.max;

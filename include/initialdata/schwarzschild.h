@@ -14,7 +14,7 @@ template<typename Real, int dim>
 struct Schwarzschild : public InitialData<Real, dim> {
 	virtual char const * name() { return "schwarzschild"; }
 
-	using Vector = Tensor::_vec<Real, dim>;
+	using Vector = Tensor::vec<Real, dim>;
 	using DerefType = Tensor::intN<dim>;
 	using InitialData = ::InitialData<Real, dim>;
 	using ADMFormalism = typename InitialData::ADMFormalism;
@@ -68,7 +68,7 @@ struct Schwarzschild : public InitialData<Real, dim> {
 		
 			//beta^i = 0
 
-			TensorSL gamma_ll = Tensor::_ident<Real,dim>(onePlusMOverTwoR_Squared * onePlusMOverTwoR_Squared);
+			TensorSL gamma_ll = Tensor::ident<Real,dim>(onePlusMOverTwoR_Squared * onePlusMOverTwoR_Squared);
 			
 			//gamma = det(gamma_ij)
 			Real gamma = determinant(gamma_ll);

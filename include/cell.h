@@ -24,8 +24,8 @@ struct GeomCell {
 	using Real = Real_;
 	static constexpr auto dim = dim_;
 
-	using TensorU = Tensor::_vec<Real, dim>;
-	using TensorSL = Tensor::_sym<Real, dim>;
+	using TensorU = Tensor::vec<Real, dim>;
+	using TensorSL = Tensor::sym<Real, dim>;
 
 	//lapse
 	Real alpha;
@@ -94,8 +94,8 @@ struct MatterCell {
 	using Real = Real_;
 	static constexpr auto dim = dim_;
 
-	using TensorU = Tensor::_tensor<Real, dim>;
-	using TensorSL = Tensor::_sym<Real, dim>;
+	using TensorU = Tensor::tensor<Real, dim>;
+	using TensorSL = Tensor::sym<Real, dim>;
 
 	MatterCell()
 	:	rho(Real())
@@ -129,15 +129,15 @@ struct AuxCell {
 	'S' means symmetric
 	'A' means antisymmetric (haven't needed this one yet)
 	*/
-	using TensorU = Tensor::_tensor<Real, dim>;
-	using TensorL = Tensor::_tensor<Real, dim>;
-	using TensorLL = Tensor::_tensor<Real, dim, dim>;
-	using TensorUL = Tensor::_tensor<Real, dim, dim>;
-	using TensorLU = Tensor::_tensor<Real, dim, dim>;
-	using TensorSU = Tensor::_sym<Real, dim>;
-	using TensorSL = Tensor::_sym<Real, dim>;
-	using TensorUSL = Tensor::_vec<Tensor::_sym<Real, dim>, dim>;
-	using TensorLSL = Tensor::_vec<Tensor::_sym<Real, dim>, dim>;
+	using TensorU = Tensor::tensor<Real, dim>;
+	using TensorL = Tensor::tensor<Real, dim>;
+	using TensorLL = Tensor::tensor<Real, dim, dim>;
+	using TensorUL = Tensor::tensor<Real, dim, dim>;
+	using TensorLU = Tensor::tensor<Real, dim, dim>;
+	using TensorSU = Tensor::sym<Real, dim>;
+	using TensorSL = Tensor::sym<Real, dim>;
+	using TensorUSL = Tensor::vec<Tensor::sym<Real, dim>, dim>;
+	using TensorLSL = Tensor::vec<Tensor::sym<Real, dim>, dim>;
 
 
 	//our tensors initialze to zero, so why not our reals too?

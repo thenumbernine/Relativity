@@ -21,7 +21,7 @@ template<typename Real, int dim>
 struct BowenYork : public InitialData<Real, dim> {
 	virtual const char *name() { return "bowen-york"; }
 
-	using Vector = Tensor::_vec<Real, dim>;
+	using Vector = Tensor::vec<Real, dim>;
 	using DerefType = Tensor::intN<dim>;
 	using InitialData = ::InitialData<Real, dim>;
 	using ADMFormalism = typename InitialData::ADMFormalism;
@@ -31,8 +31,8 @@ struct BowenYork : public InitialData<Real, dim> {
 	using TensorSU = typename ADMFormalism::TensorSU;
 
 	static constexpr auto dim3 = 3;	//representing angular momentum in 3d even for 1d and 2d cases, so i can give a 2d black hole some angular momentum
-	using TensorL3 = Tensor::_vec<Real, dim3>;
-	using TensorU3 = Tensor::_vec<Real, dim3>;
+	using TensorL3 = Tensor::vec<Real, dim3>;
+	using TensorU3 = Tensor::vec<Real, dim3>;
 	
 	Real M;						//black hole mass <=> half the Schwarzschild radius
 	TensorL3 J_l;	//angular momentum. technically only has to be a divergence-free field.
@@ -69,7 +69,7 @@ struct BowenYork : public InitialData<Real, dim> {
 		//same deal with P?
 		Real P = P_u.length();
 	
-		auto eta = Tensor::_ident<Real,dim>(1);	// spatial Minkowski is just identity
+		auto eta = Tensor::ident<Real,dim>(1);	// spatial Minkowski is just identity
 
 		Vector const & min = sim.min;
 		Vector const & max = sim.max;
@@ -166,7 +166,7 @@ struct BowenYork : public InitialData<Real, dim> {
 			//beta^i = 0
 		
 			//ABarLL^ij = (LBar W)^ij = 6/r^3 l(^i eBar^j)^kl J_k l_l
-			auto LC = Tensor::_asymR<Real,dim3,dim3>(1);
+			auto LC = Tensor::asymR<Real,dim3,dim3>(1);
 			//TODO outer of rank1 & rank1 should be sym by default.
 			TensorSU ABarL_uu = 6. / rCubed * Tensor::makeSym(Tensor::outer(l_u, ((LC * l_l) * J_l)));
 

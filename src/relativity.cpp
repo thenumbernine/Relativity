@@ -265,7 +265,7 @@ void runSimIntegrator(SimParams &params, IIntegrator<real, dim> *integrator) {
 	std::cout << "constructing sim..." << std::endl;
 	
 	real maxDist = params.size * sunRadiusInM;
-	using Vector = Tensor::_vec<real, dim>;
+	using Vector = Tensor::vec<real, dim>;
 	ADMFormalism<real, dim> sim(Vector(-maxDist), Vector(maxDist), params.res, integrator);
 
 	//why not allow for a non-initial-condition sim?

@@ -34,7 +34,7 @@ struct OutputFieldVector {
 			o << name << indexSymbol << CoordNames::names[i] << "\t";
 		}
 	}
-	static void outputField(std::ostream &o, Tensor::_vec<Real, dim> const & t) {
+	static void outputField(std::ostream &o, Tensor::vec<Real, dim> const & t) {
 		for (int i = 0; i < dim; ++i) {
 			o << t[i] << "\t";
 		}
@@ -42,18 +42,18 @@ struct OutputFieldVector {
 };
 
 template<typename Real, int dim>
-struct OutputField<Tensor::_vec<Real, dim>> : public OutputFieldVector<Real, dim> {
+struct OutputField<Tensor::vec<Real, dim>> : public OutputFieldVector<Real, dim> {
 	static void outputName(std::ostream &o, char const * name) {
 		OutputFieldVector<Real, dim>::outputName(o, name, "_");	//"^");//TODO can't determine anymore, no longer using Upper and Lower
 	}
-	static void outputField(std::ostream &o, Tensor::_vec<Real, dim> const & t) {
+	static void outputField(std::ostream &o, Tensor::vec<Real, dim> const & t) {
 		OutputFieldVector<Real, dim>::outputField(o, t);
 	}
 };
 
 //TODO write iterators could simplify this a lot
 template<typename Real, int dim>
-struct OutputField<Tensor::_sym<Real, dim>> {
+struct OutputField<Tensor::sym<Real, dim>> {
 	static void outputName(std::ostream &o, char const * name) {
 		for (int i = 0; i < dim; ++i) {
 			for (int j = 0; j <= i; ++j) {
@@ -61,7 +61,7 @@ struct OutputField<Tensor::_sym<Real, dim>> {
 			}
 		}
 	}
-	static void outputField(std::ostream &o, Tensor::_sym<Real, dim> const & t) {
+	static void outputField(std::ostream &o, Tensor::sym<Real, dim> const & t) {
 		for (int i = 0; i < dim; ++i) {
 			for (int j = 0; j <= i; ++j) {
 				o << t(i,j) << "\t";
