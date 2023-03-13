@@ -83,7 +83,7 @@ struct Schwarzschild : public InitialData<Real, dim> {
 			//K_ij = K = 0
 			
 			if (r <= R) {
-				matterCell.rho = sim.dx.volume() * rho;
+				matterCell.rho = sim.dx.product() * rho;
 			}
 		});
 	}
